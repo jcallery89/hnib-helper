@@ -1,0 +1,41 @@
+:root {
+  /* Backgrounds */
+  --hnib-navy-deep: #111e3f; /* primary background, the brand anchor */
+  --hnib-navy: #1a2856;
+  --hnib-navy-mid: #24366b;
+  --hnib-surface: rgba(30, 46, 86, 0.45); /* frosted card surface */
+  --hnib-surface-solid: #1e2e56;
+  --hnib-border: #263a66;
+
+  /* Accents */
+  --hnib-blue: #2e4a8a;
+  --hnib-royal: #3b5998;
+  --hnib-ice: #a8cce0; /* secondary accent, links */
+  --hnib-ice-light: #c5ddf0;
+  --hnib-ice-pale: #dae8f3;
+  --hnib-ice-frost: #eaf2f8;
+
+  /* Text */
+  --hnib-white: #ffffff;
+  --hnib-text-primary: #c0cfe0;
+  --hnib-text-dim: #7a8daa;
+
+  /* Status / Functional */
+  --hnib-gold: #d4a843; /* primary CTA, winners, premium accent */
+  --hnib-green: #3ddc84; /* advancing / active */
+  --hnib-red: #e05252; /* eliminated / error */
+
+  --hnib-font-head: "Teko", sans-serif;
+  --hnib-font-body: "Barlow Condensed", sans-serif;
+
+  /* Spacing scale */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 16px;
+  --sp-4: 24px;
+  --sp-5: 32px;
+  --sp-6: 48px;
+
+  --radius: 6px;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+}

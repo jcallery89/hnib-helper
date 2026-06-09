@@ -1,0 +1,25 @@
+{
+  "name": "hnib-tournament-expert",
+  "version": "1.0.0",
+  "description": "Hockey Night in Boston Tournament Expert - schedules, standings, tiebreakers, playoff seeding, and on-brand bracket export.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "html-to-image": "^1.11.11",
+    "preact": "^10.22.0"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.9.0",
+    "preact-render-to-string": "^6.7.0",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.2",
+    "vitest": "^2.0.5"
+  }
+}

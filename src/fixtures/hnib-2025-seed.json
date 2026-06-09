@@ -1,0 +1,44 @@
+{
+  "event": {
+    "id": "jrhigh-2025-demo",
+    "name": "Jr. High Festival",
+    "year": 2025,
+    "venues": ["Worcester Ice Center"],
+    "format": "festival",
+    "hasPlayoffBracket": true,
+    "seedingRule": "jrhigh_top2_per_division",
+    "pointSystem": { "win": 2, "tie": 1, "loss": 0 }
+  },
+  "divisions": [
+    { "id": "div-east", "eventId": "jrhigh-2025-demo", "name": "EAST", "teamIds": ["t-and", "t-bev", "t-che", "t-dan"] },
+    { "id": "div-west", "eventId": "jrhigh-2025-demo", "name": "WEST", "teamIds": ["t-wor", "t-wes", "t-wak", "t-wal"] }
+  ],
+  "teams": [
+    { "id": "t-and", "eventId": "jrhigh-2025-demo", "divisionId": "div-east", "name": "Andover", "coach": "R. Sullivan", "colorPrimary": "#2e4a8a", "colorSecondary": "#a8cce0" },
+    { "id": "t-bev", "eventId": "jrhigh-2025-demo", "divisionId": "div-east", "name": "Beverly", "coach": "M. Doyle", "colorPrimary": "#3b5998", "colorSecondary": "#dae8f3" },
+    { "id": "t-che", "eventId": "jrhigh-2025-demo", "divisionId": "div-east", "name": "Chelmsford", "coach": "P. Marsh", "colorPrimary": "#24366b", "colorSecondary": "#c5ddf0" },
+    { "id": "t-dan", "eventId": "jrhigh-2025-demo", "divisionId": "div-east", "name": "Danvers", "coach": "T. Quinn", "colorPrimary": "#1a2856", "colorSecondary": "#eaf2f8" },
+    { "id": "t-wor", "eventId": "jrhigh-2025-demo", "divisionId": "div-west", "name": "Worcester", "coach": "J. Hart", "colorPrimary": "#2e4a8a", "colorSecondary": "#d4a843" },
+    { "id": "t-wes", "eventId": "jrhigh-2025-demo", "divisionId": "div-west", "name": "Westford", "coach": "K. Boyle", "colorPrimary": "#3b5998", "colorSecondary": "#a8cce0" },
+    { "id": "t-wak", "eventId": "jrhigh-2025-demo", "divisionId": "div-west", "name": "Wakefield", "coach": "D. Frost", "colorPrimary": "#24366b", "colorSecondary": "#c5ddf0" },
+    { "id": "t-wal", "eventId": "jrhigh-2025-demo", "divisionId": "div-west", "name": "Walpole", "coach": "S. Reed", "colorPrimary": "#1a2856", "colorSecondary": "#dae8f3" }
+  ],
+  "games": [
+    { "id": "g-rr-1", "divisionId": "div-east", "round": "rr", "rink": "Gray", "slotStart": "2025-06-27T08:00:00", "homeTeamId": "t-and", "awayTeamId": "t-bev", "homeScore": 3, "awayScore": 1, "status": "final", "decidedBy": "regulation" },
+    { "id": "g-rr-2", "divisionId": "div-east", "round": "rr", "rink": "Lamacchia", "slotStart": "2025-06-27T08:15:00", "homeTeamId": "t-and", "awayTeamId": "t-che", "homeScore": 4, "awayScore": 2, "status": "final", "decidedBy": "regulation" },
+    { "id": "g-rr-3", "divisionId": "div-east", "round": "rr", "rink": "Gray", "slotStart": "2025-06-27T09:45:00", "homeTeamId": "t-and", "awayTeamId": "t-dan", "homeScore": 2, "awayScore": 3, "status": "final", "decidedBy": "regulation" },
+    { "id": "g-rr-4", "divisionId": "div-east", "round": "rr", "rink": "Lamacchia", "slotStart": "2025-06-27T10:00:00", "homeTeamId": "t-bev", "awayTeamId": "t-che", "homeScore": 2, "awayScore": 0, "status": "final", "decidedBy": "regulation" },
+    { "id": "g-rr-5", "divisionId": "div-east", "round": "rr", "rink": "Gray", "slotStart": "2025-06-27T11:30:00", "homeTeamId": "t-bev", "awayTeamId": "t-dan", "homeScore": 2, "awayScore": 2, "status": "final", "decidedBy": "regulation" },
+    { "id": "g-rr-6", "divisionId": "div-east", "round": "rr", "rink": "Lamacchia", "slotStart": "2025-06-27T11:45:00", "homeTeamId": "t-che", "awayTeamId": "t-dan", "homeScore": 3, "awayScore": 1, "status": "final", "decidedBy": "regulation" },
+    { "id": "g-rr-7", "divisionId": "div-west", "round": "rr", "rink": "Gray", "slotStart": "2025-06-27T13:15:00", "homeTeamId": "t-wor", "awayTeamId": "t-wes", "homeScore": 4, "awayScore": 1, "status": "final", "decidedBy": "regulation" },
+    { "id": "g-rr-8", "divisionId": "div-west", "round": "rr", "rink": "Lamacchia", "slotStart": "2025-06-27T13:30:00", "homeTeamId": "t-wor", "awayTeamId": "t-wak", "homeScore": 3, "awayScore": 2, "status": "final", "decidedBy": "regulation" },
+    { "id": "g-rr-9", "divisionId": "div-west", "round": "rr", "rink": "Gray", "slotStart": "2025-06-27T15:00:00", "homeTeamId": "t-wor", "awayTeamId": "t-wal", "homeScore": 2, "awayScore": 1, "status": "final", "decidedBy": "regulation" },
+    { "id": "g-rr-10", "divisionId": "div-west", "round": "rr", "rink": "Lamacchia", "slotStart": "2025-06-27T15:15:00", "homeTeamId": "t-wes", "awayTeamId": "t-wak", "homeScore": 3, "awayScore": 1, "status": "final", "decidedBy": "regulation" },
+    { "id": "g-rr-11", "divisionId": "div-west", "round": "rr", "rink": "Gray", "slotStart": "2025-06-27T16:45:00", "homeTeamId": "t-wes", "awayTeamId": "t-wal", "homeScore": 3, "awayScore": 2, "status": "final", "decidedBy": "regulation" },
+    { "id": "g-rr-12", "divisionId": "div-west", "round": "rr", "rink": "Lamacchia", "slotStart": "2025-06-27T17:00:00", "homeTeamId": "t-wak", "awayTeamId": "t-wal", "homeScore": 2, "awayScore": 1, "status": "final", "decidedBy": "regulation" },
+    { "id": "g-rr-13", "divisionId": null, "round": "rr", "rink": "Gray", "slotStart": "2025-06-28T08:00:00", "homeTeamId": "t-and", "awayTeamId": "t-wor", "homeScore": 5, "awayScore": 2, "status": "final", "decidedBy": "regulation" },
+    { "id": "g-rr-14", "divisionId": null, "round": "rr", "rink": "Lamacchia", "slotStart": "2025-06-28T08:15:00", "homeTeamId": "t-bev", "awayTeamId": "t-wes", "homeScore": 3, "awayScore": 2, "status": "final", "decidedBy": "regulation" },
+    { "id": "g-rr-15", "divisionId": null, "round": "rr", "rink": "Gray", "slotStart": "2025-06-28T09:45:00", "homeTeamId": "t-che", "awayTeamId": "t-wak", "homeScore": 3, "awayScore": 1, "status": "final", "decidedBy": "regulation" },
+    { "id": "g-rr-16", "divisionId": null, "round": "rr", "rink": "Lamacchia", "slotStart": "2025-06-28T10:00:00", "homeTeamId": "t-dan", "awayTeamId": "t-wal", "homeScore": 2, "awayScore": 2, "status": "final", "decidedBy": "regulation" }
+  ]
+}
