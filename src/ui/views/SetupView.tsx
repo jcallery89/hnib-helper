@@ -1,9 +1,10 @@
 import { useState } from "preact/hooks";
 import type { Dataset } from "../../io/dataset.ts";
 import type { SeedingRule } from "../../engine/types.ts";
-import { loadSampleDataset } from "../../io/sampleData.ts";
+import { loadSampleDataset, loadDemoDataset } from "../../io/sampleData.ts";
 import { clearSession, downloadFile } from "../../io/session.ts";
 import { applyResultsCsv, gamesToCsv } from "../../io/csv.ts";
+import { parseSchedule } from "../../io/importSchedule.ts";
 
 interface Props {
   dataset: Dataset;
@@ -12,12 +13,45 @@ interface Props {
 
 export function SetupView({ dataset, replace }: Props) {
   const [csv, setCsv] = useState("");
+  const [importText, setImportText] = useState("");
   const [msg, setMsg] = useState("");
+  const [newDiv, setNewDiv] = useState("");
 
   function edit(mutate: (d: Dataset) => void) {
     const next = structuredClone(dataset);
     mutate(next);
     replace(next);
+  }
+
+  function importSchedule() {
+    const { dataset: next, summary } = parseSchedule(importText);
+    replace(next);
+    setMsg(
+      `Imported "${summary.eventName}": ${summary.teamCount} teams, ${summary.roundRobinGames} round-robin games, ` +
+        `${summary.playoffGames} playoff games` +
+        (summary.skippedAllStar ? `, skipped ${summary.skippedAllStar} all-star game(s)` : "") +
+        ". Now split the teams into divisions below.",
+    );
+    setImportText("");
+  }
+
+  function moveTeam(teamId: string, toDivId: string) {
+    edit((d) => {
+      for (const div of d.divisions) div.teamIds = div.teamIds.filter((id) => id !== teamId);
+      d.divisions.find((x) => x.id === toDivId)?.teamIds.push(teamId);
+      const t = d.teams.find((x) => x.id === teamId);
+      if (t) t.divisionId = toDivId;
+    });
+  }
+
+  function addDivision() {
+    const name = newDiv.trim();
+    if (!name) return;
+    edit((d) => {
+      const id = uniqueDivId(d, name);
+      d.divisions.push({ id, eventId: d.event.id, name, teamIds: [] });
+    });
+    setNewDiv("");
   }
 
   function importCsv() {
@@ -29,6 +63,75 @@ export function SetupView({ dataset, replace }: Props) {
 
   return (
     <section>
+      <div class="card premium">
+        <p class="section-title">Import a Schedule from hnib.app</p>
+        <p class="note">
+          Open the event's schedule page, select the whole list of games (teams, dates, times, and
+          scores), and paste it here. The importer separates round-robin from playoff games and skips
+          All-Star exhibitions. Then assign the teams to divisions below.
+        </p>
+        <textarea
+          style={{ width: "100%", height: 140 }}
+          placeholder="Paste the schedule text here..."
+          value={importText}
+          onInput={(e) => setImportText((e.target as HTMLTextAreaElement).value)}
+        />
+        <div class="toolbar" style={{ marginTop: 8 }}>
+          <button class="btn primary" disabled={!importText.trim()} onClick={importSchedule}>
+            Import schedule
+          </button>
+        </div>
+      </div>
+
+      <div class="card">
+        <p class="section-title">Divisions</p>
+        <p class="note">
+          Seeds 1-4 come from the top teams in each division, so the split matters. Move each team to
+          its division.
+        </p>
+        {dataset.divisions.map((div) => (
+          <p key={div.id}>
+            <strong>{div.name}</strong> ({div.teamIds.length}):{" "}
+            {div.teamIds.map((id) => dataset.teams.find((t) => t.id === id)?.name ?? id).join(", ") || <span class="muted">empty</span>}
+          </p>
+        ))}
+        <table class="grid">
+          <thead>
+            <tr>
+              <th>Team</th>
+              <th>Division</th>
+            </tr>
+          </thead>
+          <tbody>
+            {dataset.teams.map((t) => (
+              <tr key={t.id}>
+                <td>{t.name}</td>
+                <td>
+                  <select value={t.divisionId} onChange={(e) => moveTeam(t.id, (e.target as HTMLSelectElement).value)}>
+                    {dataset.divisions.map((d) => (
+                      <option value={d.id} key={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div class="toolbar" style={{ marginTop: 8 }}>
+          <input
+            type="text"
+            placeholder="New division name (e.g. EAST)"
+            value={newDiv}
+            onInput={(e) => setNewDiv((e.target as HTMLInputElement).value)}
+          />
+          <button class="btn secondary" onClick={addDivision}>
+            Add division
+          </button>
+        </div>
+      </div>
+
       <div class="card">
         <p class="section-title">Event</p>
         <div class="row" style={{ gap: 24 }}>
@@ -70,20 +173,13 @@ export function SetupView({ dataset, replace }: Props) {
       </div>
 
       <div class="card">
-        <p class="section-title">Teams ({dataset.teams.length})</p>
-        {dataset.divisions.map((div) => (
-          <p key={div.id}>
-            <strong>{div.name}:</strong>{" "}
-            {div.teamIds.map((id) => dataset.teams.find((t) => t.id === id)?.name ?? id).join(", ")}
-          </p>
-        ))}
-      </div>
-
-      <div class="card">
         <p class="section-title">Data</p>
         <div class="toolbar">
           <button class="btn" onClick={() => replace(loadSampleDataset())}>
-            Reload sample event
+            Load 2025 Jr. High sample
+          </button>
+          <button class="btn" onClick={() => replace(loadDemoDataset())}>
+            Load synthetic demo
           </button>
           <button
             class="btn"
@@ -114,11 +210,11 @@ export function SetupView({ dataset, replace }: Props) {
           Import Results CSV
         </p>
         <p class="note">
-          Paste a results CSV (columns id, homeScore, awayScore, decidedBy). Scores are matched to
-          existing games by id, so a stray name can never create a phantom game.
+          Paste a results CSV (columns id, homeScore, awayScore, decidedBy). Scores match existing
+          games by id.
         </p>
         <textarea
-          style={{ width: "100%", height: 120 }}
+          style={{ width: "100%", height: 100 }}
           value={csv}
           onInput={(e) => setCsv((e.target as HTMLTextAreaElement).value)}
         />
@@ -131,4 +227,13 @@ export function SetupView({ dataset, replace }: Props) {
       </div>
     </section>
   );
+}
+
+function uniqueDivId(d: Dataset, name: string): string {
+  const base = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "div";
+  const used = new Set(d.divisions.map((x) => x.id));
+  if (!used.has(base)) return base;
+  let n = 2;
+  while (used.has(`${base}-${n}`)) n++;
+  return `${base}-${n}`;
 }

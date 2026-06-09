@@ -22,8 +22,9 @@ const TABS: Array<{ key: TabKey; label: string }> = [
 export function App() {
   const [dataset, setDataset] = useState<Dataset>(() => loadSession() ?? loadSampleDataset());
   const [tab, setTab] = useState<TabKey>("results");
+  const [asOf, setAsOf] = useState<string | null>(null);
 
-  const analysis = useMemo(() => analyze(dataset), [dataset]);
+  const analysis = useMemo(() => analyze(dataset, asOf), [dataset, asOf]);
 
   // Apply a mutation against a fresh clone, persist, and re-render.
   function update(mutate: (draft: Dataset) => void) {
@@ -61,6 +62,37 @@ export function App() {
           </button>
         ))}
       </nav>
+
+      <div class="card">
+        <div class="row" style={{ justifyContent: "space-between" }}>
+          <div class="row">
+            <span class="section-title" style={{ margin: 0 }}>Results as of</span>
+            <input
+              type="datetime-local"
+              value={asOf ? asOf.slice(0, 16) : ""}
+              onInput={(e) => {
+                const v = (e.target as HTMLInputElement).value;
+                setAsOf(v ? (v.length === 16 ? `${v}:00` : v) : null);
+              }}
+            />
+            {asOf ? (
+              <button class="btn" onClick={() => setAsOf(null)}>
+                Show all results
+              </button>
+            ) : (
+              <span class="note">showing all entered results</span>
+            )}
+          </div>
+          <span class="note">
+            {analysis.resultsEntered} of {analysis.totalRoundRobin} round-robin games counted
+          </span>
+        </div>
+        {asOf && (
+          <p class="note">
+            Standings, tiebreakers, and the playoff field reflect only games played by {asOf.replace("T", " ").slice(0, 16)}.
+          </p>
+        )}
+      </div>
 
       {tab === "results" && <ResultsView dataset={dataset} analysis={analysis} update={update} />}
       {tab === "standings" && <StandingsView dataset={dataset} analysis={analysis} />}
