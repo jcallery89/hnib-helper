@@ -6,6 +6,7 @@ import type { BracketGame, DecidedBy } from "../../engine/types.ts";
 import { BracketSvg } from "../../render/bracket/BracketSvg.tsx";
 import { EXPORT_SIZES } from "../../render/bracket/theme.ts";
 import { exportBracketPng } from "../../render/bracket/export.ts";
+import { useBrandAssets } from "../state/useBrand.ts";
 
 interface Props {
   dataset: Dataset;
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function BracketView({ dataset, analysis, update }: Props) {
+  const brand = useBrandAssets();
   const [sizeKey, setSizeKey] = useState(EXPORT_SIZES[0].key);
   const [busy, setBusy] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
@@ -84,6 +86,7 @@ export function BracketView({ dataset, analysis, update }: Props) {
             title={title}
             bracket={bracket}
             nameById={analysis.nameById}
+            brand={brand}
           />
         </div>
       </div>
@@ -106,6 +109,7 @@ export function BracketView({ dataset, analysis, update }: Props) {
             title={title}
             bracket={bracket}
             nameById={analysis.nameById}
+            brand={brand}
           />
         </div>
       </div>

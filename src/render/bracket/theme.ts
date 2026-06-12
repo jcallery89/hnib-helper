@@ -6,6 +6,7 @@ export const COLORS = {
   border: "#263a66",
   gold: "#d4a843",
   ice: "#a8cce0",
+  icePale: "#dae8f3",
   green: "#3ddc84",
   red: "#e05252",
   white: "#ffffff",

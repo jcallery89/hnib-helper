@@ -53,6 +53,12 @@ header.masthead h1 {
   font-size: 2.4rem;
 }
 
+.masthead-logo {
+  height: 52px;
+  width: auto;
+  display: block;
+}
+
 .masthead .meta {
   font-family: var(--hnib-font-body);
   font-weight: 700;

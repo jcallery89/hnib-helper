@@ -1,6 +1,7 @@
 import type { BracketGame } from "../../engine/types.ts";
 import { computeLayout, type CellBox } from "./layout.ts";
 import { COLORS, FONTS } from "./theme.ts";
+import { bgForSize, LOGO_ASPECT, type BrandAssets } from "../brand.ts";
 
 interface Props {
   width: number;
@@ -8,9 +9,10 @@ interface Props {
   title: string;
   bracket: BracketGame[];
   nameById: (id: string) => string;
+  brand?: BrandAssets;
 }
 
-export function BracketSvg({ width, height, title, bracket, nameById }: Props) {
+export function BracketSvg({ width, height, title, bracket, nameById, brand }: Props) {
   const layout = computeLayout(width, height);
   const gameById = new Map(bracket.map((g) => [g.id, g]));
   const championId = gameById.get("final")?.winnerTeamId ?? null;
@@ -19,6 +21,13 @@ export function BracketSvg({ width, height, title, bracket, nameById }: Props) {
   const labelSize = Math.round(height * 0.014);
   const seedSize = Math.round(layout.rowH * 0.42);
   const nameSize = Math.round(layout.rowH * 0.5);
+
+  const margin = Math.round(width * 0.045);
+  const bg = bgForSize(brand, width, height);
+  // White shield logo top-left; the title shifts right to sit beside it.
+  const logoH = brand?.logoWhite ? Math.round(titleSize * 1.5) : 0;
+  const logoW = Math.round(logoH * LOGO_ASPECT);
+  const titleX = brand?.logoWhite ? margin + logoW + Math.round(width * 0.015) : margin;
 
   return (
     <svg
@@ -29,6 +38,9 @@ export function BracketSvg({ width, height, title, bracket, nameById }: Props) {
       style={{ display: "block" }}
     >
       <rect x={0} y={0} width={width} height={height} fill={COLORS.navyDeep} />
+      {bg && (
+        <image href={bg} x={0} y={0} width={width} height={height} preserveAspectRatio="xMidYMid slice" />
+      )}
 
       {/* Signature gradient bar */}
       <defs>
@@ -41,8 +53,18 @@ export function BracketSvg({ width, height, title, bracket, nameById }: Props) {
       </defs>
       <rect x={0} y={0} width={width} height={3} fill="url(#sigbar)" />
 
+      {brand?.logoWhite && (
+        <image
+          href={brand.logoWhite}
+          x={margin}
+          y={layout.headerY + titleSize - logoH + Math.round(titleSize * 0.18)}
+          width={logoW}
+          height={logoH}
+          preserveAspectRatio="xMidYMid meet"
+        />
+      )}
       <text
-        x={Math.round(width * 0.045)}
+        x={titleX}
         y={layout.headerY + titleSize}
         fill={COLORS.white}
         font-family={FONTS.head}

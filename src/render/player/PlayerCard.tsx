@@ -1,5 +1,6 @@
 import type { Player, PlayerSummary } from "../../engine/types.ts";
 import { COLORS, FONTS } from "../bracket/theme.ts";
+import { bgForSize, type BrandAssets } from "../brand.ts";
 
 interface Props {
   width: number;
@@ -9,11 +10,16 @@ interface Props {
   teamName: string;
   eventName: string;
   accentColor?: string;
+  brand?: BrandAssets;
 }
 
-export function PlayerCard({ width, height, player, summary, teamName, eventName, accentColor }: Props) {
+export function PlayerCard({ width, height, player, summary, teamName, eventName, accentColor, brand }: Props) {
   const pad = Math.round(width * 0.07);
   const accent = accentColor || COLORS.ice;
+  const bg = bgForSize(brand, width, height);
+  // Header/footer strips are authored at 1080x60; scale with export width.
+  const stripH = brand?.cardHeader ? Math.round((width * 60) / 1080) : 0;
+  const footerStripH = brand?.cardFooter ? Math.round((width * 60) / 1080) : 0;
 
   const titleSize = Math.round(height * 0.062);
   const labelSize = Math.round(height * 0.016);
@@ -49,6 +55,16 @@ export function PlayerCard({ width, height, player, summary, teamName, eventName
   return (
     <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} xmlns="http://www.w3.org/2000/svg" style={{ display: "block" }}>
       <rect x={0} y={0} width={width} height={height} fill={COLORS.navyDeep} />
+      {bg && (
+        <image
+          href={bg}
+          x={0}
+          y={0}
+          width={width}
+          height={height}
+          preserveAspectRatio="xMidYMid slice"
+        />
+      )}
       <defs>
         <linearGradient id="sigbar-pc" x1="0" y1="0" x2="1" y2="0">
           <stop offset="0%" stopColor="#1a2856" />
@@ -57,7 +73,24 @@ export function PlayerCard({ width, height, player, summary, teamName, eventName
           <stop offset="100%" stopColor="#dae8f3" />
         </linearGradient>
       </defs>
-      <rect x={0} y={0} width={width} height={4} fill="url(#sigbar-pc)" />
+      {brand?.cardHeader ? (
+        <>
+          <image href={brand.cardHeader} x={0} y={0} width={width} height={stripH} preserveAspectRatio="none" />
+          <rect x={0} y={stripH} width={width} height={3} fill="url(#sigbar-pc)" />
+        </>
+      ) : (
+        <rect x={0} y={0} width={width} height={4} fill="url(#sigbar-pc)" />
+      )}
+      {brand?.cardFooter && (
+        <image
+          href={brand.cardFooter}
+          x={0}
+          y={height - footerStripH}
+          width={width}
+          height={footerStripH}
+          preserveAspectRatio="none"
+        />
+      )}
 
       {/* Event + team */}
       <text x={pad} y={pad + labelSize} fill={COLORS.textDim} font-family={FONTS.body} font-size={labelSize} font-weight={700} letter-spacing="0.1em">
@@ -98,11 +131,27 @@ export function PlayerCard({ width, height, player, summary, teamName, eventName
         </g>
       ))}
 
-      {/* Footer */}
-      <text x={pad} y={height - pad} fill={COLORS.gold} font-family={FONTS.body} font-size={labelSize * 1.1} font-weight={700} letter-spacing="0.08em">
+      {/* Footer - sits on the brand strip when present, baseline-padded otherwise */}
+      <text
+        x={pad}
+        y={footerStripH ? height - footerStripH * 0.38 : height - pad}
+        fill={footerStripH ? COLORS.white : COLORS.gold}
+        font-family={FONTS.body}
+        font-size={labelSize * 1.1}
+        font-weight={700}
+        letter-spacing="0.08em"
+      >
         GET SEEN. GET RECRUITED.
       </text>
-      <text x={width - pad} y={height - pad} fill={COLORS.textDim} font-family={FONTS.body} font-size={labelSize} letter-spacing="0.08em" text-anchor="end">
+      <text
+        x={width - pad}
+        y={footerStripH ? height - footerStripH * 0.38 : height - pad}
+        fill={footerStripH ? COLORS.icePale : COLORS.textDim}
+        font-family={FONTS.body}
+        font-size={labelSize}
+        letter-spacing="0.08em"
+        text-anchor="end"
+      >
         @hockey.night - PlayHNIB.com
       </text>
     </svg>

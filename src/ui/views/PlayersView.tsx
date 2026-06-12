@@ -6,6 +6,7 @@ import { importPlayerStatsCsv, importRosterCsv } from "../../io/importPlayers.ts
 import { PlayerCard } from "../../render/player/PlayerCard.tsx";
 import { EXPORT_SIZES } from "../../render/bracket/theme.ts";
 import { exportNodePng } from "../../render/exportImage.ts";
+import { useBrandAssets } from "../state/useBrand.ts";
 
 interface Props {
   dataset: Dataset;
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export function PlayersView({ dataset, update }: Props) {
+  const brand = useBrandAssets();
   const teams = dataset.teams;
   const [teamId, setTeamId] = useState(teams[0]?.id ?? "");
   const [rosterText, setRosterText] = useState("");
@@ -198,6 +200,7 @@ export function PlayersView({ dataset, update }: Props) {
               teamName={team?.name ?? ""}
               eventName={dataset.event.name}
               accentColor={team?.colorPrimary}
+              brand={brand}
             />
           </div>
           <div style={{ position: "absolute", left: -99999, top: 0 }} aria-hidden="true">
@@ -210,6 +213,7 @@ export function PlayersView({ dataset, update }: Props) {
                 teamName={team?.name ?? ""}
                 eventName={dataset.event.name}
                 accentColor={team?.colorPrimary}
+                brand={brand}
               />
             </div>
           </div>

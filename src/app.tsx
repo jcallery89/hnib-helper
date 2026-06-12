@@ -3,6 +3,7 @@ import type { Dataset } from "./io/dataset.ts";
 import { loadSampleDataset } from "./io/sampleData.ts";
 import { loadSession, saveSession } from "./io/session.ts";
 import { fullSync } from "./io/sync.ts";
+import { brandUrls } from "./render/brand.ts";
 import { analyze } from "./ui/state/store.ts";
 import { ResultsView } from "./ui/views/ResultsView.tsx";
 import { StandingsView } from "./ui/views/StandingsView.tsx";
@@ -81,7 +82,10 @@ export function App() {
     <div class="app">
       <div class="gradient-bar" />
       <header class="masthead">
-        <h1>{dataset.event.name}</h1>
+        <div class="row" style={{ gap: 14 }}>
+          <img class="masthead-logo" src={brandUrls.logoWhite} alt="HNIB" />
+          <h1>{dataset.event.name}</h1>
+        </div>
         <span class="meta">
           HNIB Tournament Expert - {dataset.event.year}
         </span>
