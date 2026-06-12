@@ -6,6 +6,11 @@
 // shipped with the site for SiteGround). The schedule is required; divisions
 // (/teams) are best-effort.
 
+import { importApiData } from "./importApi.ts";
+import { parseLeaders, parseTeamRoster } from "./importApiPlayers.ts";
+import type { Dataset } from "./dataset.ts";
+import type { Player, PlayerStatLine } from "../engine/types.ts";
+
 export interface SyncResult {
   scheduleJson: string;
   teamsJson: string | null;
@@ -64,4 +69,115 @@ async function fetchJsonText(url: string): Promise<string> {
   const t = text.trim();
   if (!t.startsWith("{") && !t.startsWith("[")) throw new Error("Response was not JSON");
   return t;
+}
+
+function fetchPath(source: SyncResult["source"], path: string): Promise<string> {
+  return source === "direct"
+    ? fetchJsonText(`${API_BASE}/${path}`)
+    : fetchJsonText(`${PROXY_URL}?path=${path}`);
+}
+
+// ---- Full sync: schedule + divisions + team rosters + leaders --------------
+
+export interface FullSyncResult {
+  dataset: Dataset;
+  source: SyncResult["source"];
+  teamCount: number;
+  roundRobinGames: number;
+  playoffGames: number;
+  divisionsAssigned: boolean;
+  rosterTeams: number; // teams whose roster synced
+  playerCount: number;
+  leadersSynced: boolean;
+  warnings: string[];
+}
+
+/**
+ * Sync everything for an event: schedule and divisions, then each team's
+ * roster and cumulative stats (/team/{id}), then the leaders board. Rosters
+ * and leaders are best-effort; the schedule is required. When re-syncing the
+ * same event, locally entered playoff results (bracketResults) are preserved,
+ * and teams whose roster fetch fails keep their previous players.
+ */
+export async function fullSync(
+  eventId: string,
+  prev?: Dataset | null,
+  opts: { eventName?: string } = {},
+): Promise<FullSyncResult> {
+  const id = eventId.trim();
+  const base = await syncEvent(id);
+  const warnings = [...base.warnings];
+
+  const sameEvent = prev != null && prev.event.id === id;
+  const { dataset, summary } = importApiData(base.scheduleJson, base.teamsJson, {
+    eventId: id,
+    eventName: opts.eventName ?? (sameEvent ? prev.event.name : undefined),
+  });
+  warnings.push(...summary.warnings);
+
+  // Team rosters + stats.
+  const players: Player[] = [];
+  const stats: PlayerStatLine[] = [];
+  let rosterTeams = 0;
+  const syncable = dataset.teams.filter((t) => t.apiId && ID_RE.test(t.apiId));
+  if (syncable.length === 0) {
+    warnings.push("No team ids in the divisions data; rosters were not synced.");
+  }
+  const settled = await Promise.allSettled(
+    syncable.map(async (team) => ({ team, json: await fetchPath(base.source, `team/${team.apiId}`) })),
+  );
+  settled.forEach((res, i) => {
+    const team = syncable[i];
+    if (res.status === "fulfilled") {
+      const parsed = parseTeamRoster(res.value.json, team.id, id);
+      players.push(...parsed.players);
+      stats.push(...parsed.stats);
+      warnings.push(...parsed.warnings);
+      rosterTeams++;
+    } else {
+      // Keep this team's previous roster rather than dropping it.
+      if (sameEvent && prev?.players) {
+        const kept = prev.players.filter((p) => p.teamId === team.id);
+        players.push(...kept);
+        const keptIds = new Set(kept.map((p) => p.id));
+        stats.push(...(prev.playerStats ?? []).filter((l) => keptIds.has(l.playerId)));
+      }
+      warnings.push(`Roster for ${team.name} could not be fetched.`);
+    }
+  });
+  if (players.length > 0) {
+    dataset.players = players;
+    dataset.playerStats = stats;
+  } else if (sameEvent && prev?.players?.length) {
+    dataset.players = prev.players;
+    dataset.playerStats = prev.playerStats;
+  }
+
+  // Leaders board.
+  let leadersSynced = false;
+  try {
+    dataset.leaders = parseLeaders(await fetchPath(base.source, `leaders/${id}`));
+    leadersSynced = true;
+  } catch {
+    if (sameEvent && prev?.leaders) dataset.leaders = prev.leaders;
+    warnings.push("Leaders board could not be fetched.");
+  }
+
+  // Preserve locally entered playoff results across re-syncs.
+  if (sameEvent && prev?.bracketResults) {
+    dataset.bracketResults = prev.bracketResults;
+  }
+
+  return {
+    dataset,
+    source: base.source,
+    teamCount: summary.teamCount,
+    roundRobinGames: summary.roundRobinGames,
+    playoffGames: summary.playoffGames,
+    divisionsAssigned: summary.divisionsAssigned,
+    rosterTeams,
+    playerCount: dataset.players?.length ?? 0,
+    leadersSynced,
+    warnings,
+  };
 }

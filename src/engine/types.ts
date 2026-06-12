@@ -36,6 +36,8 @@ export interface Team {
   coach?: string;
   colorPrimary?: string;
   colorSecondary?: string;
+  /** Tourno API team id, when the team came from an hnib.app sync. */
+  apiId?: string;
 }
 
 export type GameRound = "rr" | "prelim" | "qf" | "sf" | "final";

@@ -1,7 +1,8 @@
-import { useMemo, useState } from "preact/hooks";
+import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { Dataset } from "./io/dataset.ts";
 import { loadSampleDataset } from "./io/sampleData.ts";
 import { loadSession, saveSession } from "./io/session.ts";
+import { fullSync } from "./io/sync.ts";
 import { analyze } from "./ui/state/store.ts";
 import { ResultsView } from "./ui/views/ResultsView.tsx";
 import { StandingsView } from "./ui/views/StandingsView.tsx";
@@ -21,10 +22,15 @@ const TABS: Array<{ key: TabKey; label: string }> = [
   { key: "setup", label: "Setup" },
 ];
 
+// Re-sync cadence for tournament days.
+const AUTO_SYNC_MS = 3 * 60 * 1000;
+
 export function App() {
   const [dataset, setDataset] = useState<Dataset>(() => loadSession() ?? loadSampleDataset());
   const [tab, setTab] = useState<TabKey>("results");
   const [asOf, setAsOf] = useState<string | null>(null);
+  const [autoSync, setAutoSync] = useState(false);
+  const [syncStatus, setSyncStatus] = useState("");
 
   const analysis = useMemo(() => analyze(dataset, asOf), [dataset, asOf]);
 
@@ -42,6 +48,34 @@ export function App() {
     saveSession(next);
     setDataset(next);
   }
+
+  // Auto-sync: only offered once the loaded event came from an hnib.app sync
+  // (its id is the API event UUID). Re-syncs in place, keeping local playoff
+  // entries; a failed pass keeps the current data and reports quietly.
+  const datasetRef = useRef(dataset);
+  datasetRef.current = dataset;
+  const canAutoSync = /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(dataset.event.id);
+
+  useEffect(() => {
+    if (!autoSync || !canAutoSync) return;
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const r = await fullSync(datasetRef.current.event.id, datasetRef.current);
+        if (cancelled) return;
+        replace(r.dataset);
+        setSyncStatus(`Last synced ${new Date().toLocaleTimeString()}`);
+      } catch {
+        if (!cancelled) setSyncStatus(`Sync failed ${new Date().toLocaleTimeString()} - kept current data`);
+      }
+    };
+    run();
+    const timer = setInterval(run, AUTO_SYNC_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [autoSync, canAutoSync, dataset.event.id]);
 
   return (
     <div class="app">
@@ -85,9 +119,22 @@ export function App() {
               <span class="note">showing all entered results</span>
             )}
           </div>
-          <span class="note">
-            {analysis.resultsEntered} of {analysis.totalRoundRobin} round-robin games counted
-          </span>
+          <div class="row">
+            {canAutoSync && (
+              <label class="row" style={{ gap: 6 }}>
+                <input
+                  type="checkbox"
+                  checked={autoSync}
+                  onChange={(e) => setAutoSync((e.target as HTMLInputElement).checked)}
+                />
+                Auto-sync (3 min)
+              </label>
+            )}
+            {syncStatus && <span class="note">{syncStatus}</span>}
+            <span class="note">
+              {analysis.resultsEntered} of {analysis.totalRoundRobin} round-robin games counted
+            </span>
+          </div>
         </div>
         {asOf && (
           <p class="note">

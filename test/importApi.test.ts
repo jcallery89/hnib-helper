@@ -13,8 +13,8 @@ const SCHEDULE = JSON.stringify({
 });
 
 const TEAMS = JSON.stringify([
-  { ID: "east", Name: "EAST", Teams: [{ Code: "Middlesex", Name: "Middlesex", Coach: "R. Sullivan" }, { Code: "Bay State", Name: "Bay State" }, { Code: "Northeast", Name: "Northeast" }] },
-  { ID: "west", Name: "WEST", Teams: [{ Code: "Western", Name: "Western" }, { Code: "Metro", Name: "Metropolitan" }] },
+  { ID: "east", Name: "EAST", Teams: [{ ID: "api-mid", Code: "Middlesex", Name: "Middlesex", Coach: "R. Sullivan" }, { ID: "api-bay", Code: "Bay State", Name: "Bay State" }, { ID: "api-nor", Code: "Northeast", Name: "Northeast" }] },
+  { ID: "west", Name: "WEST", Teams: [{ ID: "api-wes", Code: "Western", Name: "Western" }, { ID: "api-met", Code: "Metro", Name: "Metropolitan" }] },
 ]);
 
 describe("importApiData", () => {
@@ -45,5 +45,11 @@ describe("importApiData", () => {
     expect(east.teamIds).toContain("t-middlesex");
     expect(dataset.teams.find((t) => t.id === "t-middlesex")!.divisionId).toBe(east.id);
     expect(dataset.teams.find((t) => t.id === "t-middlesex")!.coach).toBe("R. Sullivan");
+  });
+
+  it("captures the API team id for roster sync", () => {
+    const { dataset } = importApiData(SCHEDULE, TEAMS);
+    expect(dataset.teams.find((t) => t.id === "t-middlesex")!.apiId).toBe("api-mid");
+    expect(dataset.teams.find((t) => t.id === "t-metro")!.apiId).toBe("api-met");
   });
 });

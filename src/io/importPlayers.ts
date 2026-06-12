@@ -238,7 +238,7 @@ function parseIntOrUndef(s: string): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
-function parsePosition(s: string): PlayerPosition | undefined {
+export function parsePosition(s: string): PlayerPosition | undefined {
   const t = normalize(s);
   if (!t) return undefined;
   if (t.startsWith("g")) return "G";
@@ -247,7 +247,7 @@ function parsePosition(s: string): PlayerPosition | undefined {
   return undefined;
 }
 
-function parseShoots(s: string): "L" | "R" | undefined {
+export function parseShoots(s: string): "L" | "R" | undefined {
   const t = normalize(s);
   if (t.startsWith("l")) return "L";
   if (t.startsWith("r")) return "R";
@@ -255,7 +255,7 @@ function parseShoots(s: string): "L" | "R" | undefined {
 }
 
 // Accept 70, 5'10", 5-10, 510.
-function parseHeight(s: string): number | undefined {
+export function parseHeight(s: string): number | undefined {
   const t = (s ?? "").trim();
   if (!t) return undefined;
   const ft = t.match(/(\d)\s*['\-]\s*(\d{1,2})/);

@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "preact/hooks";
-import type { Dataset } from "../../io/dataset.ts";
+import type { Dataset, EventLeaders } from "../../io/dataset.ts";
 import type { Player, PlayerSummary } from "../../engine/types.ts";
 import { summarizePlayers, sortByScoring } from "../../engine/players/summary.ts";
 import { importPlayerStatsCsv, importRosterCsv } from "../../io/importPlayers.ts";
@@ -72,6 +72,8 @@ export function PlayersView({ dataset, update }: Props) {
 
   return (
     <section>
+      {dataset.leaders && <LeadersBoard leaders={dataset.leaders} />}
+
       <div class="card premium">
         <p class="section-title">Import Players</p>
         <p class="note">
@@ -235,4 +237,50 @@ function PlayerRow({ player, summary, selected, onSelect }: { player: Player; su
 
 function slug(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+const LEADER_CATEGORIES: Array<{
+  key: keyof EventLeaders;
+  label: string;
+  format: (v: number) => string;
+}> = [
+  { key: "points", label: "Points", format: (v) => String(v) },
+  { key: "goals", label: "Goals", format: (v) => String(v) },
+  { key: "assists", label: "Assists", format: (v) => String(v) },
+  { key: "gaa", label: "GAA", format: (v) => v.toFixed(2) },
+  { key: "savePct", label: "SV%", format: (v) => v.toFixed(3).replace(/^0/, "") },
+  { key: "pim", label: "PIM", format: (v) => String(v) },
+];
+
+function LeadersBoard({ leaders }: { leaders: EventLeaders }) {
+  const categories = LEADER_CATEGORIES.filter((c) => (leaders[c.key] ?? []).length > 0);
+  if (categories.length === 0) return null;
+  return (
+    <div class="card premium">
+      <p class="section-title">Event Leaders</p>
+      <div class="row" style={{ alignItems: "flex-start", gap: 24 }}>
+        {categories.map((cat) => (
+          <div key={cat.key} style={{ minWidth: 220, flex: 1 }}>
+            <p class="note" style={{ fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+              {cat.label}
+            </p>
+            <table class="grid">
+              <tbody>
+                {(leaders[cat.key] ?? []).slice(0, 5).map((p, i) => (
+                  <tr key={`${cat.key}-${p.playerId || i}`}>
+                    <td class="num">{i + 1}</td>
+                    <td>
+                      #{p.number} {p.firstName} {p.lastName}
+                      <span class="muted"> - {p.team}</span>
+                    </td>
+                    <td class="num">{cat.format(p.value)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }

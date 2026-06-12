@@ -198,6 +198,7 @@ function buildDivisions(
       if (match) {
         match.divisionId = divId;
         if (t.Coach) match.coach = t.Coach;
+        if (t.ID) match.apiId = t.ID; // enables /team/{id} roster sync
         teamIds.push(match.id);
         assigned.add(match.id);
       }

@@ -1,6 +1,26 @@
 import type { Division, Game, HnibEvent, Player, PlayerStatLine, Team } from "../engine/types.ts";
 import type { BracketResult } from "../engine/playoff/bracket.ts";
 
+/** One row on the event leaders board (as published by the Tourno API). */
+export interface LeaderEntry {
+  playerId: string;
+  firstName: string;
+  lastName: string;
+  number: string;
+  position: string;
+  team: string;
+  value: number;
+}
+
+export interface EventLeaders {
+  points: LeaderEntry[];
+  goals: LeaderEntry[];
+  assists: LeaderEntry[];
+  pim: LeaderEntry[];
+  gaa: LeaderEntry[];
+  savePct: LeaderEntry[];
+}
+
 /** A complete, self-contained event dataset the tool operates on. */
 export interface Dataset {
   event: HnibEvent;
@@ -12,4 +32,6 @@ export interface Dataset {
   /** Optional player rosters (from registration) and their stat lines. */
   players?: Player[];
   playerStats?: PlayerStatLine[];
+  /** Event-wide stat leaders, when synced from hnib.app. */
+  leaders?: EventLeaders;
 }

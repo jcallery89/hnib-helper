@@ -6,7 +6,7 @@ import { clearSession, downloadFile } from "../../io/session.ts";
 import { applyResultsCsv, gamesToCsv } from "../../io/csv.ts";
 import { parseSchedule } from "../../io/importSchedule.ts";
 import { importApiData } from "../../io/importApi.ts";
-import { syncEvent } from "../../io/sync.ts";
+import { fullSync } from "../../io/sync.ts";
 
 interface Props {
   dataset: Dataset;
@@ -45,14 +45,15 @@ export function SetupView({ dataset, replace }: Props) {
     setSyncing(true);
     setMsg("");
     try {
-      const result = await syncEvent(syncId);
-      applyApiJson(result.scheduleJson, result.teamsJson, syncId.trim());
-      if (result.warnings.length || result.source === "proxy") {
-        setMsg(
-          (m) =>
-            `${m} ${result.source === "proxy" ? "(fetched via the site helper)" : ""} ${result.warnings.join(" ")}`.trim(),
-        );
-      }
+      const r = await fullSync(syncId, dataset, { eventName: apiName.trim() || undefined });
+      replace(r.dataset);
+      setMsg(
+        `Synced ${r.teamCount} teams, ${r.roundRobinGames} round-robin and ${r.playoffGames} playoff games, ` +
+          `${r.rosterTeams} rosters (${r.playerCount} players), leaders board ${r.leadersSynced ? "included" : "unavailable"}` +
+          (r.divisionsAssigned ? ", divisions assigned." : ". Assign divisions below.") +
+          (r.source === "proxy" ? " (fetched via the site helper)" : "") +
+          (r.warnings.length ? ` Notes: ${r.warnings.slice(0, 3).join(" ")}` : ""),
+      );
     } catch (err) {
       setMsg(err instanceof Error ? err.message : "Sync failed.");
     } finally {
@@ -116,8 +117,9 @@ export function SetupView({ dataset, replace }: Props) {
         <p class="section-title">Sync from hnib.app</p>
         <p class="note">
           Enter the event ID and sync. This pulls the schedule, scores, real team colors, exact
-          playoff rounds, and divisions straight from the live API. Re-sync any time for fresh
-          results.
+          playoff rounds, divisions, every team roster with player stats, and the leaders board
+          straight from the live API. Re-sync any time for fresh results; playoff scores you
+          entered by hand are kept.
         </p>
         <input
           type="text"
