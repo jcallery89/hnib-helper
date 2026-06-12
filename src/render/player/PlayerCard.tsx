@@ -78,6 +78,12 @@ export function PlayerCard({
 
   // ---- hero ------------------------------------------------------------------
   const heroTop = stripH + Math.round(height * 0.028);
+  // Headshot slot: photo when registration provides one, initials placeholder
+  // otherwise. The name block shifts right to make room.
+  const avatarR = Math.round(height * 0.046);
+  const avatarCX = pad + avatarR;
+  const avatarCY = heroTop + avatarR;
+  const heroX = pad + avatarR * 2 + Math.round(width * 0.022);
   const nameY = heroTop + nameSize;
   const chipH = Math.round(height * 0.028);
   const chipY = nameY + Math.round(height * 0.016);
@@ -151,15 +157,36 @@ export function PlayerCard({
         <image href={brand.cardFooter} x={0} y={height - footerStripH} width={width} height={footerStripH} preserveAspectRatio="none" />
       )}
 
-      {/* Hero: name, team chip, jersey number */}
-      <text x={pad} y={nameY} fill={COLORS.white} font-family={FONTS.head} font-size={nameSize} font-weight={600} letter-spacing="0.02em">
+      {/* Hero: headshot slot, name, team chip, jersey number */}
+      <defs>
+        <clipPath id="avatar-clip">
+          <circle cx={avatarCX} cy={avatarCY} r={avatarR} />
+        </clipPath>
+      </defs>
+      <circle cx={avatarCX} cy={avatarCY} r={avatarR} fill={C.panelFill} stroke={accent} stroke-width={2} />
+      {player.photoUrl ? (
+        <image
+          href={player.photoUrl}
+          x={avatarCX - avatarR}
+          y={avatarCY - avatarR}
+          width={avatarR * 2}
+          height={avatarR * 2}
+          preserveAspectRatio="xMidYMid slice"
+          clip-path="url(#avatar-clip)"
+        />
+      ) : (
+        <text x={avatarCX} y={avatarCY + avatarR * 0.32} fill={COLORS.white} font-family={FONTS.head} font-size={avatarR * 0.95} font-weight={600} text-anchor="middle">
+          {initials(player)}
+        </text>
+      )}
+      <text x={heroX} y={nameY} fill={COLORS.white} font-family={FONTS.head} font-size={nameSize} font-weight={600} letter-spacing="0.02em">
         {`${player.firstName} ${player.lastName}`.toUpperCase()}
       </text>
-      <rect x={pad} y={chipY} width={chipW} height={chipH} rx={4} fill={accent} stroke="rgba(255,255,255,0.35)" stroke-width={1} />
-      <text x={pad + 14} y={chipY + chipH * 0.7} fill={accentText} font-family={FONTS.body} font-size={labelSize} font-weight={700} letter-spacing="0.1em">
+      <rect x={heroX} y={chipY} width={chipW} height={chipH} rx={4} fill={accent} stroke="rgba(255,255,255,0.35)" stroke-width={1} />
+      <text x={heroX + 14} y={chipY + chipH * 0.7} fill={accentText} font-family={FONTS.body} font-size={labelSize} font-weight={700} letter-spacing="0.1em">
         {chipText}
       </text>
-      <text x={pad + chipW + 16} y={chipY + chipH * 0.7} fill={C.label} font-family={FONTS.body} font-size={labelSize} font-weight={700} letter-spacing="0.08em">
+      <text x={heroX + chipW + 16} y={chipY + chipH * 0.7} fill={C.label} font-family={FONTS.body} font-size={labelSize} font-weight={700} letter-spacing="0.08em">
         {eventName.toUpperCase()}
       </text>
       <text x={width - pad} y={heroTop + jerseySize * 0.78} fill={COLORS.gold} font-family={FONTS.head} font-size={jerseySize} font-weight={700} text-anchor="end">
@@ -272,12 +299,22 @@ export function PlayerCard({
 function buildBioEntries(player: Player, gp: number): Array<{ label: string; value: string }> {
   const entries: Array<{ label: string; value: string }> = [];
   if (player.classYear) entries.push({ label: "CLASS", value: String(player.classYear) });
-  if (player.heightInches) entries.push({ label: "HEIGHT", value: formatHeight(player.heightInches) });
   if (player.position) entries.push({ label: "POS", value: player.position });
+  if (player.heightInches && player.weightLbs) {
+    entries.push({ label: "HT / WT", value: `${formatHeight(player.heightInches)} ${player.weightLbs}` });
+  } else if (player.heightInches) {
+    entries.push({ label: "HEIGHT", value: formatHeight(player.heightInches) });
+  } else if (player.weightLbs) {
+    entries.push({ label: "WEIGHT", value: `${player.weightLbs} LBS` });
+  }
   if (player.shoots) entries.push({ label: "SHOOTS", value: player.shoots });
   if (player.hometown) entries.push({ label: "HOMETOWN", value: player.hometown.toUpperCase() });
   if (gp > 0) entries.push({ label: "GP", value: String(gp) });
   return entries.slice(0, 5);
+}
+
+function initials(player: Player): string {
+  return `${player.firstName.charAt(0)}${player.lastName.charAt(0)}`.toUpperCase();
 }
 
 function computeTotals(log: CardGameLine[], summary: PlayerSummary, isGoalie: boolean): number[] {

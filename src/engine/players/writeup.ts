@@ -50,6 +50,10 @@ export function generateWriteup(facts: WriteupFacts): string {
     sentences.push(...skaterSentences(last, summary, log, gp, eventName));
   }
 
+  if (player.school) {
+    sentences.push(`${last} suits up for ${player.school} in the fall.`);
+  }
+
   return sentences.join(" ");
 }
 

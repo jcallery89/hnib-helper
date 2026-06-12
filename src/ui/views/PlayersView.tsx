@@ -5,6 +5,7 @@ import type { Player, PlayerSummary } from "../../engine/types.ts";
 import { summarizePlayers, sortByScoring } from "../../engine/players/summary.ts";
 import { generateWriteup } from "../../engine/players/writeup.ts";
 import { importPlayerStatsCsv, importRosterCsv } from "../../io/importPlayers.ts";
+import { listRegistrationEvents, mergeRegistration, type RegistrationReport } from "../../io/importRegistration.ts";
 import { PlayerCard } from "../../render/player/PlayerCard.tsx";
 import { EXPORT_SIZES } from "../../render/bracket/theme.ts";
 import { exportNodePng } from "../../render/exportImage.ts";
@@ -22,6 +23,8 @@ export function PlayersView({ dataset, update }: Props) {
   const [rosterText, setRosterText] = useState("");
   const [statsText, setStatsText] = useState("");
   const [msg, setMsg] = useState("");
+  const [regEvent, setRegEvent] = useState("");
+  const [regReport, setRegReport] = useState<RegistrationReport | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [sizeKey, setSizeKey] = useState(EXPORT_SIZES[2].key); // square default
   const [busy, setBusy] = useState(false);
@@ -58,10 +61,25 @@ export function PlayersView({ dataset, update }: Props) {
       : "";
   const writeup = (selected ? dataset.playerWriteups?.[selected.id] : undefined) ?? generatedWriteup;
 
+  const regEvents = useMemo(() => listRegistrationEvents(rosterText), [rosterText]);
+  const isRegistration = regEvents.length > 0;
+
   function doImportRoster() {
-    const result = importRosterCsv(dataset, rosterText);
-    update((d) => (d.players = result.players));
-    setMsg(`Roster: ${result.players.length} players. ${result.warnings.slice(0, 3).join(" ")}`.trim());
+    if (isRegistration) {
+      const eventValue = regEvent || regEvents[0];
+      const { players: merged, report } = mergeRegistration(dataset, rosterText, eventValue);
+      update((d) => (d.players = merged));
+      setRegReport(report);
+      setMsg(
+        `Registration ("${eventValue}"): enriched ${report.matched} synced players, added ${report.created} new.` +
+          (report.warnings.length ? ` ${report.warnings.join(" ")}` : ""),
+      );
+    } else {
+      const result = importRosterCsv(dataset, rosterText);
+      update((d) => (d.players = result.players));
+      setRegReport(null);
+      setMsg(`Roster: ${result.players.length} players. ${result.warnings.slice(0, 3).join(" ")}`.trim());
+    }
     setRosterText("");
   }
 
@@ -101,11 +119,28 @@ export function PlayersView({ dataset, update }: Props) {
         </p>
         <div class="row" style={{ alignItems: "flex-start", gap: 16 }}>
           <div style={{ flex: 1, minWidth: 260 }}>
-            <p class="note">Roster (registration)</p>
+            <p class="note">Roster / registration export</p>
             <textarea style={{ width: "100%", height: 110 }} value={rosterText} onInput={(e) => setRosterText((e.target as HTMLTextAreaElement).value)} />
+            {isRegistration && (
+              <div class="row" style={{ marginTop: 6 }}>
+                <span class="note">Import event:</span>
+                <select value={regEvent || regEvents[0]} onChange={(e) => setRegEvent((e.target as HTMLSelectElement).value)}>
+                  {regEvents.map((ev) => (
+                    <option value={ev} key={ev}>
+                      {ev}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <button class="btn primary" style={{ marginTop: 6 }} disabled={!rosterText.trim()} onClick={doImportRoster}>
-              Import roster
+              {isRegistration ? "Match and merge registration" : "Import roster"}
             </button>
+            <p class="note" style={{ marginTop: 6 }}>
+              Registration files are matched to synced rosters by team and jersey number, with the
+              last name as a safety check. Only hockey fields are read - contact, address, and
+              payment columns are never imported.
+            </p>
           </div>
           <div style={{ flex: 1, minWidth: 260 }}>
             <p class="note">Player stats</p>
@@ -117,6 +152,35 @@ export function PlayersView({ dataset, update }: Props) {
         </div>
         {msg && <p class="note">{msg}</p>}
       </div>
+
+      {regReport && (
+        <div class="card premium">
+          <p class="section-title">Registration Match Report</p>
+          <p>
+            Enriched <strong>{regReport.matched}</strong> synced players, created{" "}
+            <strong>{regReport.created}</strong> new.
+          </p>
+          {regReport.nameMismatches.length > 0 && (
+            <div>
+              <p class="warn">Name mismatches (left untouched, review these):</p>
+              {regReport.nameMismatches.map((m, i) => (
+                <p class="warn" key={i}>{m}</p>
+              ))}
+            </div>
+          )}
+          {regReport.unassigned.length > 0 && (
+            <p class="note">No team or jersey in registration: {regReport.unassigned.join(", ")}</p>
+          )}
+          {regReport.unknownTeams.length > 0 && (
+            <p class="warn">Registration teams not in this event: {regReport.unknownTeams.join(", ")}</p>
+          )}
+          {regReport.unmatchedAppPlayers.length > 0 && (
+            <p class="note">
+              App roster spots with no registration row: {regReport.unmatchedAppPlayers.join(", ")}
+            </p>
+          )}
+        </div>
+      )}
 
       <div class="card">
         <div class="toolbar">

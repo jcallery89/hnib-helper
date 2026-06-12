@@ -182,7 +182,7 @@ function splitName(ci: { name?: number; first?: number; last?: number }, row: st
 
 // ---- parsing helpers --------------------------------------------------------
 
-function parseCsv(text: string): string[][] {
+export function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
   for (const line of text.split(/\r?\n/)) {
     if (line.trim() === "") continue;
@@ -209,7 +209,7 @@ function parseRow(line: string): string[] {
   return out;
 }
 
-function normalize(s: string): string {
+export function normalize(s: string): string {
   return (s ?? "").toLowerCase().replace(/[\s_]+/g, "").trim();
 }
 

@@ -116,7 +116,10 @@ export interface Player {
   classYear?: number; // graduation year
   shoots?: "L" | "R";
   heightInches?: number;
+  weightLbs?: number;
   hometown?: string;
+  school?: string; // school or club for the coming season
+  photoUrl?: string; // headshot, when registration provides one
 }
 
 // A stat record - either one player's line in one game (gameId set) or a
