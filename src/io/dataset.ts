@@ -21,6 +21,17 @@ export interface EventLeaders {
   savePct: LeaderEntry[];
 }
 
+/** One game line from a player's profile (/player_profile/{id}). */
+export interface PlayerGameLine {
+  opponent: string;
+  goals: number;
+  assists: number;
+  points: number;
+  pim: number;
+  shots: number;
+  saves: number;
+}
+
 /** A complete, self-contained event dataset the tool operates on. */
 export interface Dataset {
   event: HnibEvent;
@@ -34,4 +45,6 @@ export interface Dataset {
   playerStats?: PlayerStatLine[];
   /** Event-wide stat leaders, when synced from hnib.app. */
   leaders?: EventLeaders;
+  /** Game-by-game lines fetched on demand, keyed by player id. */
+  playerGameLogs?: Record<string, PlayerGameLine[]>;
 }

@@ -1,6 +1,6 @@
 import type { BracketGame } from "../../engine/types.ts";
 import { computeLayout, type CellBox } from "./layout.ts";
-import { COLORS, FONTS } from "./theme.ts";
+import { ART_COLORS, COLORS, FONTS } from "./theme.ts";
 import { bgForSize, LOGO_ASPECT, type BrandAssets } from "../brand.ts";
 
 interface Props {
@@ -24,6 +24,16 @@ export function BracketSvg({ width, height, title, bracket, nameById, brand }: P
 
   const margin = Math.round(width * 0.045);
   const bg = bgForSize(brand, width, height);
+  const onArt = Boolean(bg);
+  // Over the brand artwork the site's dim grays and dark borders disappear;
+  // switch to the artwork-matched palette there.
+  const C = {
+    label: onArt ? ART_COLORS.ice : COLORS.textDim,
+    line: onArt ? ART_COLORS.line : COLORS.border,
+    cellFill: onArt ? ART_COLORS.panel : COLORS.surface,
+    cellStroke: onArt ? ART_COLORS.panelBorder : COLORS.border,
+    body: onArt ? ART_COLORS.bright : COLORS.textPrimary,
+  };
   // White shield logo top-left; the title shifts right to sit beside it.
   const logoH = brand?.logoWhite ? Math.round(titleSize * 1.5) : 0;
   const logoW = Math.round(logoH * LOGO_ASPECT);
@@ -81,7 +91,7 @@ export function BracketSvg({ width, height, title, bracket, nameById, brand }: P
           key={c.text}
           x={c.x}
           y={layout.labelY}
-          fill={COLORS.textDim}
+          fill={C.label}
           font-family={FONTS.body}
           font-size={labelSize}
           font-weight={700}
@@ -100,7 +110,7 @@ export function BracketSvg({ width, height, title, bracket, nameById, brand }: P
             key={`cn-${i}`}
             d={`M ${cn.x1} ${cn.y1} H ${midX} V ${cn.y2} H ${cn.x2}`}
             fill="none"
-            stroke={COLORS.border}
+            stroke={C.line}
             stroke-width={2}
           />
         );
@@ -115,17 +125,20 @@ export function BracketSvg({ width, height, title, bracket, nameById, brand }: P
           seedSize,
           nameSize,
           rowH: layout.rowH,
+          cellFill: C.cellFill,
+          cellStroke: C.cellStroke,
+          body: C.body,
         });
       })}
 
       {/* Champion */}
-      {renderChampion(layout.champion, championId, nameById, nameSize)}
+      {renderChampion(layout.champion, championId, nameById, nameSize, C.cellFill, C.cellStroke, C.label)}
 
       {/* Footer */}
       <text
         x={Math.round(width * 0.045)}
         y={layout.footerY}
-        fill={COLORS.textDim}
+        fill={C.label}
         font-family={FONTS.body}
         font-size={labelSize}
         letter-spacing="0.08em"
@@ -152,6 +165,9 @@ interface CellOpts {
   seedSize: number;
   nameSize: number;
   rowH: number;
+  cellFill: string;
+  cellStroke: string;
+  body: string;
 }
 
 function renderCell(cell: CellBox, game: BracketGame, opts: CellOpts) {
@@ -166,8 +182,8 @@ function renderCell(cell: CellBox, game: BracketGame, opts: CellOpts) {
         width={cell.w}
         height={cell.h}
         rx={6}
-        fill={COLORS.surface}
-        stroke={COLORS.border}
+        fill={opts.cellFill}
+        stroke={opts.cellStroke}
         stroke-width={1}
       />
       {teamRow(cell, cell.y, game.highSeed, game.highTeamId, game.highScore, game.winnerTeamId, opts)}
@@ -176,7 +192,7 @@ function renderCell(cell: CellBox, game: BracketGame, opts: CellOpts) {
         y1={cell.y + rowH}
         x2={cell.x + cell.w}
         y2={cell.y + rowH}
-        stroke={COLORS.border}
+        stroke={opts.cellStroke}
         stroke-width={1}
       />
       {teamRow(cell, cell.y + rowH, game.lowSeed, game.lowTeamId, game.lowScore, game.winnerTeamId, opts)}
@@ -209,7 +225,7 @@ function teamRow(
   const isWinner = teamId !== null && teamId === winnerTeamId;
   const name = teamId ? opts.nameById(teamId) : "-";
   const accent = isWinner ? COLORS.gold : COLORS.ice;
-  const textColor = isWinner ? COLORS.white : COLORS.textPrimary;
+  const textColor = isWinner ? COLORS.white : opts.body;
   return (
     <g>
       {isWinner && (
@@ -256,6 +272,9 @@ function renderChampion(
   championId: string | null,
   nameById: (id: string) => string,
   nameSize: number,
+  cellFill: string,
+  cellStroke: string,
+  label: string,
 ) {
   return (
     <g>
@@ -265,14 +284,14 @@ function renderChampion(
         width={box.w}
         height={box.h}
         rx={6}
-        fill={championId ? COLORS.gold : COLORS.surface}
-        stroke={championId ? COLORS.gold : COLORS.border}
+        fill={championId ? COLORS.gold : cellFill}
+        stroke={championId ? COLORS.gold : cellStroke}
         stroke-width={1}
       />
       <text
         x={box.x + box.w / 2}
         y={box.y + box.h * 0.62}
-        fill={championId ? COLORS.navyDeep : COLORS.textDim}
+        fill={championId ? COLORS.navyDeep : label}
         font-family={FONTS.head}
         font-size={nameSize * 1.05}
         font-weight={600}

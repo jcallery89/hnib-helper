@@ -1,5 +1,5 @@
 import type { Player, PlayerStatLine } from "../engine/types.ts";
-import type { EventLeaders, LeaderEntry } from "./dataset.ts";
+import type { EventLeaders, LeaderEntry, PlayerGameLine } from "./dataset.ts";
 import { parseHeight, parsePosition, parseShoots } from "./importPlayers.ts";
 
 // Shapes from the Tourno API (/team/{id} and /leaders/{eventId}). Loosely
@@ -116,6 +116,39 @@ export function parseTeamRoster(json: string, teamId: string, eventId: string): 
   }
 
   return { players, stats, warnings };
+}
+
+interface ApiProfileStatLine {
+  Opponent?: string;
+  Goals?: number;
+  Assists?: number;
+  Points?: number;
+  PIM?: number;
+  Shots?: number;
+  Saves?: number;
+}
+
+/**
+ * Parse a /player_profile/{id} response into game-by-game lines. The profile
+ * carries one ProfileStatLine per opponent played.
+ */
+export function parsePlayerProfile(json: string): PlayerGameLine[] {
+  let data: { Stats?: ApiProfileStatLine[] };
+  try {
+    data = JSON.parse(json) as { Stats?: ApiProfileStatLine[] };
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(data.Stats)) return [];
+  return data.Stats.map((l) => ({
+    opponent: (l.Opponent ?? "").trim(),
+    goals: num(l.Goals),
+    assists: num(l.Assists),
+    points: l.Points !== undefined ? num(l.Points) : num(l.Goals) + num(l.Assists),
+    pim: num(l.PIM),
+    shots: num(l.Shots),
+    saves: num(l.Saves),
+  }));
 }
 
 interface ApiLeaderPlayer {

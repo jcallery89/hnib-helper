@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseLeaders, parseTeamRoster } from "../../src/io/importApiPlayers.ts";
+import { parseLeaders, parsePlayerProfile, parseTeamRoster } from "../../src/io/importApiPlayers.ts";
 
 // Shapes per the Tourno OpenAPI spec (/team/{id} and /leaders/{eventId}).
 const TEAM = JSON.stringify({
@@ -74,5 +74,28 @@ describe("parseLeaders", () => {
   it("survives malformed input", () => {
     const empty = parseLeaders("not json");
     expect(empty.points).toEqual([]);
+  });
+});
+
+describe("parsePlayerProfile", () => {
+  it("maps the per-opponent stat lines into a game log", () => {
+    const json = JSON.stringify({
+      Player: { ID: "u-jack", FirstName: "Jack", LastName: "Sullivan" },
+      Stats: [
+        { Opponent: "Northeast", Goals: 2, Assists: 1, Points: 3, PIM: 0, Shots: 6, Saves: 0 },
+        { Opponent: "Essex", Goals: 3, Assists: 2, PIM: 2, Shots: 8, Saves: 0 },
+      ],
+      Schedule: [],
+    });
+    const log = parsePlayerProfile(json);
+    expect(log).toHaveLength(2);
+    expect(log[0]).toMatchObject({ opponent: "Northeast", goals: 2, assists: 1, points: 3 });
+    // Points derived from G+A when the API omits it.
+    expect(log[1].points).toBe(5);
+  });
+
+  it("returns an empty log for malformed or statless profiles", () => {
+    expect(parsePlayerProfile("not json")).toEqual([]);
+    expect(parsePlayerProfile('{"Player":{}}')).toEqual([]);
   });
 });

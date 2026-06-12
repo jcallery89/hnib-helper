@@ -7,8 +7,8 @@
 // (/teams) are best-effort.
 
 import { importApiData } from "./importApi.ts";
-import { parseLeaders, parseTeamRoster } from "./importApiPlayers.ts";
-import type { Dataset } from "./dataset.ts";
+import { parseLeaders, parsePlayerProfile, parseTeamRoster } from "./importApiPlayers.ts";
+import type { Dataset, PlayerGameLine } from "./dataset.ts";
 import type { Player, PlayerStatLine } from "../engine/types.ts";
 
 export interface SyncResult {
@@ -75,6 +75,28 @@ function fetchPath(source: SyncResult["source"], path: string): Promise<string> 
   return source === "direct"
     ? fetchJsonText(`${API_BASE}/${path}`)
     : fetchJsonText(`${PROXY_URL}?path=${path}`);
+}
+
+/** Fetch a single API path, trying the direct call then the relay. */
+async function fetchApiJson(path: string): Promise<string> {
+  try {
+    return await fetchJsonText(`${API_BASE}/${path}`);
+  } catch {
+    return await fetchJsonText(`${PROXY_URL}?path=${path}`);
+  }
+}
+
+/**
+ * Fetch one player's game-by-game lines from /player_profile/{id}. Called on
+ * demand (per player) rather than during fullSync, since profiles are one
+ * request each and an event can carry well over a hundred players.
+ */
+export async function fetchPlayerGameLog(playerId: string): Promise<PlayerGameLine[]> {
+  const id = playerId.trim();
+  if (!ID_RE.test(id)) {
+    throw new Error("This player did not come from an hnib.app sync, so there is no profile to fetch.");
+  }
+  return parsePlayerProfile(await fetchApiJson(`player_profile/${id}`));
 }
 
 // ---- Full sync: schedule + divisions + team rosters + leaders --------------

@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "preact/hooks";
-import type { Dataset, EventLeaders } from "../../io/dataset.ts";
+import type { Dataset, EventLeaders, PlayerGameLine } from "../../io/dataset.ts";
+import { fetchPlayerGameLog } from "../../io/sync.ts";
 import type { Player, PlayerSummary } from "../../engine/types.ts";
 import { summarizePlayers, sortByScoring } from "../../engine/players/summary.ts";
 import { importPlayerStatsCsv, importRosterCsv } from "../../io/importPlayers.ts";
@@ -219,7 +220,119 @@ export function PlayersView({ dataset, update }: Props) {
           </div>
         </div>
       )}
+
+      {selected && (
+        <div class="card">
+          <p class="section-title">
+            Game Log - {selected.firstName} {selected.lastName}
+          </p>
+          <GameLog
+            player={selected}
+            log={dataset.playerGameLogs?.[selected.id]}
+            update={update}
+          />
+        </div>
+      )}
     </section>
+  );
+}
+
+function GameLog({
+  player,
+  log,
+  update,
+}: {
+  player: Player;
+  log: PlayerGameLine[] | undefined;
+  update: (mutate: (draft: Dataset) => void) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const isGoalie = player.position === "G";
+
+  async function load() {
+    setBusy(true);
+    setMsg("");
+    try {
+      const lines = await fetchPlayerGameLog(player.id);
+      update((d) => {
+        d.playerGameLogs = { ...(d.playerGameLogs ?? {}), [player.id]: lines };
+      });
+      if (lines.length === 0) setMsg("No game lines published for this player yet.");
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "Could not fetch the game log.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!log) {
+    return (
+      <div>
+        <p class="note">
+          Pull this player's game-by-game lines from hnib.app. Fetched per player on demand and
+          kept until the next fetch.
+        </p>
+        <button class="btn secondary" disabled={busy} onClick={load}>
+          {busy ? "Fetching..." : "Load game log"}
+        </button>
+        {msg && <p class="note">{msg}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <table class="grid">
+        <thead>
+          <tr>
+            <th>Opponent</th>
+            {isGoalie ? (
+              <>
+                <th class="num">Shots</th>
+                <th class="num">Saves</th>
+                <th class="num">GA</th>
+              </>
+            ) : (
+              <>
+                <th class="num">G</th>
+                <th class="num">A</th>
+                <th class="num">PTS</th>
+                <th class="num">PIM</th>
+              </>
+            )}
+          </tr>
+        </thead>
+        <tbody>
+          {log.map((l, i) => (
+            <tr key={`${l.opponent}-${i}`}>
+              <td>{l.opponent || "-"}</td>
+              {isGoalie ? (
+                <>
+                  <td class="num">{l.shots}</td>
+                  <td class="num">{l.saves}</td>
+                  <td class="num">{Math.max(0, l.shots - l.saves)}</td>
+                </>
+              ) : (
+                <>
+                  <td class="num">{l.goals}</td>
+                  <td class="num">{l.assists}</td>
+                  <td class="num">{l.points}</td>
+                  <td class="num">{l.pim}</td>
+                </>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div class="toolbar" style={{ marginTop: 8 }}>
+        <span class="note">{log.length} games</span>
+        <button class="btn" disabled={busy} onClick={load}>
+          {busy ? "Fetching..." : "Refresh"}
+        </button>
+        {msg && <span class="note">{msg}</span>}
+      </div>
+    </div>
   );
 }
 

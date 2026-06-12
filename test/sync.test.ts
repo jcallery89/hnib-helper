@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fullSync, syncEvent } from "../src/io/sync.ts";
+import { fetchPlayerGameLog, fullSync, syncEvent } from "../src/io/sync.ts";
 
 const SCHEDULE = '{"Games":[]}';
 const TEAMS = "[]";
@@ -138,5 +138,27 @@ describe("fullSync", () => {
     const second = await fullSync("ev-12345678", first.dataset);
     expect(second.dataset.players?.some((p) => p.id === "u-jack")).toBe(true);
     expect(second.warnings.join(" ")).toContain("Middlesex");
+  });
+});
+
+describe("fetchPlayerGameLog", () => {
+  it("fetches and parses a player profile", async () => {
+    const profile = JSON.stringify({
+      Stats: [{ Opponent: "Essex", Goals: 1, Assists: 0, Points: 1, PIM: 0, Shots: 3, Saves: 0 }],
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: RequestInfo | URL) => {
+        if (String(url) === "https://hnib.app/api/player_profile/u-jack-123") return jsonResponse(profile);
+        return new Response("not found", { status: 404 });
+      }),
+    );
+    const log = await fetchPlayerGameLog("u-jack-123");
+    expect(log).toHaveLength(1);
+    expect(log[0].opponent).toBe("Essex");
+  });
+
+  it("rejects players that did not come from a sync", async () => {
+    await expect(fetchPlayerGameLog("p#bad id")).rejects.toThrow(/sync/);
   });
 });

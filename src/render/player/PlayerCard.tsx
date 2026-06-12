@@ -1,5 +1,5 @@
 import type { Player, PlayerSummary } from "../../engine/types.ts";
-import { COLORS, FONTS } from "../bracket/theme.ts";
+import { ART_COLORS, COLORS, FONTS } from "../bracket/theme.ts";
 import { bgForSize, type BrandAssets } from "../brand.ts";
 
 interface Props {
@@ -15,8 +15,18 @@ interface Props {
 
 export function PlayerCard({ width, height, player, summary, teamName, eventName, accentColor, brand }: Props) {
   const pad = Math.round(width * 0.07);
-  const accent = accentColor || COLORS.ice;
   const bg = bgForSize(brand, width, height);
+  const onArt = Boolean(bg);
+  // Over the brand artwork (brighter royal blue) the site's dim grays and dark
+  // navy panels clash; switch to the artwork-matched palette there.
+  const C = {
+    label: onArt ? ART_COLORS.ice : COLORS.textDim,
+    team: onArt ? COLORS.white : accentColor || COLORS.ice,
+    bio: onArt ? ART_COLORS.bright : COLORS.textPrimary,
+    panelFill: onArt ? ART_COLORS.panel : COLORS.surface,
+    panelStroke: onArt ? ART_COLORS.panelBorder : COLORS.border,
+    statLabel: onArt ? ART_COLORS.ice : COLORS.ice,
+  };
   // Header/footer strips are authored at 1080x60; scale with export width.
   const stripH = brand?.cardHeader ? Math.round((width * 60) / 1080) : 0;
   const footerStripH = brand?.cardFooter ? Math.round((width * 60) / 1080) : 0;
@@ -26,19 +36,24 @@ export function PlayerCard({ width, height, player, summary, teamName, eventName
   const jerseySize = Math.round(height * 0.13);
   const statNum = Math.round(height * 0.058);
 
-  const stats = summary.isGoalie
-    ? [
-        { label: "GP", value: String(summary.gp) },
-        { label: "GAA", value: summary.gaa !== undefined ? summary.gaa.toFixed(2) : "-" },
-        { label: "SV%", value: summary.savePct !== undefined ? summary.savePct.toFixed(3).replace(/^0/, "") : "-" },
-        { label: "SV", value: summary.saves !== undefined ? String(summary.saves) : "-" },
-      ]
-    : [
-        { label: "GP", value: String(summary.gp) },
-        { label: "G", value: String(summary.goals) },
-        { label: "A", value: String(summary.assists) },
-        { label: "PTS", value: String(summary.points) },
-      ];
+  // The live API often reports GP as 0; drop the tile rather than show a
+  // number that reads as wrong next to real goals and assists.
+  const hasGp = summary.gp > 0;
+  const stats = (
+    summary.isGoalie
+      ? [
+          hasGp ? { label: "GP", value: String(summary.gp) } : null,
+          { label: "GAA", value: summary.gaa !== undefined ? summary.gaa.toFixed(2) : "-" },
+          { label: "SV%", value: summary.savePct !== undefined ? summary.savePct.toFixed(3).replace(/^0/, "") : "-" },
+          { label: "SV", value: summary.saves !== undefined ? String(summary.saves) : "-" },
+        ]
+      : [
+          hasGp ? { label: "GP", value: String(summary.gp) } : null,
+          { label: "G", value: String(summary.goals) },
+          { label: "A", value: String(summary.assists) },
+          { label: "PTS", value: String(summary.points) },
+        ]
+  ).filter(Boolean) as Array<{ label: string; value: string }>;
 
   const bio = [
     player.position ? positionLabel(player.position) : null,
@@ -92,11 +107,32 @@ export function PlayerCard({ width, height, player, summary, teamName, eventName
         />
       )}
 
-      {/* Event + team */}
-      <text x={pad} y={pad + labelSize} fill={COLORS.textDim} font-family={FONTS.body} font-size={labelSize} font-weight={700} letter-spacing="0.1em">
+      {/* Event + team. Team color appears as a contained swatch, not as text
+          color, so jersey reds/greens cannot clash with the background. */}
+      <text x={pad} y={pad + labelSize} fill={C.label} font-family={FONTS.body} font-size={labelSize} font-weight={700} letter-spacing="0.1em">
         {eventName.toUpperCase()}
       </text>
-      <text x={pad} y={pad + labelSize * 2.6} fill={accent} font-family={FONTS.body} font-size={labelSize * 1.3} font-weight={700} letter-spacing="0.08em">
+      {accentColor && (
+        <rect
+          x={pad}
+          y={pad + labelSize * 1.55}
+          width={labelSize * 1.15}
+          height={labelSize * 1.15}
+          rx={3}
+          fill={accentColor}
+          stroke="rgba(255,255,255,0.55)"
+          stroke-width={1}
+        />
+      )}
+      <text
+        x={accentColor ? pad + labelSize * 1.8 : pad}
+        y={pad + labelSize * 2.6}
+        fill={C.team}
+        font-family={FONTS.body}
+        font-size={labelSize * 1.3}
+        font-weight={700}
+        letter-spacing="0.08em"
+      >
         {teamName.toUpperCase()}
       </text>
 
@@ -114,18 +150,18 @@ export function PlayerCard({ width, height, player, summary, teamName, eventName
       </text>
 
       {/* Bio line */}
-      <text x={pad} y={Math.round(height * 0.53)} fill={COLORS.textPrimary} font-family={FONTS.body} font-size={labelSize * 1.15} font-weight={500} letter-spacing="0.06em">
+      <text x={pad} y={Math.round(height * 0.53)} fill={C.bio} font-family={FONTS.body} font-size={labelSize * 1.15} font-weight={500} letter-spacing="0.06em">
         {bio.join("   -   ")}
       </text>
 
       {/* Stat block */}
-      <rect x={pad} y={statBoxY} width={width - pad * 2} height={statBoxH} rx={8} fill={COLORS.surface} stroke={COLORS.border} />
+      <rect x={pad} y={statBoxY} width={width - pad * 2} height={statBoxH} rx={8} fill={C.panelFill} stroke={C.panelStroke} />
       {stats.map((s, i) => (
         <g key={s.label}>
           <text x={pad + colW * (i + 0.5)} y={statBoxY + statBoxH * 0.52} fill={COLORS.white} font-family={FONTS.head} font-size={statNum} font-weight={700} text-anchor="middle">
             {s.value}
           </text>
-          <text x={pad + colW * (i + 0.5)} y={statBoxY + statBoxH * 0.8} fill={COLORS.ice} font-family={FONTS.body} font-size={labelSize} font-weight={700} letter-spacing="0.12em" text-anchor="middle">
+          <text x={pad + colW * (i + 0.5)} y={statBoxY + statBoxH * 0.8} fill={C.statLabel} font-family={FONTS.body} font-size={labelSize} font-weight={700} letter-spacing="0.12em" text-anchor="middle">
             {s.label}
           </text>
         </g>
