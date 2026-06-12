@@ -202,6 +202,7 @@ export function PlayersView({ dataset, update }: Props) {
               eventName={dataset.event.name}
               accentColor={team?.colorPrimary}
               brand={brand}
+              gameLog={dataset.playerGameLogs?.[selected.id]}
             />
           </div>
           <div style={{ position: "absolute", left: -99999, top: 0 }} aria-hidden="true">
@@ -215,6 +216,7 @@ export function PlayersView({ dataset, update }: Props) {
                 eventName={dataset.event.name}
                 accentColor={team?.colorPrimary}
                 brand={brand}
+                gameLog={dataset.playerGameLogs?.[selected.id]}
               />
             </div>
           </div>
@@ -270,8 +272,8 @@ function GameLog({
     return (
       <div>
         <p class="note">
-          Pull this player's game-by-game lines from hnib.app. Fetched per player on demand and
-          kept until the next fetch.
+          Pull this player's game-by-game lines from hnib.app. Once loaded, the lines appear on the
+          player card export as well.
         </p>
         <button class="btn secondary" disabled={busy} onClick={load}>
           {busy ? "Fetching..." : "Load game log"}

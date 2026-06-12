@@ -3,73 +3,677 @@
     "id": "jrhigh-2025",
     "name": "2025 Jr. High Festival",
     "year": 2025,
-    "venues": ["Worcester Ice Center"],
+    "venues": [
+      "Worcester Ice Center"
+    ],
     "format": "festival",
     "hasPlayoffBracket": true,
     "seedingRule": "jrhigh_top2_per_division",
-    "pointSystem": { "win": 2, "tie": 1, "loss": 0 }
+    "pointSystem": {
+      "win": 2,
+      "tie": 1,
+      "loss": 0
+    }
   },
   "divisions": [
-    { "id": "east", "eventId": "jrhigh-2025", "name": "EAST", "teamIds": ["t-mid", "t-bay", "t-nor", "t-ess", "t-coa"] },
-    { "id": "west", "eventId": "jrhigh-2025", "name": "WEST", "teamIds": ["t-wes", "t-atl", "t-met", "t-sub"] }
+    {
+      "id": "east",
+      "eventId": "jrhigh-2025",
+      "name": "EAST",
+      "teamIds": [
+        "t-mid",
+        "t-bay",
+        "t-nor",
+        "t-ess",
+        "t-coa"
+      ]
+    },
+    {
+      "id": "west",
+      "eventId": "jrhigh-2025",
+      "name": "WEST",
+      "teamIds": [
+        "t-wes",
+        "t-atl",
+        "t-met",
+        "t-sub"
+      ]
+    }
   ],
   "teams": [
-    { "id": "t-mid", "eventId": "jrhigh-2025", "divisionId": "east", "name": "Middlesex", "colorPrimary": "#2e4a8a", "colorSecondary": "#a8cce0" },
-    { "id": "t-bay", "eventId": "jrhigh-2025", "divisionId": "east", "name": "Bay State", "colorPrimary": "#3b5998", "colorSecondary": "#dae8f3" },
-    { "id": "t-nor", "eventId": "jrhigh-2025", "divisionId": "east", "name": "Northeast", "colorPrimary": "#24366b", "colorSecondary": "#c5ddf0" },
-    { "id": "t-ess", "eventId": "jrhigh-2025", "divisionId": "east", "name": "Essex", "colorPrimary": "#1a2856", "colorSecondary": "#eaf2f8" },
-    { "id": "t-coa", "eventId": "jrhigh-2025", "divisionId": "east", "name": "Coastal", "colorPrimary": "#2e4a8a", "colorSecondary": "#c5ddf0" },
-    { "id": "t-wes", "eventId": "jrhigh-2025", "divisionId": "west", "name": "Western", "colorPrimary": "#3b5998", "colorSecondary": "#d4a843" },
-    { "id": "t-atl", "eventId": "jrhigh-2025", "divisionId": "west", "name": "Atlantic", "colorPrimary": "#24366b", "colorSecondary": "#a8cce0" },
-    { "id": "t-met", "eventId": "jrhigh-2025", "divisionId": "west", "name": "Metropolitan", "colorPrimary": "#1a2856", "colorSecondary": "#dae8f3" },
-    { "id": "t-sub", "eventId": "jrhigh-2025", "divisionId": "west", "name": "Suburban", "colorPrimary": "#2e4a8a", "colorSecondary": "#eaf2f8" }
+    {
+      "id": "t-mid",
+      "eventId": "jrhigh-2025",
+      "divisionId": "east",
+      "name": "Middlesex",
+      "colorPrimary": "#2e4a8a",
+      "colorSecondary": "#a8cce0"
+    },
+    {
+      "id": "t-bay",
+      "eventId": "jrhigh-2025",
+      "divisionId": "east",
+      "name": "Bay State",
+      "colorPrimary": "#3b5998",
+      "colorSecondary": "#dae8f3"
+    },
+    {
+      "id": "t-nor",
+      "eventId": "jrhigh-2025",
+      "divisionId": "east",
+      "name": "Northeast",
+      "colorPrimary": "#24366b",
+      "colorSecondary": "#c5ddf0"
+    },
+    {
+      "id": "t-ess",
+      "eventId": "jrhigh-2025",
+      "divisionId": "east",
+      "name": "Essex",
+      "colorPrimary": "#1a2856",
+      "colorSecondary": "#eaf2f8"
+    },
+    {
+      "id": "t-coa",
+      "eventId": "jrhigh-2025",
+      "divisionId": "east",
+      "name": "Coastal",
+      "colorPrimary": "#2e4a8a",
+      "colorSecondary": "#c5ddf0"
+    },
+    {
+      "id": "t-wes",
+      "eventId": "jrhigh-2025",
+      "divisionId": "west",
+      "name": "Western",
+      "colorPrimary": "#3b5998",
+      "colorSecondary": "#d4a843"
+    },
+    {
+      "id": "t-atl",
+      "eventId": "jrhigh-2025",
+      "divisionId": "west",
+      "name": "Atlantic",
+      "colorPrimary": "#24366b",
+      "colorSecondary": "#a8cce0"
+    },
+    {
+      "id": "t-met",
+      "eventId": "jrhigh-2025",
+      "divisionId": "west",
+      "name": "Metropolitan",
+      "colorPrimary": "#1a2856",
+      "colorSecondary": "#dae8f3"
+    },
+    {
+      "id": "t-sub",
+      "eventId": "jrhigh-2025",
+      "divisionId": "west",
+      "name": "Suburban",
+      "colorPrimary": "#2e4a8a",
+      "colorSecondary": "#eaf2f8"
+    }
   ],
   "games": [
-    { "id": "g1", "divisionId": "east", "round": "rr", "rink": "WIC-MGH", "slotStart": "2025-06-27T09:45:00", "homeTeamId": "t-mid", "awayTeamId": "t-nor", "homeScore": 4, "awayScore": 1, "status": "final", "decidedBy": "regulation" },
-    { "id": "g2", "divisionId": "east", "round": "rr", "rink": "WIC-LAM", "slotStart": "2025-06-27T10:00:00", "homeTeamId": "t-bay", "awayTeamId": "t-ess", "homeScore": 8, "awayScore": 6, "status": "final", "decidedBy": "regulation" },
-    { "id": "g3", "divisionId": "west", "round": "rr", "rink": "WIC-MGH", "slotStart": "2025-06-27T15:00:00", "homeTeamId": "t-wes", "awayTeamId": "t-met", "homeScore": 10, "awayScore": 2, "status": "final", "decidedBy": "regulation" },
-    { "id": "g4", "divisionId": "west", "round": "rr", "rink": "WIC-LAM", "slotStart": "2025-06-27T15:15:00", "homeTeamId": "t-sub", "awayTeamId": "t-atl", "homeScore": 4, "awayScore": 7, "status": "final", "decidedBy": "regulation" },
-    { "id": "g5", "divisionId": "east", "round": "rr", "rink": "WIC-MGH", "slotStart": "2025-06-28T08:00:00", "homeTeamId": "t-nor", "awayTeamId": "t-coa", "homeScore": 3, "awayScore": 3, "status": "final", "decidedBy": "regulation" },
-    { "id": "g6", "divisionId": "west", "round": "rr", "rink": "WIC-LAM", "slotStart": "2025-06-28T08:10:00", "homeTeamId": "t-met", "awayTeamId": "t-sub", "homeScore": 3, "awayScore": 0, "status": "final", "decidedBy": "regulation" },
-    { "id": "g7", "divisionId": "east", "round": "rr", "rink": "WIC-MGH", "slotStart": "2025-06-28T09:40:00", "homeTeamId": "t-mid", "awayTeamId": "t-ess", "homeScore": 12, "awayScore": 1, "status": "final", "decidedBy": "regulation" },
-    { "id": "g8", "divisionId": "west", "round": "rr", "rink": "WIC-LAM", "slotStart": "2025-06-28T09:50:00", "homeTeamId": "t-wes", "awayTeamId": "t-atl", "homeScore": 5, "awayScore": 3, "status": "final", "decidedBy": "regulation" },
-    { "id": "g9", "divisionId": "east", "round": "rr", "rink": "WIC-MGH", "slotStart": "2025-06-28T14:40:00", "homeTeamId": "t-bay", "awayTeamId": "t-coa", "homeScore": 3, "awayScore": 1, "status": "final", "decidedBy": "regulation" },
-    { "id": "g10", "divisionId": null, "round": "rr", "rink": "WIC-MGH", "slotStart": "2025-06-29T13:00:00", "homeTeamId": "t-bay", "awayTeamId": "t-atl", "homeScore": 2, "awayScore": 6, "status": "final", "decidedBy": "regulation" },
-    { "id": "g11", "divisionId": "east", "round": "rr", "rink": "WIC-LAM", "slotStart": "2025-06-29T13:10:00", "homeTeamId": "t-ess", "awayTeamId": "t-coa", "homeScore": 5, "awayScore": 1, "status": "final", "decidedBy": "regulation" },
-    { "id": "g12", "divisionId": null, "round": "rr", "rink": "WIC-MGH", "slotStart": "2025-06-29T14:40:00", "homeTeamId": "t-mid", "awayTeamId": "t-wes", "homeScore": 1, "awayScore": 1, "status": "final", "decidedBy": "regulation" },
-    { "id": "g13", "divisionId": null, "round": "rr", "rink": "WIC-LAM", "slotStart": "2025-06-29T14:50:00", "homeTeamId": "t-nor", "awayTeamId": "t-met", "homeScore": 6, "awayScore": 1, "status": "final", "decidedBy": "regulation" },
-    { "id": "g14", "divisionId": null, "round": "rr", "rink": "WIC-LAM", "slotStart": "2025-06-29T18:10:00", "homeTeamId": "t-bay", "awayTeamId": "t-sub", "homeScore": 5, "awayScore": 2, "status": "final", "decidedBy": "regulation" },
-    { "id": "g15", "divisionId": null, "round": "rr", "rink": "WIC-MGH", "slotStart": "2025-06-30T08:00:00", "homeTeamId": "t-coa", "awayTeamId": "t-met", "homeScore": 6, "awayScore": 0, "status": "final", "decidedBy": "regulation" },
-    { "id": "g16", "divisionId": null, "round": "rr", "rink": "WIC-LAM", "slotStart": "2025-06-30T08:10:00", "homeTeamId": "t-nor", "awayTeamId": "t-wes", "homeScore": 5, "awayScore": 2, "status": "final", "decidedBy": "regulation" },
-    { "id": "g17", "divisionId": null, "round": "rr", "rink": "WIC-MGH", "slotStart": "2025-06-30T09:40:00", "homeTeamId": "t-sub", "awayTeamId": "t-ess", "homeScore": 3, "awayScore": 6, "status": "final", "decidedBy": "regulation" },
-    { "id": "g18", "divisionId": null, "round": "rr", "rink": "WIC-LAM", "slotStart": "2025-06-30T09:50:00", "homeTeamId": "t-mid", "awayTeamId": "t-atl", "homeScore": 4, "awayScore": 2, "status": "final", "decidedBy": "regulation" }
+    {
+      "id": "g1",
+      "divisionId": "east",
+      "round": "rr",
+      "rink": "WIC-MGH",
+      "slotStart": "2025-06-27T09:45:00",
+      "homeTeamId": "t-mid",
+      "awayTeamId": "t-nor",
+      "homeScore": 4,
+      "awayScore": 1,
+      "status": "final",
+      "decidedBy": "regulation"
+    },
+    {
+      "id": "g2",
+      "divisionId": "east",
+      "round": "rr",
+      "rink": "WIC-LAM",
+      "slotStart": "2025-06-27T10:00:00",
+      "homeTeamId": "t-bay",
+      "awayTeamId": "t-ess",
+      "homeScore": 8,
+      "awayScore": 6,
+      "status": "final",
+      "decidedBy": "regulation"
+    },
+    {
+      "id": "g3",
+      "divisionId": "west",
+      "round": "rr",
+      "rink": "WIC-MGH",
+      "slotStart": "2025-06-27T15:00:00",
+      "homeTeamId": "t-wes",
+      "awayTeamId": "t-met",
+      "homeScore": 10,
+      "awayScore": 2,
+      "status": "final",
+      "decidedBy": "regulation"
+    },
+    {
+      "id": "g4",
+      "divisionId": "west",
+      "round": "rr",
+      "rink": "WIC-LAM",
+      "slotStart": "2025-06-27T15:15:00",
+      "homeTeamId": "t-sub",
+      "awayTeamId": "t-atl",
+      "homeScore": 4,
+      "awayScore": 7,
+      "status": "final",
+      "decidedBy": "regulation"
+    },
+    {
+      "id": "g5",
+      "divisionId": "east",
+      "round": "rr",
+      "rink": "WIC-MGH",
+      "slotStart": "2025-06-28T08:00:00",
+      "homeTeamId": "t-nor",
+      "awayTeamId": "t-coa",
+      "homeScore": 3,
+      "awayScore": 3,
+      "status": "final",
+      "decidedBy": "regulation"
+    },
+    {
+      "id": "g6",
+      "divisionId": "west",
+      "round": "rr",
+      "rink": "WIC-LAM",
+      "slotStart": "2025-06-28T08:10:00",
+      "homeTeamId": "t-met",
+      "awayTeamId": "t-sub",
+      "homeScore": 3,
+      "awayScore": 0,
+      "status": "final",
+      "decidedBy": "regulation"
+    },
+    {
+      "id": "g7",
+      "divisionId": "east",
+      "round": "rr",
+      "rink": "WIC-MGH",
+      "slotStart": "2025-06-28T09:40:00",
+      "homeTeamId": "t-mid",
+      "awayTeamId": "t-ess",
+      "homeScore": 12,
+      "awayScore": 1,
+      "status": "final",
+      "decidedBy": "regulation"
+    },
+    {
+      "id": "g8",
+      "divisionId": "west",
+      "round": "rr",
+      "rink": "WIC-LAM",
+      "slotStart": "2025-06-28T09:50:00",
+      "homeTeamId": "t-wes",
+      "awayTeamId": "t-atl",
+      "homeScore": 5,
+      "awayScore": 3,
+      "status": "final",
+      "decidedBy": "regulation"
+    },
+    {
+      "id": "g9",
+      "divisionId": "east",
+      "round": "rr",
+      "rink": "WIC-MGH",
+      "slotStart": "2025-06-28T14:40:00",
+      "homeTeamId": "t-bay",
+      "awayTeamId": "t-coa",
+      "homeScore": 3,
+      "awayScore": 1,
+      "status": "final",
+      "decidedBy": "regulation"
+    },
+    {
+      "id": "g10",
+      "divisionId": null,
+      "round": "rr",
+      "rink": "WIC-MGH",
+      "slotStart": "2025-06-29T13:00:00",
+      "homeTeamId": "t-bay",
+      "awayTeamId": "t-atl",
+      "homeScore": 2,
+      "awayScore": 6,
+      "status": "final",
+      "decidedBy": "regulation"
+    },
+    {
+      "id": "g11",
+      "divisionId": "east",
+      "round": "rr",
+      "rink": "WIC-LAM",
+      "slotStart": "2025-06-29T13:10:00",
+      "homeTeamId": "t-ess",
+      "awayTeamId": "t-coa",
+      "homeScore": 5,
+      "awayScore": 1,
+      "status": "final",
+      "decidedBy": "regulation"
+    },
+    {
+      "id": "g12",
+      "divisionId": null,
+      "round": "rr",
+      "rink": "WIC-MGH",
+      "slotStart": "2025-06-29T14:40:00",
+      "homeTeamId": "t-mid",
+      "awayTeamId": "t-wes",
+      "homeScore": 1,
+      "awayScore": 1,
+      "status": "final",
+      "decidedBy": "regulation"
+    },
+    {
+      "id": "g13",
+      "divisionId": null,
+      "round": "rr",
+      "rink": "WIC-LAM",
+      "slotStart": "2025-06-29T14:50:00",
+      "homeTeamId": "t-nor",
+      "awayTeamId": "t-met",
+      "homeScore": 6,
+      "awayScore": 1,
+      "status": "final",
+      "decidedBy": "regulation"
+    },
+    {
+      "id": "g14",
+      "divisionId": null,
+      "round": "rr",
+      "rink": "WIC-LAM",
+      "slotStart": "2025-06-29T18:10:00",
+      "homeTeamId": "t-bay",
+      "awayTeamId": "t-sub",
+      "homeScore": 5,
+      "awayScore": 2,
+      "status": "final",
+      "decidedBy": "regulation"
+    },
+    {
+      "id": "g15",
+      "divisionId": null,
+      "round": "rr",
+      "rink": "WIC-MGH",
+      "slotStart": "2025-06-30T08:00:00",
+      "homeTeamId": "t-coa",
+      "awayTeamId": "t-met",
+      "homeScore": 6,
+      "awayScore": 0,
+      "status": "final",
+      "decidedBy": "regulation"
+    },
+    {
+      "id": "g16",
+      "divisionId": null,
+      "round": "rr",
+      "rink": "WIC-LAM",
+      "slotStart": "2025-06-30T08:10:00",
+      "homeTeamId": "t-nor",
+      "awayTeamId": "t-wes",
+      "homeScore": 5,
+      "awayScore": 2,
+      "status": "final",
+      "decidedBy": "regulation"
+    },
+    {
+      "id": "g17",
+      "divisionId": null,
+      "round": "rr",
+      "rink": "WIC-MGH",
+      "slotStart": "2025-06-30T09:40:00",
+      "homeTeamId": "t-sub",
+      "awayTeamId": "t-ess",
+      "homeScore": 3,
+      "awayScore": 6,
+      "status": "final",
+      "decidedBy": "regulation"
+    },
+    {
+      "id": "g18",
+      "divisionId": null,
+      "round": "rr",
+      "rink": "WIC-LAM",
+      "slotStart": "2025-06-30T09:50:00",
+      "homeTeamId": "t-mid",
+      "awayTeamId": "t-atl",
+      "homeScore": 4,
+      "awayScore": 2,
+      "status": "final",
+      "decidedBy": "regulation"
+    }
   ],
   "players": [
-    { "id": "p-t-mid-9", "eventId": "jrhigh-2025", "teamId": "t-mid", "jersey": 9, "firstName": "Jack", "lastName": "Sullivan", "position": "F", "classYear": 2030, "shoots": "L", "heightInches": 66, "hometown": "Andover, MA" },
-    { "id": "p-t-mid-10", "eventId": "jrhigh-2025", "teamId": "t-mid", "jersey": 10, "firstName": "Liam", "lastName": "Doyle", "position": "F", "classYear": 2030, "shoots": "L", "heightInches": 64, "hometown": "Reading, MA" },
-    { "id": "p-t-mid-11", "eventId": "jrhigh-2025", "teamId": "t-mid", "jersey": 11, "firstName": "Ryan", "lastName": "Walsh", "position": "F", "classYear": 2029, "shoots": "R", "heightInches": 67, "hometown": "Woburn, MA" },
-    { "id": "p-t-mid-12", "eventId": "jrhigh-2025", "teamId": "t-mid", "jersey": 12, "firstName": "Owen", "lastName": "Murphy", "position": "F", "classYear": 2030, "shoots": "L", "heightInches": 63, "hometown": "Wilmington, MA" },
-    { "id": "p-t-mid-14", "eventId": "jrhigh-2025", "teamId": "t-mid", "jersey": 14, "firstName": "Cole", "lastName": "Brennan", "position": "F", "classYear": 2030, "shoots": "R", "heightInches": 65, "hometown": "Burlington, MA" },
-    { "id": "p-t-mid-16", "eventId": "jrhigh-2025", "teamId": "t-mid", "jersey": 16, "firstName": "Aiden", "lastName": "Flynn", "position": "F", "classYear": 2029, "shoots": "L", "heightInches": 66, "hometown": "Tewksbury, MA" },
-    { "id": "p-t-mid-19", "eventId": "jrhigh-2025", "teamId": "t-mid", "jersey": 19, "firstName": "Jake", "lastName": "Connors", "position": "F", "classYear": 2030, "shoots": "R", "heightInches": 62, "hometown": "Stoneham, MA" },
-    { "id": "p-t-mid-4", "eventId": "jrhigh-2025", "teamId": "t-mid", "jersey": 4, "firstName": "Nolan", "lastName": "Reed", "position": "D", "classYear": 2029, "shoots": "L", "heightInches": 68, "hometown": "Andover, MA" },
-    { "id": "p-t-mid-5", "eventId": "jrhigh-2025", "teamId": "t-mid", "jersey": 5, "firstName": "Sean", "lastName": "Carter", "position": "D", "classYear": 2030, "shoots": "R", "heightInches": 67, "hometown": "Billerica, MA" },
-    { "id": "p-t-mid-6", "eventId": "jrhigh-2025", "teamId": "t-mid", "jersey": 6, "firstName": "Max", "lastName": "Kelly", "position": "D", "classYear": 2030, "shoots": "L", "heightInches": 66, "hometown": "Chelmsford, MA" },
-    { "id": "p-t-mid-8", "eventId": "jrhigh-2025", "teamId": "t-mid", "jersey": 8, "firstName": "Tyler", "lastName": "Nguyen", "position": "D", "classYear": 2029, "shoots": "R", "heightInches": 65, "hometown": "Lowell, MA" },
-    { "id": "p-t-mid-1", "eventId": "jrhigh-2025", "teamId": "t-mid", "jersey": 1, "firstName": "Brady", "lastName": "Olsen", "position": "G", "classYear": 2030, "shoots": "L", "heightInches": 64, "hometown": "Dracut, MA" }
+    {
+      "id": "p-t-mid-9",
+      "eventId": "jrhigh-2025",
+      "teamId": "t-mid",
+      "jersey": 9,
+      "firstName": "Jack",
+      "lastName": "Sullivan",
+      "position": "F",
+      "classYear": 2030,
+      "shoots": "L",
+      "heightInches": 66,
+      "hometown": "Andover, MA"
+    },
+    {
+      "id": "p-t-mid-10",
+      "eventId": "jrhigh-2025",
+      "teamId": "t-mid",
+      "jersey": 10,
+      "firstName": "Liam",
+      "lastName": "Doyle",
+      "position": "F",
+      "classYear": 2030,
+      "shoots": "L",
+      "heightInches": 64,
+      "hometown": "Reading, MA"
+    },
+    {
+      "id": "p-t-mid-11",
+      "eventId": "jrhigh-2025",
+      "teamId": "t-mid",
+      "jersey": 11,
+      "firstName": "Ryan",
+      "lastName": "Walsh",
+      "position": "F",
+      "classYear": 2029,
+      "shoots": "R",
+      "heightInches": 67,
+      "hometown": "Woburn, MA"
+    },
+    {
+      "id": "p-t-mid-12",
+      "eventId": "jrhigh-2025",
+      "teamId": "t-mid",
+      "jersey": 12,
+      "firstName": "Owen",
+      "lastName": "Murphy",
+      "position": "F",
+      "classYear": 2030,
+      "shoots": "L",
+      "heightInches": 63,
+      "hometown": "Wilmington, MA"
+    },
+    {
+      "id": "p-t-mid-14",
+      "eventId": "jrhigh-2025",
+      "teamId": "t-mid",
+      "jersey": 14,
+      "firstName": "Cole",
+      "lastName": "Brennan",
+      "position": "F",
+      "classYear": 2030,
+      "shoots": "R",
+      "heightInches": 65,
+      "hometown": "Burlington, MA"
+    },
+    {
+      "id": "p-t-mid-16",
+      "eventId": "jrhigh-2025",
+      "teamId": "t-mid",
+      "jersey": 16,
+      "firstName": "Aiden",
+      "lastName": "Flynn",
+      "position": "F",
+      "classYear": 2029,
+      "shoots": "L",
+      "heightInches": 66,
+      "hometown": "Tewksbury, MA"
+    },
+    {
+      "id": "p-t-mid-19",
+      "eventId": "jrhigh-2025",
+      "teamId": "t-mid",
+      "jersey": 19,
+      "firstName": "Jake",
+      "lastName": "Connors",
+      "position": "F",
+      "classYear": 2030,
+      "shoots": "R",
+      "heightInches": 62,
+      "hometown": "Stoneham, MA"
+    },
+    {
+      "id": "p-t-mid-4",
+      "eventId": "jrhigh-2025",
+      "teamId": "t-mid",
+      "jersey": 4,
+      "firstName": "Nolan",
+      "lastName": "Reed",
+      "position": "D",
+      "classYear": 2029,
+      "shoots": "L",
+      "heightInches": 68,
+      "hometown": "Andover, MA"
+    },
+    {
+      "id": "p-t-mid-5",
+      "eventId": "jrhigh-2025",
+      "teamId": "t-mid",
+      "jersey": 5,
+      "firstName": "Sean",
+      "lastName": "Carter",
+      "position": "D",
+      "classYear": 2030,
+      "shoots": "R",
+      "heightInches": 67,
+      "hometown": "Billerica, MA"
+    },
+    {
+      "id": "p-t-mid-6",
+      "eventId": "jrhigh-2025",
+      "teamId": "t-mid",
+      "jersey": 6,
+      "firstName": "Max",
+      "lastName": "Kelly",
+      "position": "D",
+      "classYear": 2030,
+      "shoots": "L",
+      "heightInches": 66,
+      "hometown": "Chelmsford, MA"
+    },
+    {
+      "id": "p-t-mid-8",
+      "eventId": "jrhigh-2025",
+      "teamId": "t-mid",
+      "jersey": 8,
+      "firstName": "Tyler",
+      "lastName": "Nguyen",
+      "position": "D",
+      "classYear": 2029,
+      "shoots": "R",
+      "heightInches": 65,
+      "hometown": "Lowell, MA"
+    },
+    {
+      "id": "p-t-mid-1",
+      "eventId": "jrhigh-2025",
+      "teamId": "t-mid",
+      "jersey": 1,
+      "firstName": "Brady",
+      "lastName": "Olsen",
+      "position": "G",
+      "classYear": 2030,
+      "shoots": "L",
+      "heightInches": 64,
+      "hometown": "Dracut, MA"
+    }
   ],
   "playerStats": [
-    { "playerId": "p-t-mid-9", "gameId": null, "gp": 7, "goals": 8, "assists": 6, "pim": 2 },
-    { "playerId": "p-t-mid-10", "gameId": null, "gp": 7, "goals": 6, "assists": 7, "pim": 0 },
-    { "playerId": "p-t-mid-11", "gameId": null, "gp": 7, "goals": 5, "assists": 5, "pim": 4 },
-    { "playerId": "p-t-mid-12", "gameId": null, "gp": 7, "goals": 4, "assists": 6, "pim": 2 },
-    { "playerId": "p-t-mid-14", "gameId": null, "gp": 7, "goals": 3, "assists": 4, "pim": 0 },
-    { "playerId": "p-t-mid-16", "gameId": null, "gp": 7, "goals": 4, "assists": 2, "pim": 6 },
-    { "playerId": "p-t-mid-19", "gameId": null, "gp": 7, "goals": 2, "assists": 3, "pim": 0 },
-    { "playerId": "p-t-mid-4", "gameId": null, "gp": 7, "goals": 1, "assists": 5, "pim": 4 },
-    { "playerId": "p-t-mid-5", "gameId": null, "gp": 7, "goals": 1, "assists": 3, "pim": 2 },
-    { "playerId": "p-t-mid-6", "gameId": null, "gp": 7, "goals": 0, "assists": 4, "pim": 0 },
-    { "playerId": "p-t-mid-8", "gameId": null, "gp": 7, "goals": 1, "assists": 2, "pim": 8 },
-    { "playerId": "p-t-mid-1", "gameId": null, "gp": 7, "goals": 0, "assists": 0, "pim": 0, "saves": 121, "goalsAgainst": 9, "shots": 130 }
-  ]
+    {
+      "playerId": "p-t-mid-9",
+      "gameId": null,
+      "gp": 7,
+      "goals": 8,
+      "assists": 6,
+      "pim": 2
+    },
+    {
+      "playerId": "p-t-mid-10",
+      "gameId": null,
+      "gp": 7,
+      "goals": 6,
+      "assists": 7,
+      "pim": 0
+    },
+    {
+      "playerId": "p-t-mid-11",
+      "gameId": null,
+      "gp": 7,
+      "goals": 5,
+      "assists": 5,
+      "pim": 4
+    },
+    {
+      "playerId": "p-t-mid-12",
+      "gameId": null,
+      "gp": 7,
+      "goals": 4,
+      "assists": 6,
+      "pim": 2
+    },
+    {
+      "playerId": "p-t-mid-14",
+      "gameId": null,
+      "gp": 7,
+      "goals": 3,
+      "assists": 4,
+      "pim": 0
+    },
+    {
+      "playerId": "p-t-mid-16",
+      "gameId": null,
+      "gp": 7,
+      "goals": 4,
+      "assists": 2,
+      "pim": 6
+    },
+    {
+      "playerId": "p-t-mid-19",
+      "gameId": null,
+      "gp": 7,
+      "goals": 2,
+      "assists": 3,
+      "pim": 0
+    },
+    {
+      "playerId": "p-t-mid-4",
+      "gameId": null,
+      "gp": 7,
+      "goals": 1,
+      "assists": 5,
+      "pim": 4
+    },
+    {
+      "playerId": "p-t-mid-5",
+      "gameId": null,
+      "gp": 7,
+      "goals": 1,
+      "assists": 3,
+      "pim": 2
+    },
+    {
+      "playerId": "p-t-mid-6",
+      "gameId": null,
+      "gp": 7,
+      "goals": 0,
+      "assists": 4,
+      "pim": 0
+    },
+    {
+      "playerId": "p-t-mid-8",
+      "gameId": null,
+      "gp": 7,
+      "goals": 1,
+      "assists": 2,
+      "pim": 8
+    },
+    {
+      "playerId": "p-t-mid-1",
+      "gameId": null,
+      "gp": 7,
+      "goals": 0,
+      "assists": 0,
+      "pim": 0,
+      "saves": 121,
+      "goalsAgainst": 9,
+      "shots": 130
+    }
+  ],
+  "playerGameLogs": {
+    "p-t-mid-9": [
+      {
+        "opponent": "Northeast",
+        "goals": 1,
+        "assists": 1,
+        "points": 2,
+        "pim": 0,
+        "shots": 5,
+        "saves": 0
+      },
+      {
+        "opponent": "Essex",
+        "goals": 3,
+        "assists": 1,
+        "points": 4,
+        "pim": 0,
+        "shots": 8,
+        "saves": 0
+      },
+      {
+        "opponent": "Western",
+        "goals": 0,
+        "assists": 1,
+        "points": 1,
+        "pim": 2,
+        "shots": 4,
+        "saves": 0
+      },
+      {
+        "opponent": "Atlantic",
+        "goals": 1,
+        "assists": 1,
+        "points": 2,
+        "pim": 0,
+        "shots": 6,
+        "saves": 0
+      },
+      {
+        "opponent": "Metropolitan",
+        "goals": 2,
+        "assists": 1,
+        "points": 3,
+        "pim": 0,
+        "shots": 7,
+        "saves": 0
+      },
+      {
+        "opponent": "Northeast",
+        "goals": 1,
+        "assists": 0,
+        "points": 1,
+        "pim": 0,
+        "shots": 5,
+        "saves": 0
+      },
+      {
+        "opponent": "Bay State",
+        "goals": 0,
+        "assists": 1,
+        "points": 1,
+        "pim": 0,
+        "shots": 3,
+        "saves": 0
+      }
+    ]
+  }
 }

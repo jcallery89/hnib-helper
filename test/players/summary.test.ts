@@ -67,4 +67,33 @@ describe("PlayerCard render", () => {
     );
     expect(story).toContain("base64,STORY");
   });
+
+  it("renders the game-by-game table capped at 12 games with a totals row", () => {
+    const summary = summarizePlayers([skater], [{ playerId: "p1", gameId: null, gp: 0, goals: 8, assists: 6 }])[0];
+    const gameLog = Array.from({ length: 14 }, (_, i) => ({
+      opponent: `Opp${i + 1}`,
+      goals: 1,
+      assists: 0,
+      points: 1,
+      pim: 0,
+      shots: 3,
+      saves: 0,
+    }));
+    const svg = renderToString(
+      h(PlayerCard, {
+        width: 1080,
+        height: 1350,
+        player: skater,
+        summary,
+        teamName: "Middlesex",
+        eventName: "Event",
+        gameLog,
+      }),
+    );
+    expect(svg).toContain("OPP1");
+    expect(svg).toContain("OPP12");
+    expect(svg).not.toContain("OPP13"); // sized for the 12-game event maximum
+    expect(svg).toContain("STATISTICS");
+    expect(svg).toContain("TOTALS - 12 GP"); // GP derived from the log when box GP is 0
+  });
 });
