@@ -21,6 +21,9 @@ export type { PlayoffField, FieldOptions } from "./playoff/field.ts";
 export { buildBracket } from "./playoff/bracket.ts";
 export type { BracketResult } from "./playoff/bracket.ts";
 
+export { summarizePlayers, sortByScoring } from "./players/summary.ts";
+export type { Player, PlayerStatLine, PlayerSummary, PlayerPosition } from "./types.ts";
+
 export { generateMatchups, circleMethodPairs } from "./schedule/matchups.ts";
 export type { MatchupResult } from "./schedule/matchups.ts";
 export { buildSlotGrid } from "./schedule/slotGrid.ts";

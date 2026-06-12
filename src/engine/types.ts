@@ -100,3 +100,50 @@ export interface BracketGame {
   decidedBy: DecidedBy | null;
   feedsGameId: string | null;
 }
+
+export type PlayerPosition = "F" | "D" | "G";
+
+export interface Player {
+  id: string;
+  eventId: string;
+  teamId: string;
+  jersey: number | null; // unique within a team; not globally unique
+  firstName: string;
+  lastName: string;
+  position?: PlayerPosition;
+  classYear?: number; // graduation year
+  shoots?: "L" | "R";
+  heightInches?: number;
+  hometown?: string;
+}
+
+// A stat record - either one player's line in one game (gameId set) or a
+// pre-summed event total (gameId null, gp set). The summarizer handles both.
+export interface PlayerStatLine {
+  playerId: string;
+  gameId: string | null;
+  gp?: number;
+  goals: number;
+  assists: number;
+  pim?: number;
+  // goalie fields
+  saves?: number;
+  goalsAgainst?: number;
+  shots?: number;
+}
+
+export interface PlayerSummary {
+  playerId: string;
+  isGoalie: boolean;
+  gp: number;
+  goals: number;
+  assists: number;
+  points: number;
+  pim: number;
+  // goalie-only (undefined for skaters)
+  goalsAgainst?: number;
+  saves?: number;
+  savePct?: number;
+  gaa?: number;
+}
+

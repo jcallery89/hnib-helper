@@ -43,5 +43,33 @@
     { "id": "g16", "divisionId": null, "round": "rr", "rink": "WIC-LAM", "slotStart": "2025-06-30T08:10:00", "homeTeamId": "t-nor", "awayTeamId": "t-wes", "homeScore": 5, "awayScore": 2, "status": "final", "decidedBy": "regulation" },
     { "id": "g17", "divisionId": null, "round": "rr", "rink": "WIC-MGH", "slotStart": "2025-06-30T09:40:00", "homeTeamId": "t-sub", "awayTeamId": "t-ess", "homeScore": 3, "awayScore": 6, "status": "final", "decidedBy": "regulation" },
     { "id": "g18", "divisionId": null, "round": "rr", "rink": "WIC-LAM", "slotStart": "2025-06-30T09:50:00", "homeTeamId": "t-mid", "awayTeamId": "t-atl", "homeScore": 4, "awayScore": 2, "status": "final", "decidedBy": "regulation" }
+  ],
+  "players": [
+    { "id": "p-t-mid-9", "eventId": "jrhigh-2025", "teamId": "t-mid", "jersey": 9, "firstName": "Jack", "lastName": "Sullivan", "position": "F", "classYear": 2030, "shoots": "L", "heightInches": 66, "hometown": "Andover, MA" },
+    { "id": "p-t-mid-10", "eventId": "jrhigh-2025", "teamId": "t-mid", "jersey": 10, "firstName": "Liam", "lastName": "Doyle", "position": "F", "classYear": 2030, "shoots": "L", "heightInches": 64, "hometown": "Reading, MA" },
+    { "id": "p-t-mid-11", "eventId": "jrhigh-2025", "teamId": "t-mid", "jersey": 11, "firstName": "Ryan", "lastName": "Walsh", "position": "F", "classYear": 2029, "shoots": "R", "heightInches": 67, "hometown": "Woburn, MA" },
+    { "id": "p-t-mid-12", "eventId": "jrhigh-2025", "teamId": "t-mid", "jersey": 12, "firstName": "Owen", "lastName": "Murphy", "position": "F", "classYear": 2030, "shoots": "L", "heightInches": 63, "hometown": "Wilmington, MA" },
+    { "id": "p-t-mid-14", "eventId": "jrhigh-2025", "teamId": "t-mid", "jersey": 14, "firstName": "Cole", "lastName": "Brennan", "position": "F", "classYear": 2030, "shoots": "R", "heightInches": 65, "hometown": "Burlington, MA" },
+    { "id": "p-t-mid-16", "eventId": "jrhigh-2025", "teamId": "t-mid", "jersey": 16, "firstName": "Aiden", "lastName": "Flynn", "position": "F", "classYear": 2029, "shoots": "L", "heightInches": 66, "hometown": "Tewksbury, MA" },
+    { "id": "p-t-mid-19", "eventId": "jrhigh-2025", "teamId": "t-mid", "jersey": 19, "firstName": "Jake", "lastName": "Connors", "position": "F", "classYear": 2030, "shoots": "R", "heightInches": 62, "hometown": "Stoneham, MA" },
+    { "id": "p-t-mid-4", "eventId": "jrhigh-2025", "teamId": "t-mid", "jersey": 4, "firstName": "Nolan", "lastName": "Reed", "position": "D", "classYear": 2029, "shoots": "L", "heightInches": 68, "hometown": "Andover, MA" },
+    { "id": "p-t-mid-5", "eventId": "jrhigh-2025", "teamId": "t-mid", "jersey": 5, "firstName": "Sean", "lastName": "Carter", "position": "D", "classYear": 2030, "shoots": "R", "heightInches": 67, "hometown": "Billerica, MA" },
+    { "id": "p-t-mid-6", "eventId": "jrhigh-2025", "teamId": "t-mid", "jersey": 6, "firstName": "Max", "lastName": "Kelly", "position": "D", "classYear": 2030, "shoots": "L", "heightInches": 66, "hometown": "Chelmsford, MA" },
+    { "id": "p-t-mid-8", "eventId": "jrhigh-2025", "teamId": "t-mid", "jersey": 8, "firstName": "Tyler", "lastName": "Nguyen", "position": "D", "classYear": 2029, "shoots": "R", "heightInches": 65, "hometown": "Lowell, MA" },
+    { "id": "p-t-mid-1", "eventId": "jrhigh-2025", "teamId": "t-mid", "jersey": 1, "firstName": "Brady", "lastName": "Olsen", "position": "G", "classYear": 2030, "shoots": "L", "heightInches": 64, "hometown": "Dracut, MA" }
+  ],
+  "playerStats": [
+    { "playerId": "p-t-mid-9", "gameId": null, "gp": 7, "goals": 8, "assists": 6, "pim": 2 },
+    { "playerId": "p-t-mid-10", "gameId": null, "gp": 7, "goals": 6, "assists": 7, "pim": 0 },
+    { "playerId": "p-t-mid-11", "gameId": null, "gp": 7, "goals": 5, "assists": 5, "pim": 4 },
+    { "playerId": "p-t-mid-12", "gameId": null, "gp": 7, "goals": 4, "assists": 6, "pim": 2 },
+    { "playerId": "p-t-mid-14", "gameId": null, "gp": 7, "goals": 3, "assists": 4, "pim": 0 },
+    { "playerId": "p-t-mid-16", "gameId": null, "gp": 7, "goals": 4, "assists": 2, "pim": 6 },
+    { "playerId": "p-t-mid-19", "gameId": null, "gp": 7, "goals": 2, "assists": 3, "pim": 0 },
+    { "playerId": "p-t-mid-4", "gameId": null, "gp": 7, "goals": 1, "assists": 5, "pim": 4 },
+    { "playerId": "p-t-mid-5", "gameId": null, "gp": 7, "goals": 1, "assists": 3, "pim": 2 },
+    { "playerId": "p-t-mid-6", "gameId": null, "gp": 7, "goals": 0, "assists": 4, "pim": 0 },
+    { "playerId": "p-t-mid-8", "gameId": null, "gp": 7, "goals": 1, "assists": 2, "pim": 8 },
+    { "playerId": "p-t-mid-1", "gameId": null, "gp": 7, "goals": 0, "assists": 0, "pim": 0, "saves": 121, "goalsAgainst": 9, "shots": 130 }
   ]
 }
