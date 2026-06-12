@@ -5,6 +5,7 @@ import { loadSampleDataset, loadDemoDataset } from "../../io/sampleData.ts";
 import { clearSession, downloadFile } from "../../io/session.ts";
 import { applyResultsCsv, gamesToCsv } from "../../io/csv.ts";
 import { parseSchedule } from "../../io/importSchedule.ts";
+import { importApiData } from "../../io/importApi.ts";
 
 interface Props {
   dataset: Dataset;
@@ -16,6 +17,24 @@ export function SetupView({ dataset, replace }: Props) {
   const [importText, setImportText] = useState("");
   const [msg, setMsg] = useState("");
   const [newDiv, setNewDiv] = useState("");
+  const [apiSchedule, setApiSchedule] = useState("");
+  const [apiTeams, setApiTeams] = useState("");
+  const [apiName, setApiName] = useState("");
+
+  function importApi() {
+    const { dataset: next, summary } = importApiData(apiSchedule, apiTeams.trim() || null, {
+      eventName: apiName.trim() || dataset.event.name,
+    });
+    replace(next);
+    setMsg(
+      `Synced ${summary.teamCount} teams, ${summary.roundRobinGames} round-robin and ${summary.playoffGames} playoff games` +
+        (summary.skipped ? `, skipped ${summary.skipped}` : "") +
+        (summary.divisionsAssigned ? ", divisions assigned from the API." : ". Now split teams into divisions below.") +
+        (summary.warnings.length ? ` (${summary.warnings.slice(0, 2).join(" ")})` : ""),
+    );
+    setApiSchedule("");
+    setApiTeams("");
+  }
 
   function edit(mutate: (d: Dataset) => void) {
     const next = structuredClone(dataset);
@@ -64,7 +83,39 @@ export function SetupView({ dataset, replace }: Props) {
   return (
     <section>
       <div class="card premium">
-        <p class="section-title">Import a Schedule from hnib.app</p>
+        <p class="section-title">Sync from hnib.app (API data)</p>
+        <p class="note">
+          The cleanest path: open the event's API URLs in a browser and paste the JSON here. This
+          brings in real team colors, identifies playoff rounds exactly, and (with the teams JSON)
+          assigns divisions automatically.
+          Schedule: hnib.app/api/schedule/EVENT-ID - Divisions: hnib.app/api/teams/EVENT-ID
+        </p>
+        <input
+          type="text"
+          style={{ width: "100%", marginBottom: 8 }}
+          placeholder="Event name (optional)"
+          value={apiName}
+          onInput={(e) => setApiName((e.target as HTMLInputElement).value)}
+        />
+        <div class="row" style={{ alignItems: "flex-start", gap: 16 }}>
+          <div style={{ flex: 1, minWidth: 260 }}>
+            <p class="note">Schedule JSON (/api/schedule/...)</p>
+            <textarea style={{ width: "100%", height: 120 }} value={apiSchedule} onInput={(e) => setApiSchedule((e.target as HTMLTextAreaElement).value)} />
+          </div>
+          <div style={{ flex: 1, minWidth: 260 }}>
+            <p class="note">Divisions JSON (/api/teams/...) - optional</p>
+            <textarea style={{ width: "100%", height: 120 }} value={apiTeams} onInput={(e) => setApiTeams((e.target as HTMLTextAreaElement).value)} />
+          </div>
+        </div>
+        <div class="toolbar" style={{ marginTop: 8 }}>
+          <button class="btn primary" disabled={!apiSchedule.trim()} onClick={importApi}>
+            Sync from JSON
+          </button>
+        </div>
+      </div>
+
+      <div class="card">
+        <p class="section-title">Import a Schedule from hnib.app (text paste)</p>
         <p class="note">
           Open the event's schedule page, select the whole list of games (teams, dates, times, and
           scores), and paste it here. The importer separates round-robin from playoff games and skips
