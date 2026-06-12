@@ -6,11 +6,15 @@ import { clearSession, downloadFile } from "../../io/session.ts";
 import { applyResultsCsv, gamesToCsv } from "../../io/csv.ts";
 import { parseSchedule } from "../../io/importSchedule.ts";
 import { importApiData } from "../../io/importApi.ts";
+import { syncEvent } from "../../io/sync.ts";
 
 interface Props {
   dataset: Dataset;
   replace: (next: Dataset) => void;
 }
+
+// 2025 Jr. High Festival, confirmed by JC. Prefilled as a convenient default.
+const DEFAULT_EVENT_ID = "63655fc1-1db9-46a5-a948-44f63d297810";
 
 export function SetupView({ dataset, replace }: Props) {
   const [csv, setCsv] = useState("");
@@ -20,9 +24,12 @@ export function SetupView({ dataset, replace }: Props) {
   const [apiSchedule, setApiSchedule] = useState("");
   const [apiTeams, setApiTeams] = useState("");
   const [apiName, setApiName] = useState("");
+  const [syncId, setSyncId] = useState(DEFAULT_EVENT_ID);
+  const [syncing, setSyncing] = useState(false);
 
-  function importApi() {
-    const { dataset: next, summary } = importApiData(apiSchedule, apiTeams.trim() || null, {
+  function applyApiJson(scheduleJson: string, teamsJson: string | null, eventId?: string) {
+    const { dataset: next, summary } = importApiData(scheduleJson, teamsJson, {
+      eventId,
       eventName: apiName.trim() || dataset.event.name,
     });
     replace(next);
@@ -32,6 +39,29 @@ export function SetupView({ dataset, replace }: Props) {
         (summary.divisionsAssigned ? ", divisions assigned from the API." : ". Now split teams into divisions below.") +
         (summary.warnings.length ? ` (${summary.warnings.slice(0, 2).join(" ")})` : ""),
     );
+  }
+
+  async function doSync() {
+    setSyncing(true);
+    setMsg("");
+    try {
+      const result = await syncEvent(syncId);
+      applyApiJson(result.scheduleJson, result.teamsJson, syncId.trim());
+      if (result.warnings.length || result.source === "proxy") {
+        setMsg(
+          (m) =>
+            `${m} ${result.source === "proxy" ? "(fetched via the site helper)" : ""} ${result.warnings.join(" ")}`.trim(),
+        );
+      }
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "Sync failed.");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  function importApi() {
+    applyApiJson(apiSchedule, apiTeams.trim() || null);
     setApiSchedule("");
     setApiTeams("");
   }
@@ -83,12 +113,11 @@ export function SetupView({ dataset, replace }: Props) {
   return (
     <section>
       <div class="card premium">
-        <p class="section-title">Sync from hnib.app (API data)</p>
+        <p class="section-title">Sync from hnib.app</p>
         <p class="note">
-          The cleanest path: open the event's API URLs in a browser and paste the JSON here. This
-          brings in real team colors, identifies playoff rounds exactly, and (with the teams JSON)
-          assigns divisions automatically.
-          Schedule: hnib.app/api/schedule/EVENT-ID - Divisions: hnib.app/api/teams/EVENT-ID
+          Enter the event ID and sync. This pulls the schedule, scores, real team colors, exact
+          playoff rounds, and divisions straight from the live API. Re-sync any time for fresh
+          results.
         </p>
         <input
           type="text"
@@ -97,6 +126,22 @@ export function SetupView({ dataset, replace }: Props) {
           value={apiName}
           onInput={(e) => setApiName((e.target as HTMLInputElement).value)}
         />
+        <div class="row" style={{ marginBottom: 12 }}>
+          <input
+            type="text"
+            style={{ flex: 1, minWidth: 280 }}
+            placeholder="Event ID (e.g. 63655fc1-1db9-...)"
+            value={syncId}
+            onInput={(e) => setSyncId((e.target as HTMLInputElement).value)}
+          />
+          <button class="btn primary" disabled={syncing || !syncId.trim()} onClick={doSync}>
+            {syncing ? "Syncing..." : "Sync event"}
+          </button>
+        </div>
+        <p class="note">
+          Or paste the JSON yourself - Schedule: hnib.app/api/schedule/EVENT-ID, Divisions:
+          hnib.app/api/teams/EVENT-ID
+        </p>
         <div class="row" style={{ alignItems: "flex-start", gap: 16 }}>
           <div style={{ flex: 1, minWidth: 260 }}>
             <p class="note">Schedule JSON (/api/schedule/...)</p>

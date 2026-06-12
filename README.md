@@ -43,12 +43,18 @@ the sample, import/export results CSV, or change event settings.
 
 ## Deploy to SiteGround
 
-The build is pure static files - no Node, PHP, or database on the server.
+The build is static files plus one optional PHP helper - no database, no Node.
 
 1. `npm run build`
 2. Upload everything inside `dist/` to `public_html` (or a subfolder like
    `public_html/tournament/`) via SiteGround File Manager or SFTP.
 3. Open the site. That is the entire deploy.
+
+`dist/` includes `hnib-proxy.php`, a read-only relay used by the "Sync from
+hnib.app" button when the browser cannot call `hnib.app/api` directly (CORS).
+It only forwards GETs to a whitelist of Tourno API read endpoints. Upload it
+with the rest of `dist/`; if it is missing, sync still works whenever the API
+allows direct browser calls, and the JSON paste boxes always work.
 
 Asset paths are relative (`base: './'` in `vite.config.ts`), so it works at the
 domain root or any subfolder with no `.htaccess` rewrites. All parsing,
