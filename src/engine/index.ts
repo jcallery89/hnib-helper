@@ -22,6 +22,8 @@ export { buildBracket } from "./playoff/bracket.ts";
 export type { BracketResult } from "./playoff/bracket.ts";
 
 export { summarizePlayers, sortByScoring } from "./players/summary.ts";
+export { generateWriteup } from "./players/writeup.ts";
+export type { WriteupFacts, WriteupGameLine } from "./players/writeup.ts";
 export type { Player, PlayerStatLine, PlayerSummary, PlayerPosition } from "./types.ts";
 
 export { generateMatchups, circleMethodPairs } from "./schedule/matchups.ts";

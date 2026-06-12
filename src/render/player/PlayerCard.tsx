@@ -25,6 +25,8 @@ interface Props {
   brand?: BrandAssets;
   /** Per-game lines; the card is sized for up to 12 (HNIB event maximum). */
   gameLog?: CardGameLine[];
+  /** Scouting report paragraph rendered like a news panel, space permitting. */
+  writeup?: string;
 }
 
 const MAX_GAMES = 12;
@@ -39,20 +41,25 @@ export function PlayerCard({
   accentColor,
   brand,
   gameLog,
+  writeup,
 }: Props) {
   const pad = Math.round(width * 0.07);
   const bg = bgForSize(brand, width, height);
   const onArt = Boolean(bg);
   // Over the brand artwork (brighter royal blue) the site's dim grays and dark
-  // navy panels clash; switch to the artwork-matched palette there.
+  // navy panels clash; switch to the artwork-matched palette there. All colors
+  // route through this object so a future re-theme is a single edit.
   const C = {
     label: onArt ? ART_COLORS.ice : COLORS.textDim,
     body: onArt ? ART_COLORS.bright : COLORS.textPrimary,
     panelFill: onArt ? ART_COLORS.panel : COLORS.surface,
     panelStroke: onArt ? ART_COLORS.panelBorder : COLORS.border,
     line: onArt ? ART_COLORS.line : COLORS.border,
+    zebra: "rgba(13,22,58,0.62)",
+    totalsFill: "rgba(8,14,40,0.78)",
   };
-  const accent = accentColor || "#3b5998"; // brand royal fallback for the header bar
+  const accent = accentColor || "#3b5998"; // brand royal fallback
+  const accentText = readableOn(accent);
 
   // Header/footer strips are authored at 1080x60; scale with export width.
   const stripH = brand?.cardHeader ? Math.round((width * 60) / 1080) : 0;
@@ -61,52 +68,64 @@ export function PlayerCard({
   const log = (gameLog ?? []).slice(0, MAX_GAMES);
   const hasLog = log.length > 0;
   const isGoalie = summary.isGoalie;
-
-  // GP: prefer the box total; the live API often reports 0, in which case the
-  // game log itself is the truth.
   const gp = summary.gp > 0 ? summary.gp : log.length;
 
-  // ---- type scale -----------------------------------------------------------
-  const nameSize = Math.round(height * 0.055);
-  const subSize = Math.round(height * 0.019);
-  const labelSize = Math.round(height * 0.015);
-  const jerseySize = Math.round(height * 0.085);
+  // ---- type scale ------------------------------------------------------------
+  const nameSize = Math.round(height * 0.052);
+  const labelSize = Math.round(height * 0.0145);
+  const valueSize = Math.round(height * 0.026);
+  const jerseySize = Math.round(height * 0.082);
 
-  // ---- vertical layout ------------------------------------------------------
-  const topPad = stripH + Math.round(height * 0.03);
-  const nameY = topPad + nameSize;
-  const subY = nameY + Math.round(height * 0.032);
+  // ---- hero ------------------------------------------------------------------
+  const heroTop = stripH + Math.round(height * 0.028);
+  const nameY = heroTop + nameSize;
+  const chipH = Math.round(height * 0.028);
+  const chipY = nameY + Math.round(height * 0.016);
+  const chipText = [teamName.toUpperCase(), player.jersey !== null ? `#${player.jersey}` : null]
+    .filter(Boolean)
+    .join("  ");
+  const chipW = Math.round(chipText.length * labelSize * 0.62 + 28);
 
-  // Bio table: two columns of label/value rows.
-  const bioPairs = buildBioPairs(player, gp);
-  const bioRows = Math.ceil(bioPairs.length / 2);
-  const bioRowH = Math.round(height * 0.036);
-  const bioY = subY + Math.round(height * 0.028);
-  const bioH = bioRows * bioRowH;
+  // ---- bio strip (Sleeper style: label over value, columns with dividers) ----
+  const bioEntries = buildBioEntries(player, gp);
+  const bioTop = chipY + chipH + Math.round(height * 0.03);
+  const bioH = Math.round(height * 0.062);
+  const bioColW = (width - pad * 2) / Math.max(bioEntries.length, 1);
 
-  // Statistics table: title bar, header row, game rows, totals row.
-  const titleBarY = bioY + bioH + Math.round(height * 0.035);
-  const titleBarH = Math.round(height * 0.034);
-  const headerRowH = Math.round(height * 0.03);
-  const tableTop = titleBarY + titleBarH + headerRowH;
-  const footerTop = height - (footerStripH || Math.round(height * 0.04));
-  const tableBottomMax = footerTop - Math.round(height * 0.02);
-  const bodyRows = hasLog ? log.length + 1 : 1; // games + TOTALS (or totals only)
-  const rowH = Math.min(
-    Math.round(height * 0.034),
-    Math.max(Math.round(height * 0.022), Math.floor((tableBottomMax - tableTop) / bodyRows)),
-  );
-  const rowFont = Math.round(rowH * 0.55);
-
-  // ---- columns ---------------------------------------------------------------
+  // ---- game logs table ---------------------------------------------------------
   const innerW = width - pad * 2;
+  const logLabelY = bioTop + bioH + Math.round(height * 0.034);
+  const headerRowY = logLabelY + Math.round(height * 0.012);
+  const headerRowH = Math.round(height * 0.028);
+  const tableTop = headerRowY + headerRowH;
+  const footerTop = height - (footerStripH || Math.round(height * 0.04));
+  const bodyRows = (hasLog ? log.length : 0) + 1; // games + TOTALS
+  // Leave room for the scouting report when one is supplied.
+  const reportReserve = writeup ? Math.round(height * 0.17) : 0;
+  const tableBottomMax = footerTop - Math.round(height * 0.02) - reportReserve;
+  const rowH = Math.min(
+    Math.round(height * 0.032),
+    Math.max(Math.round(height * 0.02), Math.floor((tableBottomMax - tableTop) / bodyRows)),
+  );
+  const rowFont = Math.round(rowH * 0.56);
+  const tableBottom = tableTop + bodyRows * rowH;
+
   const numericCols = isGoalie ? ["SHOTS", "SV", "GA"] : ["G", "A", "PTS", "PIM"];
   const oppColW = innerW * (isGoalie ? 0.55 : 0.48);
   const numColW = (innerW - oppColW) / numericCols.length;
   const numColX = (i: number) => pad + oppColW + numColW * (i + 0.5);
-
   const totals = computeTotals(log, summary, isGoalie);
-  const accentText = readableOn(accent);
+
+  // ---- scouting report ---------------------------------------------------------
+  const reportLabelY = tableBottom + Math.round(height * 0.032);
+  const reportFont = Math.round(height * 0.0185);
+  const reportLineH = Math.round(height * 0.025);
+  const reportTextTop = reportLabelY + Math.round(height * 0.012);
+  const reportMaxLines = Math.floor((footerTop - Math.round(height * 0.018) - reportTextTop) / reportLineH);
+  const reportLines = writeup
+    ? wrapSentences(writeup, Math.floor((innerW - 28) / (reportFont * 0.45)), reportMaxLines)
+    : [];
+  const showReport = reportLines.length >= 2;
 
   return (
     <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} xmlns="http://www.w3.org/2000/svg" style={{ display: "block" }}>
@@ -132,72 +151,51 @@ export function PlayerCard({
         <image href={brand.cardFooter} x={0} y={height - footerStripH} width={width} height={footerStripH} preserveAspectRatio="none" />
       )}
 
-      {/* Name block */}
+      {/* Hero: name, team chip, jersey number */}
       <text x={pad} y={nameY} fill={COLORS.white} font-family={FONTS.head} font-size={nameSize} font-weight={600} letter-spacing="0.02em">
         {`${player.firstName} ${player.lastName}`.toUpperCase()}
       </text>
-      {accentColor && (
-        <rect x={pad} y={subY - subSize * 0.85} width={subSize * 0.9} height={subSize * 0.9} rx={2} fill={accentColor} stroke="rgba(255,255,255,0.55)" stroke-width={1} />
-      )}
-      <text
-        x={accentColor ? pad + subSize * 1.4 : pad}
-        y={subY}
-        fill={C.label}
-        font-family={FONTS.body}
-        font-size={subSize}
-        font-weight={700}
-        letter-spacing="0.08em"
-      >
-        {[player.jersey !== null ? `#${player.jersey}` : null, teamName.toUpperCase(), eventName.toUpperCase()]
-          .filter(Boolean)
-          .join("  -  ")}
+      <rect x={pad} y={chipY} width={chipW} height={chipH} rx={4} fill={accent} stroke="rgba(255,255,255,0.35)" stroke-width={1} />
+      <text x={pad + 14} y={chipY + chipH * 0.7} fill={accentText} font-family={FONTS.body} font-size={labelSize} font-weight={700} letter-spacing="0.1em">
+        {chipText}
       </text>
-      <text x={width - pad} y={topPad + jerseySize * 0.78} fill={COLORS.gold} font-family={FONTS.head} font-size={jerseySize} font-weight={700} text-anchor="end">
+      <text x={pad + chipW + 16} y={chipY + chipH * 0.7} fill={C.label} font-family={FONTS.body} font-size={labelSize} font-weight={700} letter-spacing="0.08em">
+        {eventName.toUpperCase()}
+      </text>
+      <text x={width - pad} y={heroTop + jerseySize * 0.78} fill={COLORS.gold} font-family={FONTS.head} font-size={jerseySize} font-weight={700} text-anchor="end">
         {player.jersey !== null ? player.jersey : ""}
       </text>
 
-      {/* Bio table */}
-      <rect x={pad} y={bioY} width={innerW} height={bioH} rx={6} fill={C.panelFill} stroke={C.panelStroke} stroke-width={1} />
-      {bioPairs.map((pair, i) => {
-        const col = i % 2;
-        const row = Math.floor(i / 2);
-        const cellX = pad + col * (innerW / 2);
-        const cellY = bioY + row * bioRowH;
-        const baseline = cellY + bioRowH * 0.66;
+      {/* Bio strip: LABEL over VALUE, divided columns */}
+      {bioEntries.map((entry, i) => {
+        const x = pad + i * bioColW;
+        const valueFont = entry.value.length > 11 ? Math.round(valueSize * 0.78) : valueSize;
         return (
-          <g key={pair[0]}>
-            <text x={cellX + 14} y={baseline} fill={C.label} font-family={FONTS.body} font-size={labelSize} font-weight={700} letter-spacing="0.1em">
-              {pair[0]}
+          <g key={entry.label}>
+            <text x={x} y={bioTop + labelSize} fill={C.label} font-family={FONTS.body} font-size={labelSize} font-weight={700} letter-spacing="0.12em">
+              {entry.label}
             </text>
-            <text x={cellX + innerW / 2 - 14} y={baseline} fill={COLORS.white} font-family={FONTS.body} font-size={labelSize * 1.15} font-weight={600} text-anchor="end">
-              {pair[1]}
+            <text x={x} y={bioTop + labelSize + valueSize + Math.round(height * 0.008)} fill={COLORS.white} font-family={FONTS.body} font-size={valueFont} font-weight={700}>
+              {entry.value}
             </text>
+            {i > 0 && <line x1={x - bioColW * 0.12} y1={bioTop} x2={x - bioColW * 0.12} y2={bioTop + bioH * 0.85} stroke={C.line} stroke-width={1} />}
           </g>
         );
       })}
-      {Array.from({ length: bioRows - 1 }, (_, r) => (
-        <line key={`bd-${r}`} x1={pad} y1={bioY + (r + 1) * bioRowH} x2={pad + innerW} y2={bioY + (r + 1) * bioRowH} stroke={C.line} stroke-width={1} />
-      ))}
-      <line x1={pad + innerW / 2} y1={bioY + 6} x2={pad + innerW / 2} y2={bioY + bioH - 6} stroke={C.line} stroke-width={1} />
 
-      {/* Statistics: title bar */}
-      <rect x={pad} y={titleBarY} width={innerW} height={titleBarH} fill={COLORS.navyDeep} stroke={C.panelStroke} stroke-width={1} />
-      <text x={pad + 14} y={titleBarY + titleBarH * 0.7} fill={COLORS.white} font-family={FONTS.body} font-size={labelSize * 1.1} font-weight={700} letter-spacing="0.12em">
-        {`${player.firstName} ${player.lastName} STATISTICS`.toUpperCase()}
+      {/* Game logs */}
+      <text x={pad} y={logLabelY} fill={C.label} font-family={FONTS.body} font-size={labelSize * 1.1} font-weight={700} letter-spacing="0.14em">
+        GAME LOGS
       </text>
-
-      {/* Header row in the team color */}
-      <rect x={pad} y={titleBarY + titleBarH} width={innerW} height={headerRowH} fill={accent} />
-      <text x={pad + 14} y={titleBarY + titleBarH + headerRowH * 0.7} fill={accentText} font-family={FONTS.body} font-size={labelSize} font-weight={700} letter-spacing="0.1em">
+      <rect x={pad} y={headerRowY} width={innerW} height={headerRowH} fill={accent} />
+      <text x={pad + 14} y={headerRowY + headerRowH * 0.7} fill={accentText} font-family={FONTS.body} font-size={labelSize} font-weight={700} letter-spacing="0.1em">
         OPPONENT
       </text>
       {numericCols.map((c, i) => (
-        <text key={c} x={numColX(i)} y={titleBarY + titleBarH + headerRowH * 0.7} fill={accentText} font-family={FONTS.body} font-size={labelSize} font-weight={700} letter-spacing="0.1em" text-anchor="middle">
+        <text key={c} x={numColX(i)} y={headerRowY + headerRowH * 0.7} fill={accentText} font-family={FONTS.body} font-size={labelSize} font-weight={700} letter-spacing="0.1em" text-anchor="middle">
           {c}
         </text>
       ))}
-
-      {/* Game rows with zebra striping */}
       {hasLog &&
         log.map((line, i) => {
           const y = tableTop + i * rowH;
@@ -206,7 +204,7 @@ export function PlayerCard({
             : [line.goals, line.assists, line.points, line.pim];
           return (
             <g key={`${line.opponent}-${i}`}>
-              <rect x={pad} y={y} width={innerW} height={rowH} fill={i % 2 === 0 ? C.panelFill : "rgba(13,22,58,0.62)"} />
+              <rect x={pad} y={y} width={innerW} height={rowH} fill={i % 2 === 0 ? C.panelFill : C.zebra} />
               <text x={pad + 14} y={y + rowH * 0.68} fill={C.body} font-family={FONTS.body} font-size={rowFont} font-weight={500}>
                 {(line.opponent || "-").toUpperCase()}
               </text>
@@ -218,10 +216,8 @@ export function PlayerCard({
             </g>
           );
         })}
-
-      {/* Totals row */}
       <g>
-        <rect x={pad} y={tableTop + (hasLog ? log.length : 0) * rowH} width={innerW} height={rowH} fill="rgba(8,14,40,0.78)" stroke={C.panelStroke} stroke-width={1} />
+        <rect x={pad} y={tableTop + (hasLog ? log.length : 0) * rowH} width={innerW} height={rowH} fill={C.totalsFill} stroke={C.panelStroke} stroke-width={1} />
         <text x={pad + 14} y={tableTop + (hasLog ? log.length : 0) * rowH + rowH * 0.68} fill={COLORS.gold} font-family={FONTS.body} font-size={rowFont} font-weight={700} letter-spacing="0.08em">
           TOTALS{gp > 0 ? ` - ${gp} GP` : ""}
         </text>
@@ -232,7 +228,21 @@ export function PlayerCard({
         ))}
       </g>
 
-      {/* Footer - sits on the brand strip when present, baseline-padded otherwise */}
+      {/* Scouting report (the "latest news" panel) */}
+      {showReport && (
+        <g>
+          <text x={pad} y={reportLabelY} fill={C.label} font-family={FONTS.body} font-size={labelSize * 1.1} font-weight={700} letter-spacing="0.14em">
+            SCOUTING REPORT
+          </text>
+          {reportLines.map((ln, i) => (
+            <text key={i} x={pad} y={reportTextTop + (i + 1) * reportLineH} fill={C.body} font-family={FONTS.body} font-size={reportFont} font-weight={400}>
+              {ln}
+            </text>
+          ))}
+        </g>
+      )}
+
+      {/* Footer - sits on the brand strip when present */}
       <text
         x={pad}
         y={footerStripH ? height - footerStripH * 0.38 : height - Math.round(height * 0.02)}
@@ -259,32 +269,71 @@ export function PlayerCard({
   );
 }
 
-function buildBioPairs(player: Player, gp: number): Array<[string, string]> {
-  const pairs: Array<[string, string]> = [];
-  if (player.position) pairs.push(["POSITION", positionLabel(player.position)]);
-  if (player.classYear) pairs.push(["CLASS", String(player.classYear)]);
-  if (player.heightInches) pairs.push(["HEIGHT", formatHeight(player.heightInches)]);
-  if (player.shoots) pairs.push(["SHOOTS", player.shoots]);
-  if (player.hometown) pairs.push(["HOMETOWN", player.hometown.toUpperCase()]);
-  if (gp > 0) pairs.push(["GAMES PLAYED", String(gp)]);
-  return pairs.slice(0, 6);
+function buildBioEntries(player: Player, gp: number): Array<{ label: string; value: string }> {
+  const entries: Array<{ label: string; value: string }> = [];
+  if (player.classYear) entries.push({ label: "CLASS", value: String(player.classYear) });
+  if (player.heightInches) entries.push({ label: "HEIGHT", value: formatHeight(player.heightInches) });
+  if (player.position) entries.push({ label: "POS", value: player.position });
+  if (player.shoots) entries.push({ label: "SHOOTS", value: player.shoots });
+  if (player.hometown) entries.push({ label: "HOMETOWN", value: player.hometown.toUpperCase() });
+  if (gp > 0) entries.push({ label: "GP", value: String(gp) });
+  return entries.slice(0, 5);
 }
 
 function computeTotals(log: CardGameLine[], summary: PlayerSummary, isGoalie: boolean): number[] {
   if (log.length > 0) {
-    // The log is internally consistent; sum it.
     const sum = (f: (l: CardGameLine) => number) => log.reduce((a, l) => a + f(l), 0);
     return isGoalie
       ? [sum((l) => l.shots), sum((l) => l.saves), sum((l) => Math.max(0, l.shots - l.saves))]
       : [sum((l) => l.goals), sum((l) => l.assists), sum((l) => l.points), sum((l) => l.pim)];
   }
   return isGoalie
-    ? [summary.saves !== undefined && summary.goalsAgainst !== undefined ? summary.saves + summary.goalsAgainst : 0, summary.saves ?? 0, summary.goalsAgainst ?? 0]
+    ? [
+        summary.saves !== undefined && summary.goalsAgainst !== undefined ? summary.saves + summary.goalsAgainst : 0,
+        summary.saves ?? 0,
+        summary.goalsAgainst ?? 0,
+      ]
     : [summary.goals, summary.assists, summary.points, summary.pim];
 }
 
-// Choose navy or white text for legibility on the team-color header bar, so a
-// white or pale jersey color cannot produce white-on-white.
+/**
+ * Wrap text into lines of at most maxChars, adding whole sentences while they
+ * fit so a tight card truncates cleanly at a sentence boundary.
+ */
+function wrapSentences(text: string, maxChars: number, maxLines: number): string[] {
+  if (maxLines < 1 || maxChars < 8) return [];
+  const sentences = text.match(/[^.!?]+[.!?]+/g) ?? [text];
+  let accepted = "";
+  let lines: string[] = [];
+  for (const sentence of sentences) {
+    const attempt = (accepted ? `${accepted} ` : "") + sentence.trim();
+    const wrapped = wrapWords(attempt, maxChars);
+    if (wrapped.length > maxLines) break;
+    accepted = attempt;
+    lines = wrapped;
+  }
+  return lines;
+}
+
+function wrapWords(text: string, maxChars: number): string[] {
+  const lines: string[] = [];
+  let current = "";
+  for (const word of text.split(/\s+/)) {
+    if (current === "") {
+      current = word;
+    } else if (current.length + 1 + word.length <= maxChars) {
+      current += ` ${word}`;
+    } else {
+      lines.push(current);
+      current = word;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
+// Choose navy or white text for legibility on the team-color fills, so a white
+// or pale jersey color cannot produce white-on-white.
 function readableOn(hex: string): string {
   const m = hex.match(/^#([0-9a-f]{6})$/i);
   if (!m) return COLORS.white;
@@ -294,10 +343,6 @@ function readableOn(hex: string): string {
   const b = n & 255;
   const luma = 0.299 * r + 0.587 * g + 0.114 * b;
   return luma > 150 ? COLORS.navyDeep : COLORS.white;
-}
-
-function positionLabel(p: Player["position"]): string {
-  return p === "G" ? "GOALTENDER" : p === "D" ? "DEFENSE" : "FORWARD";
 }
 
 function formatHeight(inches: number): string {

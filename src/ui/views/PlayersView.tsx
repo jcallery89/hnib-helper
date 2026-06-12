@@ -3,6 +3,7 @@ import type { Dataset, EventLeaders, PlayerGameLine } from "../../io/dataset.ts"
 import { fetchPlayerGameLog } from "../../io/sync.ts";
 import type { Player, PlayerSummary } from "../../engine/types.ts";
 import { summarizePlayers, sortByScoring } from "../../engine/players/summary.ts";
+import { generateWriteup } from "../../engine/players/writeup.ts";
 import { importPlayerStatsCsv, importRosterCsv } from "../../io/importPlayers.ts";
 import { PlayerCard } from "../../render/player/PlayerCard.tsx";
 import { EXPORT_SIZES } from "../../render/bracket/theme.ts";
@@ -43,6 +44,19 @@ export function PlayersView({ dataset, update }: Props) {
   const selected =
     teamPlayers.find((p) => p.id === selectedPlayerId) ?? skaters[0]?.player ?? teamPlayers[0] ?? null;
   const team = teams.find((t) => t.id === teamId);
+
+  const selectedSummary = selected ? summaries.get(selected.id) : undefined;
+  const generatedWriteup =
+    selected && selectedSummary
+      ? generateWriteup({
+          player: selected,
+          summary: selectedSummary,
+          teamName: team?.name ?? "",
+          eventName: dataset.event.name,
+          gameLog: dataset.playerGameLogs?.[selected.id],
+        })
+      : "";
+  const writeup = (selected ? dataset.playerWriteups?.[selected.id] : undefined) ?? generatedWriteup;
 
   function doImportRoster() {
     const result = importRosterCsv(dataset, rosterText);
@@ -203,6 +217,7 @@ export function PlayersView({ dataset, update }: Props) {
               accentColor={team?.colorPrimary}
               brand={brand}
               gameLog={dataset.playerGameLogs?.[selected.id]}
+              writeup={writeup}
             />
           </div>
           <div style={{ position: "absolute", left: -99999, top: 0 }} aria-hidden="true">
@@ -217,6 +232,7 @@ export function PlayersView({ dataset, update }: Props) {
                 accentColor={team?.colorPrimary}
                 brand={brand}
                 gameLog={dataset.playerGameLogs?.[selected.id]}
+                writeup={writeup}
               />
             </div>
           </div>
@@ -233,6 +249,40 @@ export function PlayersView({ dataset, update }: Props) {
             log={dataset.playerGameLogs?.[selected.id]}
             update={update}
           />
+        </div>
+      )}
+
+      {selected && (
+        <div class="card">
+          <p class="section-title">Scouting Report</p>
+          <p class="note">
+            Generated from registration info, totals, and the game log. Edit freely - your version
+            is kept and appears on the card export. Reset returns to the generated text.
+          </p>
+          <textarea
+            style={{ width: "100%", height: 90 }}
+            value={writeup}
+            onInput={(e) => {
+              const v = (e.target as HTMLTextAreaElement).value;
+              update((d) => {
+                d.playerWriteups = { ...(d.playerWriteups ?? {}), [selected.id]: v };
+              });
+            }}
+          />
+          {dataset.playerWriteups?.[selected.id] !== undefined && (
+            <div class="toolbar" style={{ marginTop: 8 }}>
+              <button
+                class="btn"
+                onClick={() =>
+                  update((d) => {
+                    if (d.playerWriteups) delete d.playerWriteups[selected.id];
+                  })
+                }
+              >
+                Reset to generated
+              </button>
+            </div>
+          )}
         </div>
       )}
     </section>

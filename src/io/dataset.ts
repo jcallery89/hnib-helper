@@ -47,4 +47,6 @@ export interface Dataset {
   leaders?: EventLeaders;
   /** Game-by-game lines fetched on demand, keyed by player id. */
   playerGameLogs?: Record<string, PlayerGameLine[]>;
+  /** Hand-edited scouting writeups, keyed by player id (overrides generated). */
+  playerWriteups?: Record<string, string>;
 }
