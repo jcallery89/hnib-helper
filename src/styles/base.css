@@ -8,11 +8,11 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: var(--hnib-navy-deep);
-  color: var(--hnib-text-primary);
+  background: var(--hnib-bg);
+  color: var(--hnib-navy);
   font-family: var(--hnib-font-body);
   font-weight: 400;
-  line-height: 1.65;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -22,7 +22,7 @@ h3 {
   font-family: var(--hnib-font-head);
   font-weight: 600;
   text-transform: uppercase;
-  color: var(--hnib-white);
+  color: var(--hnib-navy);
   letter-spacing: 0.02em;
   line-height: 1.05;
   margin: 0;
@@ -43,7 +43,7 @@ h3 {
 
 header.masthead {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: var(--sp-3);
   padding: var(--sp-3) 0 var(--sp-2);
@@ -68,13 +68,16 @@ header.masthead h1 {
   color: var(--hnib-text-dim);
 }
 
-/* Tabs */
+/* Tabs - app-style bottom-nav feel, underline active */
 .tabs {
   display: flex;
   flex-wrap: wrap;
   gap: var(--sp-1);
-  border-bottom: 1px solid var(--hnib-border);
+  border-bottom: 1px solid var(--hnib-line);
   margin: var(--sp-4) 0;
+  background: var(--hnib-card);
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 0 var(--sp-2);
 }
 
 .tab {
@@ -86,34 +89,33 @@ header.masthead h1 {
   background: transparent;
   color: var(--hnib-text-dim);
   border: none;
-  border-bottom: 2px solid transparent;
+  border-bottom: 3px solid transparent;
   padding: var(--sp-2) var(--sp-3);
   cursor: pointer;
   transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
 }
 
 .tab:hover {
-  color: var(--hnib-ice);
+  color: var(--hnib-royal);
 }
 
 .tab.active {
-  color: var(--hnib-white);
-  border-bottom-color: var(--hnib-gold);
+  color: var(--hnib-royal);
+  border-bottom-color: var(--hnib-royal);
 }
 
-/* Cards */
+/* Cards - white, app style */
 .card {
-  background: var(--hnib-surface);
-  border: 1px solid var(--hnib-border);
-  border-left: 3px solid var(--hnib-ice);
+  background: var(--hnib-card);
+  border: 1px solid var(--hnib-line);
   border-radius: var(--radius);
   padding: var(--sp-3);
   margin-bottom: var(--sp-3);
-  backdrop-filter: blur(4px);
+  box-shadow: 0 1px 3px rgba(28, 38, 96, 0.06);
 }
 
 .card.premium {
-  border-left-color: var(--hnib-gold);
+  border-top: 3px solid var(--hnib-royal);
 }
 
 .section-title {
@@ -121,7 +123,7 @@ header.masthead h1 {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--hnib-white);
+  color: var(--hnib-royal);
   font-size: 1rem;
   margin: 0 0 var(--sp-2);
 }
@@ -132,29 +134,36 @@ header.masthead h1 {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  border-radius: var(--radius);
-  border: 1px solid var(--hnib-border);
+  border-radius: 6px;
+  border: 1px solid var(--hnib-line);
   padding: var(--sp-2) var(--sp-3);
   cursor: pointer;
-  background: transparent;
-  color: var(--hnib-ice);
+  background: var(--hnib-card);
+  color: var(--hnib-royal);
   transition: transform 0.2s var(--ease), background 0.2s var(--ease);
 }
 
 .btn:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
+  background: var(--hnib-zebra);
 }
 
 .btn.primary {
-  background: var(--hnib-gold);
-  color: var(--hnib-navy-deep);
-  border-color: var(--hnib-gold);
+  background: var(--hnib-royal);
+  color: var(--hnib-white);
+  border-color: var(--hnib-royal);
 }
 
 .btn.secondary {
-  background: linear-gradient(90deg, var(--hnib-blue), var(--hnib-ice));
-  color: var(--hnib-navy-deep);
-  border: none;
+  background: var(--hnib-navy);
+  color: var(--hnib-white);
+  border-color: var(--hnib-navy);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+  transform: none;
 }
 
 /* Tables */
@@ -168,7 +177,11 @@ table.grid th,
 table.grid td {
   text-align: left;
   padding: var(--sp-2);
-  border-bottom: 1px solid var(--hnib-border);
+  border-bottom: 1px solid var(--hnib-line);
+}
+
+table.grid tbody tr:nth-child(even) {
+  background: var(--hnib-zebra);
 }
 
 table.grid th {
@@ -177,7 +190,7 @@ table.grid th {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   font-size: 0.72rem;
-  color: var(--hnib-text-dim);
+  color: var(--hnib-royal);
 }
 
 table.grid td.num,
@@ -188,10 +201,10 @@ table.grid th.num {
 
 .score-input {
   width: 48px;
-  background: var(--hnib-navy-deep);
-  border: 1px solid var(--hnib-border);
+  background: var(--hnib-card);
+  border: 1px solid var(--hnib-line);
   border-radius: 4px;
-  color: var(--hnib-white);
+  color: var(--hnib-navy);
   padding: 4px 6px;
   font-family: var(--hnib-font-body);
   text-align: center;
@@ -199,16 +212,19 @@ table.grid th.num {
 
 select,
 input[type="text"],
-input[type="time"] {
-  background: var(--hnib-navy-deep);
-  border: 1px solid var(--hnib-border);
+input[type="time"],
+input[type="number"],
+input[type="datetime-local"],
+textarea {
+  background: var(--hnib-card);
+  border: 1px solid var(--hnib-line);
   border-radius: 4px;
-  color: var(--hnib-white);
+  color: var(--hnib-navy);
   padding: 6px 8px;
   font-family: var(--hnib-font-body);
 }
 
-/* Badges */
+/* Badges - app-style status pills */
 .badge {
   display: inline-block;
   font-family: var(--hnib-font-body);
@@ -216,29 +232,29 @@ input[type="time"] {
   text-transform: uppercase;
   letter-spacing: 0.1em;
   font-size: 0.66rem;
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: 2px 10px;
+  border-radius: 10px;
 }
 
 .badge.auto {
-  background: var(--hnib-gold);
-  color: var(--hnib-navy-deep);
+  background: var(--hnib-royal);
+  color: var(--hnib-white);
 }
 
 .badge.wildcard {
   background: transparent;
-  border: 1px solid var(--hnib-ice);
-  color: var(--hnib-ice);
+  border: 1px solid var(--hnib-royal);
+  color: var(--hnib-royal);
 }
 
 .badge.advancing {
-  background: rgba(61, 220, 132, 0.15);
-  color: var(--hnib-green);
+  background: var(--hnib-royal);
+  color: var(--hnib-white);
 }
 
 .badge.eliminated {
-  background: rgba(224, 82, 82, 0.15);
-  color: var(--hnib-red);
+  background: var(--hnib-red);
+  color: var(--hnib-white);
 }
 
 .note {
@@ -247,7 +263,7 @@ input[type="time"] {
 }
 
 .warn {
-  color: var(--hnib-gold);
+  color: var(--hnib-red);
   font-size: 0.85rem;
 }
 
@@ -270,9 +286,10 @@ input[type="time"] {
 }
 
 .bracket-preview {
-  border: 1px solid var(--hnib-border);
+  border: 1px solid var(--hnib-line);
   border-radius: var(--radius);
   overflow: hidden;
+  box-shadow: 0 1px 3px rgba(28, 38, 96, 0.06);
 }
 
 .bracket-preview svg {
@@ -284,7 +301,7 @@ input[type="time"] {
 footer.foot {
   margin-top: var(--sp-6);
   padding-top: var(--sp-3);
-  border-top: 1px solid var(--hnib-border);
+  border-top: 1px solid var(--hnib-line);
   color: var(--hnib-text-dim);
   font-size: 0.8rem;
 }

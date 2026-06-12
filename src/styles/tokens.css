@@ -1,29 +1,20 @@
 :root {
-  /* Backgrounds */
-  --hnib-navy-deep: #111e3f; /* primary background, the brand anchor */
-  --hnib-navy: #1a2856;
-  --hnib-navy-mid: #24366b;
-  --hnib-surface: rgba(30, 46, 86, 0.45); /* frosted card surface */
-  --hnib-surface-solid: #1e2e56;
-  --hnib-border: #263a66;
+  /* Light theme matched to the HNIB mobile app (June 2026): white cards on a
+     pale blue-gray page, royal blue accents, deep navy text. The navy/royal
+     values are the brand asset pack's own. */
+  --hnib-navy: #1c2660; /* primary text, header bars */
+  --hnib-royal: #344eaa; /* accents, links, section labels */
+  --hnib-bg: #eef1f7; /* page background */
+  --hnib-card: #ffffff;
+  --hnib-line: #dde3f0; /* borders / dividers */
+  --hnib-zebra: #f3f6fb;
+  --hnib-text-dim: #6b7798;
 
-  /* Accents */
-  --hnib-blue: #2e4a8a;
-  --hnib-royal: #3b5998;
-  --hnib-ice: #a8cce0; /* secondary accent, links */
-  --hnib-ice-light: #c5ddf0;
-  --hnib-ice-pale: #dae8f3;
-  --hnib-ice-frost: #eaf2f8;
-
-  /* Text */
+  /* Status / functional */
+  --hnib-gold: #d4a843; /* champion / premium accents only */
+  --hnib-green: #1da95c; /* final / advancing */
+  --hnib-red: #d6453d; /* in progress / eliminated */
   --hnib-white: #ffffff;
-  --hnib-text-primary: #c0cfe0;
-  --hnib-text-dim: #7a8daa;
-
-  /* Status / Functional */
-  --hnib-gold: #d4a843; /* primary CTA, winners, premium accent */
-  --hnib-green: #3ddc84; /* advancing / active */
-  --hnib-red: #e05252; /* eliminated / error */
 
   --hnib-font-head: "Teko", sans-serif;
   --hnib-font-body: "Barlow Condensed", sans-serif;
@@ -36,6 +27,6 @@
   --sp-5: 32px;
   --sp-6: 48px;
 
-  --radius: 6px;
+  --radius: 8px;
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
 }

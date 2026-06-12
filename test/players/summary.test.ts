@@ -46,26 +46,19 @@ describe("PlayerCard render", () => {
     expect(svg).toContain("GET SEEN. GET RECRUITED.");
   });
 
-  it("embeds the brand background and strips when assets are provided", () => {
+  it("embeds the brand strips and watermark when assets are provided", () => {
     const summary = summarizePlayers([skater], [{ playerId: "p1", gameId: null, gp: 7, goals: 8, assists: 6 }])[0];
     const brand = {
-      bgSquare: "data:image/png;base64,BG",
-      bgStory: "data:image/png;base64,STORY",
+      watermarkNavy: "data:image/png;base64,WM",
       cardHeader: "data:image/png;base64,HEAD",
       cardFooter: "data:image/png;base64,FOOT",
     };
     const square = renderToString(
       h(PlayerCard, { width: 1080, height: 1080, player: skater, summary, teamName: "Middlesex", eventName: "Event", brand }),
     );
-    expect(square).toContain("base64,BG");
+    expect(square).toContain("base64,WM");
     expect(square).toContain("base64,HEAD");
     expect(square).toContain("base64,FOOT");
-
-    // Story aspect picks the story background.
-    const story = renderToString(
-      h(PlayerCard, { width: 1080, height: 1920, player: skater, summary, teamName: "Middlesex", eventName: "Event", brand }),
-    );
-    expect(story).toContain("base64,STORY");
   });
 
   it("renders the game-by-game table capped at 12 games with a totals row", () => {

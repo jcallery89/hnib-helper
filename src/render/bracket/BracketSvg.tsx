@@ -1,7 +1,7 @@
 import type { BracketGame } from "../../engine/types.ts";
 import { computeLayout, type CellBox } from "./layout.ts";
-import { ART_COLORS, COLORS, FONTS } from "./theme.ts";
-import { bgForSize, LOGO_ASPECT, type BrandAssets } from "../brand.ts";
+import { COLORS, FONTS } from "./theme.ts";
+import { LOGO_ASPECT, type BrandAssets } from "../brand.ts";
 
 interface Props {
   width: number;
@@ -23,21 +23,14 @@ export function BracketSvg({ width, height, title, bracket, nameById, brand }: P
   const nameSize = Math.round(layout.rowH * 0.5);
 
   const margin = Math.round(width * 0.045);
-  const bg = bgForSize(brand, width, height);
-  const onArt = Boolean(bg);
-  // Over the brand artwork the site's dim grays and dark borders disappear;
-  // switch to the artwork-matched palette there.
-  const C = {
-    label: onArt ? ART_COLORS.ice : COLORS.textDim,
-    line: onArt ? ART_COLORS.line : COLORS.border,
-    cellFill: onArt ? ART_COLORS.panel : COLORS.surface,
-    cellStroke: onArt ? ART_COLORS.panelBorder : COLORS.border,
-    body: onArt ? ART_COLORS.bright : COLORS.textPrimary,
-  };
-  // White shield logo top-left; the title shifts right to sit beside it.
-  const logoH = brand?.logoWhite ? Math.round(titleSize * 1.5) : 0;
+  // Navy shield logo top-left; the title shifts right to sit beside it.
+  const logoH = brand?.logoNavy ? Math.round(titleSize * 1.5) : 0;
   const logoW = Math.round(logoH * LOGO_ASPECT);
-  const titleX = brand?.logoWhite ? margin + logoW + Math.round(width * 0.015) : margin;
+  const titleX = brand?.logoNavy ? margin + logoW + Math.round(width * 0.015) : margin;
+
+  // Subtle navy watermark anchored bottom-right.
+  const wmW = Math.round(width * 0.5);
+  const wmH = Math.round(wmW / LOGO_ASPECT);
 
   return (
     <svg
@@ -47,9 +40,16 @@ export function BracketSvg({ width, height, title, bracket, nameById, brand }: P
       xmlns="http://www.w3.org/2000/svg"
       style={{ display: "block" }}
     >
-      <rect x={0} y={0} width={width} height={height} fill={COLORS.navyDeep} />
-      {bg && (
-        <image href={bg} x={0} y={0} width={width} height={height} preserveAspectRatio="xMidYMid slice" />
+      <rect x={0} y={0} width={width} height={height} fill={COLORS.card} />
+      {brand?.watermarkNavy && (
+        <image
+          href={brand.watermarkNavy}
+          x={width - wmW + Math.round(width * 0.06)}
+          y={height - wmH - Math.round(height * 0.05)}
+          width={wmW}
+          height={wmH}
+          preserveAspectRatio="xMaxYMax meet"
+        />
       )}
 
       {/* Signature gradient bar */}
@@ -63,9 +63,9 @@ export function BracketSvg({ width, height, title, bracket, nameById, brand }: P
       </defs>
       <rect x={0} y={0} width={width} height={3} fill="url(#sigbar)" />
 
-      {brand?.logoWhite && (
+      {brand?.logoNavy && (
         <image
-          href={brand.logoWhite}
+          href={brand.logoNavy}
           x={margin}
           y={layout.headerY + titleSize - logoH + Math.round(titleSize * 0.18)}
           width={logoW}
@@ -76,7 +76,7 @@ export function BracketSvg({ width, height, title, bracket, nameById, brand }: P
       <text
         x={titleX}
         y={layout.headerY + titleSize}
-        fill={COLORS.white}
+        fill={COLORS.navy}
         font-family={FONTS.head}
         font-size={titleSize}
         font-weight={600}
@@ -91,7 +91,7 @@ export function BracketSvg({ width, height, title, bracket, nameById, brand }: P
           key={c.text}
           x={c.x}
           y={layout.labelY}
-          fill={C.label}
+          fill={COLORS.royal}
           font-family={FONTS.body}
           font-size={labelSize}
           font-weight={700}
@@ -110,7 +110,7 @@ export function BracketSvg({ width, height, title, bracket, nameById, brand }: P
             key={`cn-${i}`}
             d={`M ${cn.x1} ${cn.y1} H ${midX} V ${cn.y2} H ${cn.x2}`}
             fill="none"
-            stroke={C.line}
+            stroke={COLORS.line}
             stroke-width={2}
           />
         );
@@ -125,20 +125,17 @@ export function BracketSvg({ width, height, title, bracket, nameById, brand }: P
           seedSize,
           nameSize,
           rowH: layout.rowH,
-          cellFill: C.cellFill,
-          cellStroke: C.cellStroke,
-          body: C.body,
         });
       })}
 
       {/* Champion */}
-      {renderChampion(layout.champion, championId, nameById, nameSize, C.cellFill, C.cellStroke, C.label)}
+      {renderChampion(layout.champion, championId, nameById, nameSize)}
 
       {/* Footer */}
       <text
-        x={Math.round(width * 0.045)}
+        x={margin}
         y={layout.footerY}
-        fill={C.label}
+        fill={COLORS.textDim}
         font-family={FONTS.body}
         font-size={labelSize}
         letter-spacing="0.08em"
@@ -146,9 +143,9 @@ export function BracketSvg({ width, height, title, bracket, nameById, brand }: P
         @hockey.night
       </text>
       <text
-        x={width - Math.round(width * 0.045)}
+        x={width - margin}
         y={layout.footerY}
-        fill={COLORS.ice}
+        fill={COLORS.royal}
         font-family={FONTS.body}
         font-size={labelSize}
         letter-spacing="0.08em"
@@ -165,9 +162,6 @@ interface CellOpts {
   seedSize: number;
   nameSize: number;
   rowH: number;
-  cellFill: string;
-  cellStroke: string;
-  body: string;
 }
 
 function renderCell(cell: CellBox, game: BracketGame, opts: CellOpts) {
@@ -182,9 +176,9 @@ function renderCell(cell: CellBox, game: BracketGame, opts: CellOpts) {
         width={cell.w}
         height={cell.h}
         rx={6}
-        fill={opts.cellFill}
-        stroke={opts.cellStroke}
-        stroke-width={1}
+        fill={COLORS.card}
+        stroke={COLORS.line}
+        stroke-width={1.5}
       />
       {teamRow(cell, cell.y, game.highSeed, game.highTeamId, game.highScore, game.winnerTeamId, opts)}
       <line
@@ -192,7 +186,7 @@ function renderCell(cell: CellBox, game: BracketGame, opts: CellOpts) {
         y1={cell.y + rowH}
         x2={cell.x + cell.w}
         y2={cell.y + rowH}
-        stroke={opts.cellStroke}
+        stroke={COLORS.line}
         stroke-width={1}
       />
       {teamRow(cell, cell.y + rowH, game.lowSeed, game.lowTeamId, game.lowScore, game.winnerTeamId, opts)}
@@ -200,7 +194,7 @@ function renderCell(cell: CellBox, game: BracketGame, opts: CellOpts) {
         <text
           x={cell.x + cell.w - 6}
           y={cell.y + cell.h - 5}
-          fill={COLORS.ice}
+          fill={COLORS.royal}
           font-family={FONTS.body}
           font-size={opts.seedSize}
           font-weight={700}
@@ -224,8 +218,6 @@ function teamRow(
 ) {
   const isWinner = teamId !== null && teamId === winnerTeamId;
   const name = teamId ? opts.nameById(teamId) : "-";
-  const accent = isWinner ? COLORS.gold : COLORS.ice;
-  const textColor = isWinner ? COLORS.white : opts.body;
   return (
     <g>
       {isWinner && (
@@ -234,7 +226,7 @@ function teamRow(
       <text
         x={cell.x + 12}
         y={rowY + opts.rowH * 0.66}
-        fill={accent}
+        fill={isWinner ? COLORS.gold : COLORS.royal}
         font-family={FONTS.body}
         font-size={opts.seedSize}
         font-weight={700}
@@ -245,17 +237,17 @@ function teamRow(
       <text
         x={cell.x + 12 + opts.seedSize + 8}
         y={rowY + opts.rowH * 0.66}
-        fill={textColor}
+        fill={COLORS.navy}
         font-family={FONTS.body}
         font-size={opts.nameSize}
-        font-weight={isWinner ? 600 : 400}
+        font-weight={isWinner ? 700 : 400}
       >
         {name}
       </text>
       <text
         x={cell.x + cell.w - 12}
         y={rowY + opts.rowH * 0.66}
-        fill={textColor}
+        fill={COLORS.navy}
         font-family={FONTS.body}
         font-size={opts.nameSize}
         font-weight={700}
@@ -272,9 +264,6 @@ function renderChampion(
   championId: string | null,
   nameById: (id: string) => string,
   nameSize: number,
-  cellFill: string,
-  cellStroke: string,
-  label: string,
 ) {
   return (
     <g>
@@ -284,14 +273,14 @@ function renderChampion(
         width={box.w}
         height={box.h}
         rx={6}
-        fill={championId ? COLORS.gold : cellFill}
-        stroke={championId ? COLORS.gold : cellStroke}
-        stroke-width={1}
+        fill={championId ? COLORS.gold : COLORS.card}
+        stroke={championId ? COLORS.gold : COLORS.line}
+        stroke-width={1.5}
       />
       <text
         x={box.x + box.w / 2}
         y={box.y + box.h * 0.62}
-        fill={championId ? COLORS.navyDeep : label}
+        fill={championId ? COLORS.navy : COLORS.textDim}
         font-family={FONTS.head}
         font-size={nameSize * 1.05}
         font-weight={600}

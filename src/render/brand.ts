@@ -4,35 +4,35 @@
 // URLs once and cached, so the rasterized PNG always embeds the artwork
 // regardless of how the exporter resolves external references. The raw bundled
 // URLs are also exported for plain <img> use in the UI chrome.
+//
+// The tool runs the light app theme, so the navy logo and the navy watermark
+// (the pack's "for light backgrounds" variants) are the ones bundled.
 
-import logoWhiteUrl from "../assets/brand/logo_white_transparent.png";
+import logoNavyUrl from "../assets/brand/logo_navy_transparent.png";
 import cardHeaderUrl from "../assets/brand/cardheader_1080x60.png";
 import cardFooterUrl from "../assets/brand/cardfooter_1080x60.png";
-import bgSquareUrl from "../assets/brand/bg_square_1080x1080.png";
-import bgStoryUrl from "../assets/brand/bg_story_1080x1920.png";
+import watermarkNavyUrl from "../assets/brand/watermark_navy_8pct.png";
 
 export interface BrandAssets {
-  logoWhite?: string;
+  logoNavy?: string;
   cardHeader?: string;
   cardFooter?: string;
-  bgSquare?: string;
-  bgStory?: string;
+  watermarkNavy?: string;
 }
 
 /** Raw bundled asset URLs for normal <img> tags in the UI. */
 export const brandUrls = {
-  logoWhite: logoWhiteUrl,
+  logoNavy: logoNavyUrl,
 };
 
-/** White shield logo aspect ratio (1024 x 720), for sizing <image> boxes. */
+/** Shield logo / watermark aspect ratio (1024 x 720), for sizing <image> boxes. */
 export const LOGO_ASPECT = 1024 / 720;
 
 const SOURCES: Record<keyof BrandAssets, string> = {
-  logoWhite: logoWhiteUrl,
+  logoNavy: logoNavyUrl,
   cardHeader: cardHeaderUrl,
   cardFooter: cardFooterUrl,
-  bgSquare: bgSquareUrl,
-  bgStory: bgStoryUrl,
+  watermarkNavy: watermarkNavyUrl,
 };
 
 let cache: Promise<BrandAssets> | null = null;
@@ -52,12 +52,6 @@ export function loadBrandAssets(): Promise<BrandAssets> {
     })();
   }
   return cache;
-}
-
-/** Pick the background that best matches the export aspect ratio. */
-export function bgForSize(brand: BrandAssets | undefined, width: number, height: number): string | undefined {
-  if (!brand) return undefined;
-  return height / width >= 1.5 ? brand.bgStory ?? brand.bgSquare : brand.bgSquare;
 }
 
 async function toDataUrl(url: string): Promise<string | undefined> {

@@ -83,7 +83,7 @@ export function App() {
       <div class="gradient-bar" />
       <header class="masthead">
         <div class="row" style={{ gap: 14 }}>
-          <img class="masthead-logo" src={brandUrls.logoWhite} alt="HNIB" />
+          <img class="masthead-logo" src={brandUrls.logoNavy} alt="HNIB" />
           <h1>{dataset.event.name}</h1>
         </div>
         <span class="meta">

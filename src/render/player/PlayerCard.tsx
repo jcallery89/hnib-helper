@@ -1,6 +1,6 @@
 import type { Player, PlayerSummary } from "../../engine/types.ts";
-import { ART_COLORS, COLORS, FONTS } from "../bracket/theme.ts";
-import { bgForSize, type BrandAssets } from "../brand.ts";
+import { COLORS, FONTS } from "../bracket/theme.ts";
+import { LOGO_ASPECT, type BrandAssets } from "../brand.ts";
 
 // Structurally identical to io/dataset's PlayerGameLine; declared locally so
 // the render layer stays free of io imports.
@@ -44,21 +44,7 @@ export function PlayerCard({
   writeup,
 }: Props) {
   const pad = Math.round(width * 0.07);
-  const bg = bgForSize(brand, width, height);
-  const onArt = Boolean(bg);
-  // Over the brand artwork (brighter royal blue) the site's dim grays and dark
-  // navy panels clash; switch to the artwork-matched palette there. All colors
-  // route through this object so a future re-theme is a single edit.
-  const C = {
-    label: onArt ? ART_COLORS.ice : COLORS.textDim,
-    body: onArt ? ART_COLORS.bright : COLORS.textPrimary,
-    panelFill: onArt ? ART_COLORS.panel : COLORS.surface,
-    panelStroke: onArt ? ART_COLORS.panelBorder : COLORS.border,
-    line: onArt ? ART_COLORS.line : COLORS.border,
-    zebra: "rgba(13,22,58,0.62)",
-    totalsFill: "rgba(8,14,40,0.78)",
-  };
-  const accent = accentColor || "#3b5998"; // brand royal fallback
+  const accent = accentColor || COLORS.royal;
   const accentText = readableOn(accent);
 
   // Header/footer strips are authored at 1080x60; scale with export width.
@@ -92,7 +78,7 @@ export function PlayerCard({
     .join("  ");
   const chipW = Math.round(chipText.length * labelSize * 0.62 + 28);
 
-  // ---- bio strip (Sleeper style: label over value, columns with dividers) ----
+  // ---- bio strip (label over value, columns with dividers) --------------------
   const bioEntries = buildBioEntries(player, gp);
   const bioTop = chipY + chipH + Math.round(height * 0.03);
   const bioH = Math.round(height * 0.062);
@@ -133,10 +119,23 @@ export function PlayerCard({
     : [];
   const showReport = reportLines.length >= 2;
 
+  // Subtle navy watermark anchored bottom-right, above the footer strip.
+  const wmW = Math.round(width * 0.55);
+  const wmH = Math.round(wmW / LOGO_ASPECT);
+
   return (
     <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} xmlns="http://www.w3.org/2000/svg" style={{ display: "block" }}>
-      <rect x={0} y={0} width={width} height={height} fill={COLORS.navyDeep} />
-      {bg && <image href={bg} x={0} y={0} width={width} height={height} preserveAspectRatio="xMidYMid slice" />}
+      <rect x={0} y={0} width={width} height={height} fill={COLORS.card} />
+      {brand?.watermarkNavy && (
+        <image
+          href={brand.watermarkNavy}
+          x={width - wmW + Math.round(width * 0.08)}
+          y={footerTop - wmH + Math.round(height * 0.04)}
+          width={wmW}
+          height={wmH}
+          preserveAspectRatio="xMaxYMax meet"
+        />
+      )}
       <defs>
         <linearGradient id="sigbar-pc" x1="0" y1="0" x2="1" y2="0">
           <stop offset="0%" stopColor="#1a2856" />
@@ -163,7 +162,7 @@ export function PlayerCard({
           <circle cx={avatarCX} cy={avatarCY} r={avatarR} />
         </clipPath>
       </defs>
-      <circle cx={avatarCX} cy={avatarCY} r={avatarR} fill={C.panelFill} stroke={accent} stroke-width={2} />
+      <circle cx={avatarCX} cy={avatarCY} r={avatarR} fill={COLORS.zebra} stroke={accent} stroke-width={2} />
       {player.photoUrl ? (
         <image
           href={player.photoUrl}
@@ -175,21 +174,21 @@ export function PlayerCard({
           clip-path="url(#avatar-clip)"
         />
       ) : (
-        <text x={avatarCX} y={avatarCY + avatarR * 0.32} fill={COLORS.white} font-family={FONTS.head} font-size={avatarR * 0.95} font-weight={600} text-anchor="middle">
+        <text x={avatarCX} y={avatarCY + avatarR * 0.32} fill={COLORS.navy} font-family={FONTS.head} font-size={avatarR * 0.95} font-weight={600} text-anchor="middle">
           {initials(player)}
         </text>
       )}
-      <text x={heroX} y={nameY} fill={COLORS.white} font-family={FONTS.head} font-size={nameSize} font-weight={600} letter-spacing="0.02em">
+      <text x={heroX} y={nameY} fill={COLORS.navy} font-family={FONTS.head} font-size={nameSize} font-weight={600} letter-spacing="0.02em">
         {`${player.firstName} ${player.lastName}`.toUpperCase()}
       </text>
-      <rect x={heroX} y={chipY} width={chipW} height={chipH} rx={4} fill={accent} stroke="rgba(255,255,255,0.35)" stroke-width={1} />
+      <rect x={heroX} y={chipY} width={chipW} height={chipH} rx={4} fill={accent} />
       <text x={heroX + 14} y={chipY + chipH * 0.7} fill={accentText} font-family={FONTS.body} font-size={labelSize} font-weight={700} letter-spacing="0.1em">
         {chipText}
       </text>
-      <text x={heroX + chipW + 16} y={chipY + chipH * 0.7} fill={C.label} font-family={FONTS.body} font-size={labelSize} font-weight={700} letter-spacing="0.08em">
+      <text x={heroX + chipW + 16} y={chipY + chipH * 0.7} fill={COLORS.royal} font-family={FONTS.body} font-size={labelSize} font-weight={700} letter-spacing="0.08em">
         {eventName.toUpperCase()}
       </text>
-      <text x={width - pad} y={heroTop + jerseySize * 0.78} fill={COLORS.gold} font-family={FONTS.head} font-size={jerseySize} font-weight={700} text-anchor="end">
+      <text x={width - pad} y={heroTop + jerseySize * 0.78} fill={COLORS.navy} font-family={FONTS.head} font-size={jerseySize} font-weight={700} text-anchor="end">
         {player.jersey !== null ? player.jersey : ""}
       </text>
 
@@ -199,19 +198,19 @@ export function PlayerCard({
         const valueFont = entry.value.length > 11 ? Math.round(valueSize * 0.78) : valueSize;
         return (
           <g key={entry.label}>
-            <text x={x} y={bioTop + labelSize} fill={C.label} font-family={FONTS.body} font-size={labelSize} font-weight={700} letter-spacing="0.12em">
+            <text x={x} y={bioTop + labelSize} fill={COLORS.textDim} font-family={FONTS.body} font-size={labelSize} font-weight={700} letter-spacing="0.12em">
               {entry.label}
             </text>
-            <text x={x} y={bioTop + labelSize + valueSize + Math.round(height * 0.008)} fill={COLORS.white} font-family={FONTS.body} font-size={valueFont} font-weight={700}>
+            <text x={x} y={bioTop + labelSize + valueSize + Math.round(height * 0.008)} fill={COLORS.navy} font-family={FONTS.body} font-size={valueFont} font-weight={700}>
               {entry.value}
             </text>
-            {i > 0 && <line x1={x - bioColW * 0.12} y1={bioTop} x2={x - bioColW * 0.12} y2={bioTop + bioH * 0.85} stroke={C.line} stroke-width={1} />}
+            {i > 0 && <line x1={x - bioColW * 0.12} y1={bioTop} x2={x - bioColW * 0.12} y2={bioTop + bioH * 0.85} stroke={COLORS.line} stroke-width={1} />}
           </g>
         );
       })}
 
       {/* Game logs */}
-      <text x={pad} y={logLabelY} fill={C.label} font-family={FONTS.body} font-size={labelSize * 1.1} font-weight={700} letter-spacing="0.14em">
+      <text x={pad} y={logLabelY} fill={COLORS.royal} font-family={FONTS.body} font-size={labelSize * 1.1} font-weight={700} letter-spacing="0.14em">
         GAME LOGS
       </text>
       <rect x={pad} y={headerRowY} width={innerW} height={headerRowH} fill={accent} />
@@ -231,12 +230,12 @@ export function PlayerCard({
             : [line.goals, line.assists, line.points, line.pim];
           return (
             <g key={`${line.opponent}-${i}`}>
-              <rect x={pad} y={y} width={innerW} height={rowH} fill={i % 2 === 0 ? C.panelFill : C.zebra} />
-              <text x={pad + 14} y={y + rowH * 0.68} fill={C.body} font-family={FONTS.body} font-size={rowFont} font-weight={500}>
+              <rect x={pad} y={y} width={innerW} height={rowH} fill={i % 2 === 0 ? COLORS.card : COLORS.zebra} stroke={COLORS.line} stroke-width={0.5} />
+              <text x={pad + 14} y={y + rowH * 0.68} fill={COLORS.navy} font-family={FONTS.body} font-size={rowFont} font-weight={500}>
                 {(line.opponent || "-").toUpperCase()}
               </text>
               {vals.map((v, j) => (
-                <text key={j} x={numColX(j)} y={y + rowH * 0.68} fill={C.body} font-family={FONTS.body} font-size={rowFont} font-weight={600} text-anchor="middle">
+                <text key={j} x={numColX(j)} y={y + rowH * 0.68} fill={COLORS.navy} font-family={FONTS.body} font-size={rowFont} font-weight={600} text-anchor="middle">
                   {v}
                 </text>
               ))}
@@ -244,7 +243,7 @@ export function PlayerCard({
           );
         })}
       <g>
-        <rect x={pad} y={tableTop + (hasLog ? log.length : 0) * rowH} width={innerW} height={rowH} fill={C.totalsFill} stroke={C.panelStroke} stroke-width={1} />
+        <rect x={pad} y={tableTop + (hasLog ? log.length : 0) * rowH} width={innerW} height={rowH} fill={COLORS.navy} />
         <text x={pad + 14} y={tableTop + (hasLog ? log.length : 0) * rowH + rowH * 0.68} fill={COLORS.gold} font-family={FONTS.body} font-size={rowFont} font-weight={700} letter-spacing="0.08em">
           TOTALS{gp > 0 ? ` - ${gp} GP` : ""}
         </text>
@@ -258,22 +257,22 @@ export function PlayerCard({
       {/* Scouting report (the "latest news" panel) */}
       {showReport && (
         <g>
-          <text x={pad} y={reportLabelY} fill={C.label} font-family={FONTS.body} font-size={labelSize * 1.1} font-weight={700} letter-spacing="0.14em">
+          <text x={pad} y={reportLabelY} fill={COLORS.royal} font-family={FONTS.body} font-size={labelSize * 1.1} font-weight={700} letter-spacing="0.14em">
             SCOUTING REPORT
           </text>
           {reportLines.map((ln, i) => (
-            <text key={i} x={pad} y={reportTextTop + (i + 1) * reportLineH} fill={C.body} font-family={FONTS.body} font-size={reportFont} font-weight={400}>
+            <text key={i} x={pad} y={reportTextTop + (i + 1) * reportLineH} fill={COLORS.navy} font-family={FONTS.body} font-size={reportFont} font-weight={400}>
               {ln}
             </text>
           ))}
         </g>
       )}
 
-      {/* Footer - sits on the brand strip when present */}
+      {/* Footer - sits on the navy brand strip when present */}
       <text
         x={pad}
         y={footerStripH ? height - footerStripH * 0.38 : height - Math.round(height * 0.02)}
-        fill={footerStripH ? COLORS.white : COLORS.gold}
+        fill={footerStripH ? COLORS.gold : COLORS.royal}
         font-family={FONTS.body}
         font-size={labelSize * 1.1}
         font-weight={700}
@@ -284,7 +283,7 @@ export function PlayerCard({
       <text
         x={width - pad}
         y={footerStripH ? height - footerStripH * 0.38 : height - Math.round(height * 0.02)}
-        fill={footerStripH ? COLORS.icePale : COLORS.textDim}
+        fill={footerStripH ? COLORS.white : COLORS.textDim}
         font-family={FONTS.body}
         font-size={labelSize}
         letter-spacing="0.08em"
@@ -379,7 +378,7 @@ function readableOn(hex: string): string {
   const g = (n >> 8) & 255;
   const b = n & 255;
   const luma = 0.299 * r + 0.587 * g + 0.114 * b;
-  return luma > 150 ? COLORS.navyDeep : COLORS.white;
+  return luma > 150 ? COLORS.navy : COLORS.white;
 }
 
 function formatHeight(inches: number): string {

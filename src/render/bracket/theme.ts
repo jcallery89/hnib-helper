@@ -1,34 +1,25 @@
-// Brand tokens as JS constants for the SVG bracket. Solid fills are used (not
-// rgba surfaces) so the rasterized PNG stays crisp and predictable.
+// Light theme matched to the HNIB mobile app (Axe Sports): white surfaces on a
+// pale blue-gray page, royal blue accents, deep navy text, status pills.
+// Adopted June 2026 per JC, replacing the dark website theme for this tool.
+// The navy/royal values are the asset pack's own (navy 28/38/96, royal
+// 52/78/170, ice line 214/232/250).
 export const COLORS = {
-  navyDeep: "#111e3f",
-  surface: "#1e2e56",
-  border: "#263a66",
-  gold: "#d4a843",
-  ice: "#a8cce0",
-  icePale: "#dae8f3",
-  green: "#3ddc84",
-  red: "#e05252",
+  navy: "#1c2660", // primary text, header bars, big numerals
+  royal: "#344eaa", // accents, section labels, links
+  bg: "#eef1f7", // page background
+  card: "#ffffff", // card / cell surfaces
+  line: "#dde3f0", // borders and dividers
+  zebra: "#f3f6fb", // alternating table rows
+  textDim: "#6b7798", // secondary text
+  gold: "#d4a843", // champion / winner accents only
+  red: "#d6453d", // in progress / eliminated
+  green: "#1da95c", // advancing / final
   white: "#ffffff",
-  textPrimary: "#c0cfe0",
-  textDim: "#7a8daa",
 };
 
 export const FONTS = {
   head: "'Teko', sans-serif",
   body: "'Barlow Condensed', sans-serif",
-};
-
-// Palette for rendering ON TOP of the brand artwork backgrounds, which are a
-// brighter royal blue than the site's deep navy (asset pack colors: navy
-// 28/38/96, royal 52/78/170, ice line 214/232/250). Dim grays and dark navy
-// panels clash there; these stay legible and harmonized.
-export const ART_COLORS = {
-  ice: "#d6e8fa", // labels, secondary text (the pack's own ice line)
-  bright: "#eaf2f8", // body text
-  panel: "rgba(13, 22, 58, 0.45)", // translucent panel over the artwork
-  panelBorder: "rgba(214, 232, 250, 0.38)",
-  line: "rgba(214, 232, 250, 0.3)", // connectors / dividers
 };
 
 export interface ExportSize {
