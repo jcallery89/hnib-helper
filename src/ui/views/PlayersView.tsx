@@ -175,6 +175,14 @@ export function PlayersView({ dataset, update }: Props) {
           {regReport.unknownTeams.length > 0 && (
             <p class="warn">Registration teams not in this event: {regReport.unknownTeams.join(", ")}</p>
           )}
+          {regReport.suspicious.length > 0 && (
+            <div>
+              <p class="warn">Values that look off (kept synced data where possible - check the source):</p>
+              {regReport.suspicious.map((m, i) => (
+                <p class="warn" key={i}>{m}</p>
+              ))}
+            </div>
+          )}
           {regReport.unmatchedAppPlayers.length > 0 && (
             <p class="note">
               App roster spots with no registration row: {regReport.unmatchedAppPlayers.join(", ")}

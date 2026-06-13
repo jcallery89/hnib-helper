@@ -31,6 +31,7 @@ export interface RegistrationReport {
   unassigned: string[]; // registration rows with no team or no jersey
   unknownTeams: string[]; // registration team names not found in this event
   unmatchedAppPlayers: string[]; // app roster spots with no registration row
+  suspicious: string[]; // values that failed a sanity check (e.g. numeric hometown)
   warnings: string[];
 }
 
@@ -81,6 +82,7 @@ export function mergeRegistration(
     unassigned: [],
     unknownTeams: [],
     unmatchedAppPlayers: [],
+    suspicious: [],
     warnings: [],
   };
 
@@ -133,15 +135,8 @@ export function mergeRegistration(
       continue;
     }
 
-    const bio = {
-      position: parsePosition(cell(row, "position")),
-      classYear: gradeToClassYear(cell(row, "grade"), dataset.event.year),
-      shoots: parseShoots(cell(row, "shoots")),
-      heightInches: parseHeight(cell(row, "height")),
-      weightLbs: parseIntOr(cell(row, "weight")),
-      hometown: joinHometown(cell(row, "city"), cell(row, "state")),
-      school: cleanSchool(cell(row, "school")),
-    };
+    const { fields, suspect } = cleanBio((k) => cell(row, k), dataset.event.year);
+    const where = `${team.name} #${jersey} ${fullName}`.trim();
 
     const existing = byTeamJersey.get(`${team.id}#${jersey}`);
     if (existing) {
@@ -153,7 +148,13 @@ export function mergeRegistration(
         touched.add(existing.id);
         continue;
       }
-      Object.assign(existing, prune(bio));
+      // Only valid registration fields overwrite; anything missing or flagged
+      // falls back to the value the hnib.app (Tourno) sync already provided.
+      Object.assign(existing, fields);
+      for (const s of suspect) {
+        const had = (existing as Record<string, unknown>)[s.key] != null && !(s.key in fields);
+        report.suspicious.push(`${where}: ${s.label} "${s.raw}" looks off; ${had ? "kept the synced value" : "left blank"}.`);
+      }
       if (!existing.firstName && first) existing.firstName = first;
       if (!existing.lastName && last) existing.lastName = last;
       touched.add(existing.id);
@@ -166,8 +167,11 @@ export function mergeRegistration(
         jersey,
         firstName: first,
         lastName: last,
-        ...prune(bio),
+        ...fields,
       });
+      for (const s of suspect) {
+        report.suspicious.push(`${where}: ${s.label} "${s.raw}" looks off; left blank (no synced data to fall back on).`);
+      }
       report.created++;
     }
   }
@@ -183,6 +187,68 @@ export function mergeRegistration(
 
 function teamNameOf(dataset: Dataset, teamId: string): string {
   return dataset.teams.find((t) => t.id === teamId)?.name ?? teamId;
+}
+
+interface SuspectField {
+  key: keyof Player;
+  label: string;
+  raw: string;
+}
+
+/**
+ * Parse and sanity-check the bio fields. Only values that pass land in
+ * `fields` (so callers can fall back to synced data for the rest); values that
+ * parsed but look wrong are returned in `suspect` for the match report.
+ * Common culprit: a registration row with the City/ZIP columns swapped, which
+ * yields a numeric hometown.
+ */
+function cleanBio(
+  get: (k: SafeCol) => string,
+  eventYear: number,
+): { fields: Partial<Player>; suspect: SuspectField[] } {
+  const fields: Partial<Player> = {};
+  const suspect: SuspectField[] = [];
+
+  const pos = parsePosition(get("position"));
+  if (pos) fields.position = pos;
+
+  const shoots = parseShoots(get("shoots"));
+  if (shoots) fields.shoots = shoots;
+
+  const rawGrade = get("grade");
+  const cls = gradeToClassYear(rawGrade, eventYear);
+  if (cls !== undefined) {
+    if (cls >= eventYear - 2 && cls <= eventYear + 9) fields.classYear = cls;
+    else suspect.push({ key: "classYear", label: "class", raw: rawGrade });
+  }
+
+  const rawHt = get("height");
+  const ht = parseHeight(rawHt);
+  if (ht !== undefined) {
+    if (ht >= 48 && ht <= 84) fields.heightInches = ht;
+    else suspect.push({ key: "heightInches", label: "height", raw: rawHt });
+  }
+
+  const rawWt = get("weight");
+  const wt = parseIntOr(rawWt);
+  if (wt !== undefined) {
+    if (wt >= 50 && wt <= 350) fields.weightLbs = wt;
+    else suspect.push({ key: "weightLbs", label: "weight", raw: rawWt });
+  }
+
+  const city = get("city");
+  const hometown = joinHometown(city, get("state"));
+  if (hometown) {
+    // A real city has at least one letter; an all-digit "city" means the ZIP
+    // and City columns are swapped in the source row.
+    if (/[a-z]/i.test(city)) fields.hometown = hometown;
+    else suspect.push({ key: "hometown", label: "hometown", raw: hometown });
+  }
+
+  const school = cleanSchool(get("school"));
+  if (school) fields.school = school;
+
+  return { fields, suspect };
 }
 
 // Current grade entering the fall of the event year -> graduation year.
@@ -220,11 +286,6 @@ function parseJersey(s: string): number | null {
 function parseIntOr(s: string): number | undefined {
   const n = Number(s.replace(/[^\d]/g, ""));
   return Number.isFinite(n) && n > 0 ? n : undefined;
-}
-
-/** Drop undefined fields so merging never erases existing values with blanks. */
-function prune<T extends object>(obj: T): Partial<T> {
-  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as Partial<T>;
 }
 
 function findCol(header: string[], synonyms: readonly string[]): number {

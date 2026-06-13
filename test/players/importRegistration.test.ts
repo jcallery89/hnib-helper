@@ -150,6 +150,31 @@ describe("mergeRegistration", () => {
     expect(players.some((p) => p.lastName === "Other")).toBe(false);
   });
 
+  it("flags a numeric hometown and falls back to the synced value", () => {
+    const synced: Player = {
+      id: "u-kyra", eventId: "ev-1", teamId: "t-mid", jersey: 40,
+      firstName: "Kyra", lastName: "Sweeney", hometown: "Hamden, CT", heightInches: 69,
+    };
+    // Source row has ZIP where City should be -> hometown parses as "6518, CT".
+    const csv = [HEADER, row({ "Event Team": "Middlesex", "#": "40", "First Name": "Kyra", "Last Name": "Sweeney", City: "6518", ST: "CT", Ht: "5'9\"", Wt: "145" })].join("\n");
+    const { players, report } = mergeRegistration(baseDataset([synced]), csv, "Jr. High 2025");
+
+    const kyra = players.find((p) => p.id === "u-kyra")!;
+    expect(kyra.hometown).toBe("Hamden, CT"); // synced value kept, not "6518, CT"
+    expect(kyra.heightInches).toBe(69); // valid height still applied (5'9")
+    expect(report.suspicious.join(" ")).toContain("hometown");
+    expect(report.suspicious.join(" ")).toContain("kept the synced value");
+  });
+
+  it("rejects out-of-range height and weight", () => {
+    const csv = [HEADER, row({ "Event Team": "Bay State", "#": "7", "First Name": "Tiny", "Last Name": "Tot", Ht: "2'0\"", Wt: "12" })].join("\n");
+    const { players, report } = mergeRegistration(baseDataset([]), csv, "Jr. High 2025");
+    const p = players.find((x) => x.lastName === "Tot")!;
+    expect(p.heightInches).toBeUndefined();
+    expect(p.weightLbs).toBeUndefined();
+    expect(report.suspicious.length).toBe(2);
+  });
+
   it("treats junk schools and unknown teams correctly", () => {
     const csv = [HEADER,
       row({ "Event Team": "Middlesex", "#": "9", "First Name": "Jack", "Last Name": "Sullivan", "School (Fall)": "Undecided" }),
