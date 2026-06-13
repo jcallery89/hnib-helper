@@ -30,6 +30,14 @@ Two tiebreaker procedures, kept distinct (`src/engine/tiebreak/`):
   3-on-3 OT then shootout. `decidedBy` recorded.
 - Unequal game counts are flagged rather than compared blindly.
 
+## Multiple events at once
+
+The tool is a multi-event workspace. Each synced/imported event is saved under
+its own `localStorage` key with an index + active pointer (`src/io/session.ts`);
+the header has an event switcher. A browser tab can be pinned to one event with
+`?event=<id>`, so two festivals can run in two tabs concurrently, each with its
+own auto-sync. `window` access is guarded so SSR/tests do not crash.
+
 ## Architecture rule (important)
 
 `src/engine/` is pure and side-effect-free: no DOM, no Preact, no I/O. It takes

@@ -2,7 +2,7 @@ import { useState } from "preact/hooks";
 import type { Dataset } from "../../io/dataset.ts";
 import type { SeedingRule } from "../../engine/types.ts";
 import { loadSampleDataset, loadDemoDataset } from "../../io/sampleData.ts";
-import { clearSession, downloadFile } from "../../io/session.ts";
+import { clearAllSessions, downloadFile, loadEvent } from "../../io/session.ts";
 import { applyResultsCsv, gamesToCsv } from "../../io/csv.ts";
 import { parseSchedule } from "../../io/importSchedule.ts";
 import { importApiData } from "../../io/importApi.ts";
@@ -11,12 +11,14 @@ import { fullSync } from "../../io/sync.ts";
 interface Props {
   dataset: Dataset;
   replace: (next: Dataset) => void;
+  removeCurrent: () => void;
+  eventCount: number;
 }
 
 // 2025 Jr. High Festival, confirmed by JC. Prefilled as a convenient default.
 const DEFAULT_EVENT_ID = "63655fc1-1db9-46a5-a948-44f63d297810";
 
-export function SetupView({ dataset, replace }: Props) {
+export function SetupView({ dataset, replace, removeCurrent, eventCount }: Props) {
   const [csv, setCsv] = useState("");
   const [importText, setImportText] = useState("");
   const [msg, setMsg] = useState("");
@@ -45,7 +47,11 @@ export function SetupView({ dataset, replace }: Props) {
     setSyncing(true);
     setMsg("");
     try {
-      const r = await fullSync(syncId, dataset, { eventName: apiName.trim() || undefined });
+      // Re-sync against the SAVED copy of this event id (not whatever is on
+      // screen), so syncing a second festival never clobbers the first and a
+      // re-sync preserves that event's own playoff entries.
+      const prior = loadEvent(syncId.trim());
+      const r = await fullSync(syncId, prior, { eventName: apiName.trim() || undefined });
       replace(r.dataset);
       setMsg(
         `Synced ${r.teamCount} teams, ${r.roundRobinGames} round-robin and ${r.playoffGames} playoff games, ` +
@@ -271,7 +277,13 @@ export function SetupView({ dataset, replace }: Props) {
       </div>
 
       <div class="card">
-        <p class="section-title">Data</p>
+        <p class="section-title">Data &amp; Events</p>
+        <p class="note">
+          {eventCount} event{eventCount === 1 ? "" : "s"} saved in this browser. Each synced or
+          imported event is stored separately - use the event switcher in the header to move between
+          festivals, and pin a browser tab to one event by adding <code>?event=ID</code> to the
+          address, so two tabs can run two festivals at once, each refreshing on its own.
+        </p>
         <div class="toolbar">
           <button class="btn" onClick={() => replace(loadSampleDataset())}>
             Load 2025 Jr. High sample
@@ -282,12 +294,25 @@ export function SetupView({ dataset, replace }: Props) {
           <button
             class="btn"
             onClick={() => {
-              clearSession();
-              replace(loadSampleDataset());
-              setMsg("Session cleared and sample reloaded.");
+              if (confirm(`Remove "${dataset.event.name}" from this browser? Other events are kept.`)) {
+                removeCurrent();
+                setMsg("Event removed.");
+              }
             }}
           >
-            Reset session
+            Remove this event
+          </button>
+          <button
+            class="btn"
+            onClick={() => {
+              if (confirm("Remove ALL saved events from this browser and reload the sample?")) {
+                clearAllSessions();
+                replace(loadSampleDataset());
+                setMsg("All events cleared and sample reloaded.");
+              }
+            }}
+          >
+            Reset everything
           </button>
           <button
             class="btn secondary"
