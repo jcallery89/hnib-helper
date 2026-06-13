@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { listRegistrationEvents, mergeRegistration } from "../../src/io/importRegistration.ts";
+import { isRegistrationCsv, listRegistrationEvents, mergeRegistration } from "../../src/io/importRegistration.ts";
 import type { Dataset } from "../../src/io/dataset.ts";
 import type { Player } from "../../src/engine/types.ts";
 import { DEFAULT_POINT_SYSTEM } from "../../src/engine/pointSystem.ts";
@@ -44,6 +44,41 @@ const syncedJack: Player = {
   id: "u-jack-api", eventId: "ev-1", teamId: "t-mid", jersey: 9,
   firstName: "Jack", lastName: "Sullivan",
 };
+
+describe("tab-separated, single-event registration (no Event column)", () => {
+  // Header begins at "Event Team" (no leading Event column), tab-delimited,
+  // with a comma inside a field - exactly the failing real-world paste.
+  const TSV = [
+    "Event Team\t#\tYR\tPOS\tFirst Name\tLast Name\tCity\tST\tShoots\tHt\tWt\tTeam (Next Season)",
+    "BLACK\t9\tSO\tForward\tAdriana\tBaltazar\tWilbraham\tMA\tLeft\t5'6\"\t130\tNorwich Hockey Club, Girls",
+    "GRAY\t30\tJR\tGoaltender\tBailey\tBarnett\tDannemora\tNY\tLeft\t5'10\"\t230\tNorthshore Wings 19U",
+  ].join("\n");
+
+  it("is detected as a registration file by the Event Team column", () => {
+    expect(isRegistrationCsv(TSV)).toBe(true);
+    expect(listRegistrationEvents(TSV)).toEqual([]); // no Event column -> single event
+  });
+
+  function girlsDataset(): Dataset {
+    const d = baseDataset([]);
+    d.teams = [
+      { id: "t-black", eventId: "ev-1", divisionId: "d", name: "BLACK" },
+      { id: "t-gray", eventId: "ev-1", divisionId: "d", name: "GRAY" },
+    ];
+    d.divisions = [{ id: "d", eventId: "ev-1", name: "Major", teamIds: ["t-black", "t-gray"] }];
+    return d;
+  }
+
+  it("merges all rows (no event filter) and keeps comma-bearing fields intact", () => {
+    const { players, report } = mergeRegistration(girlsDataset(), TSV);
+    expect(report.created).toBe(2);
+    expect(report.unknownTeams).toEqual([]);
+    const adriana = players.find((p) => p.lastName === "Baltazar")!;
+    expect(adriana).toMatchObject({ teamId: "t-black", jersey: 9, position: "F", classYear: 2028, shoots: "L", heightInches: 66, weightLbs: 130 });
+    // SO entering fall 2025 -> Class of 2028; comma field did not shift columns.
+    expect(adriana.hometown).toBe("Wilbraham, MA");
+  });
+});
 
 describe("listRegistrationEvents", () => {
   it("returns distinct events ordered by row count", () => {

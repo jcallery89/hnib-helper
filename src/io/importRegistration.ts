@@ -39,6 +39,13 @@ export interface RegistrationResult {
   report: RegistrationReport;
 }
 
+/** True when the CSV looks like an HNIB registration export (has Event Team). */
+export function isRegistrationCsv(csv: string): boolean {
+  const table = parseCsv(csv);
+  if (table.length < 1) return false;
+  return findCol(table[0], SAFE_COLS.team) >= 0;
+}
+
 /** Distinct Event column values in a registration CSV, for the event picker. */
 export function listRegistrationEvents(csv: string): string[] {
   const table = parseCsv(csv);
@@ -65,7 +72,7 @@ export function listRegistrationEvents(csv: string): string[] {
 export function mergeRegistration(
   dataset: Dataset,
   csv: string,
-  eventFilter: string,
+  eventFilter?: string,
 ): RegistrationResult {
   const report: RegistrationReport = {
     matched: 0,
@@ -86,12 +93,15 @@ export function mergeRegistration(
   const col: Record<SafeCol, number> = Object.fromEntries(
     (Object.keys(SAFE_COLS) as SafeCol[]).map((k) => [k, findCol(header, SAFE_COLS[k])]),
   ) as Record<SafeCol, number>;
-  for (const required of ["event", "team", "jersey", "last"] as const) {
+  // The Event column is optional: a single-event export omits it (all rows are
+  // one event). When it is present and a filter is given, only those rows merge.
+  for (const required of ["team", "jersey", "last"] as const) {
     if (col[required] < 0) {
       report.warnings.push(`Registration CSV is missing the ${required === "team" ? "Event Team" : required} column.`);
       return { players: dataset.players ?? [], report };
     }
   }
+  const doFilter = col.event >= 0 && !!eventFilter && eventFilter.trim() !== "";
 
   const teamByName = new Map(dataset.teams.map((t) => [normalize(t.name), t]));
   const players = (dataset.players ?? []).map((p) => ({ ...p }));
@@ -105,7 +115,7 @@ export function mergeRegistration(
 
   for (let r = 1; r < table.length; r++) {
     const row = table[r];
-    if (cell(row, "event") !== eventFilter) continue;
+    if (doFilter && cell(row, "event") !== eventFilter) continue;
 
     const first = cell(row, "first");
     const last = cell(row, "last");
@@ -175,13 +185,21 @@ function teamNameOf(dataset: Dataset, teamId: string): string {
   return dataset.teams.find((t) => t.id === teamId)?.name ?? teamId;
 }
 
-// "9th" entering in the fall of the event year -> graduation year.
+// Current grade entering the fall of the event year -> graduation year.
+// Accepts "9th"/"8th" (Jr. High) and FR/SO/JR/SR (high-school, e.g. girls events).
 function gradeToClassYear(grade: string, eventYear: number): number | undefined {
-  const m = grade.match(/(\d{1,2})/);
-  if (!m) return undefined;
-  const g = Number(m[1]);
-  if (g < 1 || g > 12) return undefined;
-  return eventYear + (13 - g);
+  const g = grade.trim().toLowerCase();
+  if (!g) return undefined;
+  const letters: Record<string, number> = {
+    fr: 9, freshman: 9, fy: 9,
+    so: 10, soph: 10, sophomore: 10,
+    jr: 11, junior: 11,
+    sr: 12, senior: 12,
+  };
+  const byLetter = letters[g] ?? letters[g.replace(/[^a-z]/g, "")];
+  const num = byLetter ?? (g.match(/(\d{1,2})/) ? Number(g.match(/(\d{1,2})/)![1]) : undefined);
+  if (num === undefined || num < 1 || num > 12) return undefined;
+  return eventYear + (13 - num);
 }
 
 function joinHometown(city: string, state: string): string | undefined {

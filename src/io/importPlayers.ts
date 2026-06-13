@@ -183,27 +183,38 @@ function splitName(ci: { name?: number; first?: number; last?: number }, row: st
 // ---- parsing helpers --------------------------------------------------------
 
 export function parseCsv(text: string): string[][] {
-  const rows: string[][] = [];
-  for (const line of text.split(/\r?\n/)) {
-    if (line.trim() === "") continue;
-    rows.push(parseRow(line));
-  }
-  return rows;
+  const lines = text.split(/\r?\n/).filter((l) => l.trim() !== "");
+  if (lines.length === 0) return [];
+  // Detect the delimiter from the header: tab-separated pastes (straight from a
+  // spreadsheet) must NOT also split on commas, or fields like "Club, Girls"
+  // break and shift every later column.
+  const delimiter = lines[0].includes("\t") ? "\t" : ",";
+  return lines.map((line) => parseRow(line, delimiter));
 }
 
-function parseRow(line: string): string[] {
+function parseRow(line: string, delimiter: string): string[] {
   const out: string[] = [];
   let cur = "";
   let q = false;
+  let fieldStart = true; // a quote only opens a field when it leads the field
   for (let i = 0; i < line.length; i++) {
     const c = line[i];
     if (q) {
       if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; }
       else if (c === '"') q = false;
       else cur += c;
-    } else if (c === '"') q = true;
-    else if (c === "," || c === "\t") { out.push(cur); cur = ""; }
-    else cur += c;
+    } else if (c === '"' && fieldStart) {
+      q = true;
+      fieldStart = false;
+    } else if (c === delimiter) {
+      out.push(cur);
+      cur = "";
+      fieldStart = true;
+    } else {
+      // A stray quote mid-field (e.g. the inch mark in 5'10") is literal.
+      cur += c;
+      fieldStart = false;
+    }
   }
   out.push(cur);
   return out;

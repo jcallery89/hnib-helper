@@ -5,7 +5,7 @@ import type { Player, PlayerSummary } from "../../engine/types.ts";
 import { summarizePlayers, sortByScoring } from "../../engine/players/summary.ts";
 import { generateWriteup } from "../../engine/players/writeup.ts";
 import { importPlayerStatsCsv, importRosterCsv } from "../../io/importPlayers.ts";
-import { listRegistrationEvents, mergeRegistration, type RegistrationReport } from "../../io/importRegistration.ts";
+import { isRegistrationCsv, listRegistrationEvents, mergeRegistration, type RegistrationReport } from "../../io/importRegistration.ts";
 import { PlayerCard } from "../../render/player/PlayerCard.tsx";
 import { EXPORT_SIZES } from "../../render/bracket/theme.ts";
 import { exportNodePng } from "../../render/exportImage.ts";
@@ -61,17 +61,18 @@ export function PlayersView({ dataset, update }: Props) {
       : "";
   const writeup = (selected ? dataset.playerWriteups?.[selected.id] : undefined) ?? generatedWriteup;
 
+  const isRegistration = useMemo(() => isRegistrationCsv(rosterText), [rosterText]);
   const regEvents = useMemo(() => listRegistrationEvents(rosterText), [rosterText]);
-  const isRegistration = regEvents.length > 0;
+  const multiEvent = regEvents.length > 1;
 
   function doImportRoster() {
     if (isRegistration) {
-      const eventValue = regEvent || regEvents[0];
+      const eventValue = multiEvent ? regEvent || regEvents[0] : undefined;
       const { players: merged, report } = mergeRegistration(dataset, rosterText, eventValue);
       update((d) => (d.players = merged));
       setRegReport(report);
       setMsg(
-        `Registration ("${eventValue}"): enriched ${report.matched} synced players, added ${report.created} new.` +
+        `Registration${eventValue ? ` ("${eventValue}")` : ""}: enriched ${report.matched} synced players, added ${report.created} new.` +
           (report.warnings.length ? ` ${report.warnings.join(" ")}` : ""),
       );
     } else {
@@ -121,7 +122,7 @@ export function PlayersView({ dataset, update }: Props) {
           <div style={{ flex: 1, minWidth: 260 }}>
             <p class="note">Roster / registration export</p>
             <textarea style={{ width: "100%", height: 110 }} value={rosterText} onInput={(e) => setRosterText((e.target as HTMLTextAreaElement).value)} />
-            {isRegistration && (
+            {multiEvent && (
               <div class="row" style={{ marginTop: 6 }}>
                 <span class="note">Import event:</span>
                 <select value={regEvent || regEvents[0]} onChange={(e) => setRegEvent((e.target as HTMLSelectElement).value)}>
