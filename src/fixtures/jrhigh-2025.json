@@ -362,7 +362,8 @@
       "classYear": 2030,
       "shoots": "L",
       "heightInches": 66,
-      "hometown": "Andover, MA"
+      "hometown": "Andover, MA",
+      "birthYear": 2012
     },
     {
       "id": "p-t-mid-10",
@@ -375,7 +376,8 @@
       "classYear": 2030,
       "shoots": "L",
       "heightInches": 64,
-      "hometown": "Reading, MA"
+      "hometown": "Reading, MA",
+      "birthYear": 2012
     },
     {
       "id": "p-t-mid-11",
@@ -388,7 +390,8 @@
       "classYear": 2029,
       "shoots": "R",
       "heightInches": 67,
-      "hometown": "Woburn, MA"
+      "hometown": "Woburn, MA",
+      "birthYear": 2011
     },
     {
       "id": "p-t-mid-12",
@@ -401,7 +404,8 @@
       "classYear": 2030,
       "shoots": "L",
       "heightInches": 63,
-      "hometown": "Wilmington, MA"
+      "hometown": "Wilmington, MA",
+      "birthYear": 2012
     },
     {
       "id": "p-t-mid-14",
@@ -414,7 +418,8 @@
       "classYear": 2030,
       "shoots": "R",
       "heightInches": 65,
-      "hometown": "Burlington, MA"
+      "hometown": "Burlington, MA",
+      "birthYear": 2012
     },
     {
       "id": "p-t-mid-16",
@@ -427,7 +432,8 @@
       "classYear": 2029,
       "shoots": "L",
       "heightInches": 66,
-      "hometown": "Tewksbury, MA"
+      "hometown": "Tewksbury, MA",
+      "birthYear": 2011
     },
     {
       "id": "p-t-mid-19",
@@ -440,7 +446,8 @@
       "classYear": 2030,
       "shoots": "R",
       "heightInches": 62,
-      "hometown": "Stoneham, MA"
+      "hometown": "Stoneham, MA",
+      "birthYear": 2012
     },
     {
       "id": "p-t-mid-4",
@@ -453,7 +460,8 @@
       "classYear": 2029,
       "shoots": "L",
       "heightInches": 68,
-      "hometown": "Andover, MA"
+      "hometown": "Andover, MA",
+      "birthYear": 2011
     },
     {
       "id": "p-t-mid-5",
@@ -466,7 +474,8 @@
       "classYear": 2030,
       "shoots": "R",
       "heightInches": 67,
-      "hometown": "Billerica, MA"
+      "hometown": "Billerica, MA",
+      "birthYear": 2012
     },
     {
       "id": "p-t-mid-6",
@@ -479,7 +488,8 @@
       "classYear": 2030,
       "shoots": "L",
       "heightInches": 66,
-      "hometown": "Chelmsford, MA"
+      "hometown": "Chelmsford, MA",
+      "birthYear": 2012
     },
     {
       "id": "p-t-mid-8",
@@ -492,7 +502,8 @@
       "classYear": 2029,
       "shoots": "R",
       "heightInches": 65,
-      "hometown": "Lowell, MA"
+      "hometown": "Lowell, MA",
+      "birthYear": 2011
     },
     {
       "id": "p-t-mid-1",
@@ -505,7 +516,8 @@
       "classYear": 2030,
       "shoots": "L",
       "heightInches": 64,
-      "hometown": "Dracut, MA"
+      "hometown": "Dracut, MA",
+      "birthYear": 2012
     }
   ],
   "playerStats": [

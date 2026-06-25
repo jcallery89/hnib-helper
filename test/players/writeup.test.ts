@@ -5,7 +5,7 @@ import type { Player, PlayerSummary } from "../../src/engine/types.ts";
 const skater: Player = {
   id: "p1", eventId: "e", teamId: "t", jersey: 9,
   firstName: "Jack", lastName: "Sullivan",
-  position: "F", classYear: 2030, shoots: "L", heightInches: 66, hometown: "Andover, MA",
+  position: "F", birthYear: 2011, shoots: "L", heightInches: 66, hometown: "Andover, MA",
 };
 const skaterSummary: PlayerSummary = {
   playerId: "p1", isGoalie: false, gp: 7, goals: 8, assists: 6, points: 14, pim: 2,
@@ -33,7 +33,7 @@ describe("generateWriteup", () => {
         { opponent: "Western", goals: 0, assists: 0, points: 0, pim: 2, shots: 4, saves: 0 },
       ],
     });
-    expect(text).toContain("Jack Sullivan is a 5'6\" Class of 2030 forward from Andover, MA playing for Middlesex.");
+    expect(text).toContain("Jack Sullivan is a 5'6\" forward, born in 2011, from Andover, MA playing for Middlesex.");
     expect(text).toContain("Sullivan put up 8 goals and 6 assists for 14 points in 7 games at the 2025 Jr. High Festival.");
     expect(text).toContain("The best line came against Essex: 3 goals and an assist.");
     expect(text).toContain("hit the scoresheet in 2 of 3 games");

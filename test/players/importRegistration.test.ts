@@ -49,9 +49,9 @@ describe("tab-separated, single-event registration (no Event column)", () => {
   // Header begins at "Event Team" (no leading Event column), tab-delimited,
   // with a comma inside a field - exactly the failing real-world paste.
   const TSV = [
-    "Event Team\t#\tYR\tPOS\tFirst Name\tLast Name\tCity\tST\tShoots\tHt\tWt\tTeam (Next Season)",
-    "BLACK\t9\tSO\tForward\tAdriana\tBaltazar\tWilbraham\tMA\tLeft\t5'6\"\t130\tNorwich Hockey Club, Girls",
-    "GRAY\t30\tJR\tGoaltender\tBailey\tBarnett\tDannemora\tNY\tLeft\t5'10\"\t230\tNorthshore Wings 19U",
+    "Event Team\t#\tYR\tPOS\tFirst Name\tLast Name\tCity\tST\tDOB\tShoots\tHt\tWt\tTeam (Next Season)",
+    "BLACK\t9\tSO\tForward\tAdriana\tBaltazar\tWilbraham\tMA\t4/6/2010\tLeft\t5'6\"\t130\tNorwich Hockey Club, Girls",
+    "GRAY\t30\tJR\tGoaltender\tBailey\tBarnett\tDannemora\tNY\t1/15/2009\tLeft\t5'10\"\t230\tNorthshore Wings 19U",
   ].join("\n");
 
   it("is detected as a registration file by the Event Team column", () => {
@@ -74,8 +74,9 @@ describe("tab-separated, single-event registration (no Event column)", () => {
     expect(report.created).toBe(2);
     expect(report.unknownTeams).toEqual([]);
     const adriana = players.find((p) => p.lastName === "Baltazar")!;
-    expect(adriana).toMatchObject({ teamId: "t-black", jersey: 9, position: "F", classYear: 2028, shoots: "L", heightInches: 66, weightLbs: 130 });
-    // SO entering fall 2025 -> Class of 2028; comma field did not shift columns.
+    expect(adriana).toMatchObject({ teamId: "t-black", jersey: 9, position: "F", birthYear: 2010, shoots: "L", heightInches: 66, weightLbs: 130 });
+    expect(adriana.classYear).toBeUndefined(); // grade is ignored; birth year only
+    // Comma-bearing field did not shift columns.
     expect(adriana.hometown).toBe("Wilbraham, MA");
   });
 });
@@ -95,7 +96,7 @@ describe("mergeRegistration", () => {
   it("enriches a synced player matched by team + jersey, keeping the app identity", () => {
     const csv = [HEADER, row({
       "Event Team": "Middlesex", "#": "9", "First Name": "Jack", "Last Name": "Sullivan",
-      YR: "8th", POS: "Forward", City: "Andover", ST: "MA", Shoots: "Left",
+      POS: "Forward", City: "Andover", ST: "MA", Shoots: "Left", DOB: "5/14/2011",
       Ht: "5'6\"", Wt: "126", "School (Fall)": "St. John's Prep",
     })].join("\n");
     const { players, report } = mergeRegistration(baseDataset([syncedJack]), csv, "Jr. High 2025");
@@ -104,7 +105,7 @@ describe("mergeRegistration", () => {
     expect(report.created).toBe(0);
     const jack = players.find((p) => p.id === "u-jack-api")!; // app id preserved
     expect(jack).toMatchObject({
-      classYear: 2030, // entering 8th grade in fall 2025
+      birthYear: 2011, // year only, from DOB
       heightInches: 66,
       weightLbs: 126,
       shoots: "L",

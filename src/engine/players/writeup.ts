@@ -35,13 +35,13 @@ export function generateWriteup(facts: WriteupFacts): string {
   // Who they are: "Jack Sullivan is a 5'6" Class of 2030 forward from Andover, MA."
   const descriptors = [
     player.heightInches ? formatHeight(player.heightInches) : null,
-    player.classYear ? `Class of ${player.classYear}` : null,
     positionNoun(player.position),
   ].filter(Boolean);
   const from = player.hometown ? ` from ${player.hometown}` : "";
+  const born = player.birthYear ? `, born in ${player.birthYear},` : "";
   const fullName = `${player.firstName} ${player.lastName}`.trim();
   if (fullName) {
-    sentences.push(`${fullName} is a ${descriptors.join(" ")}${from} playing for ${teamName}.`);
+    sentences.push(`${fullName} is a ${descriptors.join(" ")}${born}${from} playing for ${teamName}.`);
   }
 
   if (summary.isGoalie) {

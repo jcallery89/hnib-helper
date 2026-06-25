@@ -297,7 +297,10 @@ export function PlayerCard({
 
 function buildBioEntries(player: Player, gp: number): Array<{ label: string; value: string }> {
   const entries: Array<{ label: string; value: string }> = [];
-  if (player.classYear) entries.push({ label: "CLASS", value: String(player.classYear) });
+  // HNIB events are age-based, so birth year is the differentiator; fall back to
+  // class year only if no birth year is known.
+  if (player.birthYear) entries.push({ label: "BORN", value: String(player.birthYear) });
+  else if (player.classYear) entries.push({ label: "CLASS", value: String(player.classYear) });
   if (player.position) entries.push({ label: "POS", value: player.position });
   if (player.heightInches && player.weightLbs) {
     entries.push({ label: "HT / WT", value: `${formatHeight(player.heightInches)} ${player.weightLbs}` });

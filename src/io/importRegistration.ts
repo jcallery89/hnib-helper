@@ -10,7 +10,6 @@ const SAFE_COLS = {
   event: ["event"],
   team: ["eventteam"],
   jersey: ["#", "jersey", "number"],
-  grade: ["yr", "grade", "year"],
   position: ["pos", "position"],
   first: ["firstname", "first"],
   last: ["lastname", "last"],
@@ -20,6 +19,9 @@ const SAFE_COLS = {
   shoots: ["shoots", "shot"],
   height: ["ht", "height"],
   weight: ["wt", "weight"],
+  // Only the YEAR is read from DOB; the full date of birth is never stored.
+  dob: ["dob", "dateofbirth"],
+  birthYear: ["birthyear", "yob", "by"],
 } as const;
 
 type SafeCol = keyof typeof SAFE_COLS;
@@ -215,11 +217,14 @@ function cleanBio(
   const shoots = parseShoots(get("shoots"));
   if (shoots) fields.shoots = shoots;
 
-  const rawGrade = get("grade");
-  const cls = gradeToClassYear(rawGrade, eventYear);
-  if (cls !== undefined) {
-    if (cls >= eventYear - 2 && cls <= eventYear + 9) fields.classYear = cls;
-    else suspect.push({ key: "classYear", label: "class", raw: rawGrade });
+  // Birth year (the age-group differentiator). Prefer an explicit BirthYear
+  // column, otherwise take just the year out of the DOB - the full date is never
+  // stored.
+  const rawBy = get("birthYear") || get("dob");
+  const by = birthYearFrom(get("birthYear")) ?? birthYearFrom(get("dob"));
+  if (by !== undefined) {
+    if (by >= eventYear - 25 && by <= eventYear - 6) fields.birthYear = by;
+    else suspect.push({ key: "birthYear", label: "birth year", raw: rawBy });
   }
 
   const rawHt = get("height");
@@ -251,21 +256,20 @@ function cleanBio(
   return { fields, suspect };
 }
 
-// Current grade entering the fall of the event year -> graduation year.
-// Accepts "9th"/"8th" (Jr. High) and FR/SO/JR/SR (high-school, e.g. girls events).
-function gradeToClassYear(grade: string, eventYear: number): number | undefined {
-  const g = grade.trim().toLowerCase();
-  if (!g) return undefined;
-  const letters: Record<string, number> = {
-    fr: 9, freshman: 9, fy: 9,
-    so: 10, soph: 10, sophomore: 10,
-    jr: 11, junior: 11,
-    sr: 12, senior: 12,
-  };
-  const byLetter = letters[g] ?? letters[g.replace(/[^a-z]/g, "")];
-  const num = byLetter ?? (g.match(/(\d{1,2})/) ? Number(g.match(/(\d{1,2})/)![1]) : undefined);
-  if (num === undefined || num < 1 || num > 12) return undefined;
-  return eventYear + (13 - num);
+// Extract a 4-digit birth year from a DOB string ("11/30/2009", "2/6/08"),
+// a bare year ("2009"), or a 2-digit year. Only the year is returned.
+function birthYearFrom(s: string): number | undefined {
+  const t = (s ?? "").trim();
+  if (!t) return undefined;
+  const four = t.match(/\b(19|20)\d{2}\b/);
+  if (four) return Number(four[0]);
+  // Fall back to a trailing 2-digit year, e.g. "2/6/08".
+  const two = t.match(/(\d{1,2})\D*$/);
+  if (two) {
+    const yy = Number(two[1]);
+    if (yy >= 0 && yy <= 99) return yy <= 30 ? 2000 + yy : 1900 + yy;
+  }
+  return undefined;
 }
 
 function joinHometown(city: string, state: string): string | undefined {

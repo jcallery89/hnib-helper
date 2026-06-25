@@ -6,7 +6,7 @@ const TEAM = JSON.stringify({
   ID: "api-team-1",
   Name: "Middlesex",
   Players: [
-    { ID: "u-jack", FirstName: "Jack", LastName: "Sullivan", Number: 9, Height: "5'6\"", Shot: "Left", Position: "Forward", SchoolYear: "2030", Hometown: "Andover, MA" },
+    { ID: "u-jack", FirstName: "Jack", LastName: "Sullivan", Number: 9, Height: "5'6\"", Shot: "Left", Position: "Forward", BirthYear: "2011", Hometown: "Andover, MA" },
     { ID: "u-brady", FirstName: "Brady", LastName: "Olsen", Number: 1, Height: "5'4\"", Shot: "L", Position: "Goalie", SchoolYear: "2030" },
     { ID: null, FirstName: "No", LastName: "Stats", Number: 22, Position: "D" },
   ],
@@ -27,7 +27,7 @@ describe("parseTeamRoster", () => {
       firstName: "Jack",
       lastName: "Sullivan",
       position: "F",
-      classYear: 2030,
+      birthYear: 2011,
       shoots: "L",
       heightInches: 66,
       hometown: "Andover, MA",

@@ -14,6 +14,7 @@ interface ApiRosterPlayer {
   Shot?: string | null;
   Position?: string | null;
   BirthYear?: string | null;
+  Dob?: string | null;
   Hometown?: string | null;
   SchoolYear?: string | null;
 }
@@ -76,7 +77,7 @@ export function parseTeamRoster(json: string, teamId: string, eventId: string): 
       firstName,
       lastName,
       position: parsePosition(rp.Position ?? ""),
-      classYear: parseYear(rp.SchoolYear),
+      birthYear: parseYear(rp.BirthYear) ?? parseYear(rp.Dob),
       shoots: parseShoots(rp.Shot ?? ""),
       heightInches: parseHeight(rp.Height ?? ""),
       hometown: rp.Hometown?.trim() || undefined,

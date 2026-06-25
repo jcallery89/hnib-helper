@@ -113,7 +113,8 @@ export interface Player {
   firstName: string;
   lastName: string;
   position?: PlayerPosition;
-  classYear?: number; // graduation year
+  classYear?: number; // graduation year (legacy; birthYear preferred)
+  birthYear?: number; // age-group differentiator; only the year is stored, never the full DOB
   shoots?: "L" | "R";
   heightInches?: number;
   weightLbs?: number;
