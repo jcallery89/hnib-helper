@@ -7,17 +7,17 @@ export { computeStandings, hasUnequalSchedules, countsForStandings } from "./sta
 
 export {
   buildContext,
-  resolveDivisional,
-  resolvePlayoffSeeding,
+  resolveTiebreak,
   rankStandings,
-  divisionalProcedure,
-  playoffSeedingProcedure,
+  tiebreakProcedure,
 } from "./tiebreak/index.ts";
 export type { ResolveContext, ResolveResult, ContextOptions } from "./tiebreak/index.ts";
 export { allPlayedEachOther, headToHeadPoints } from "./tiebreak/headToHead.ts";
 
 export { buildPlayoffField } from "./playoff/field.ts";
 export type { PlayoffField, FieldOptions } from "./playoff/field.ts";
+export { playoffSeedingRules, TIEBREAK_RULES } from "./playoff/rules.ts";
+export type { PlayoffSeedingRules } from "./playoff/rules.ts";
 export { buildBracket } from "./playoff/bracket.ts";
 export type { BracketResult } from "./playoff/bracket.ts";
 

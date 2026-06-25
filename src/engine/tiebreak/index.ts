@@ -1,44 +1,38 @@
 import type { Game, PointSystem, Standing, Team } from "../types.ts";
 import { DEFAULT_POINT_SYSTEM } from "../pointSystem.ts";
 import {
-  bestPlusMinus,
   coinFlip,
   headToHead,
   leastGoalsAllowed,
+  mostGoalsFor,
   mostWins,
-  type Criterion,
   type ResolveContext,
 } from "./criteria.ts";
-import { allPlayedEachOther } from "./headToHead.ts";
 import { orderGroup, type Procedure, type ResolveResult } from "./resolver.ts";
 
 export type { ResolveContext } from "./criteria.ts";
 export type { ResolveResult } from "./resolver.ts";
 
 /**
- * Procedure A - DIVISIONAL PLACING. Teams in a division have all played each
- * other, so head-to-head always applies:
- *   Head-to-Head -> Least Goals Allowed -> Best Plus/Minus -> Coin flip
+ * The single HNIB tie-breaking procedure (same for Jr. High and Sophomore),
+ * applied to teams tied on points after round-robin play:
+ *   1. Points (the grouping; tied teams share it)
+ *   2. Most Wins
+ *   3. Head-to-Head - ONLY when exactly two teams are tied (skipped for 3+)
+ *   4. Goals Against (fewest)
+ *   5. Goals For (most)
+ *   6. Coin flip
+ *   7. Director discretion (a manual override, not automated here)
+ * When a team breaks out of a 3+ tie the procedure restarts for the rest, so a
+ * group that narrows to two teams gets the head-to-head step it earlier skipped.
  */
-export const divisionalProcedure: Procedure = () => [
+export const tiebreakProcedure: Procedure = () => [
+  mostWins,
   headToHead,
   leastGoalsAllowed,
-  bestPlusMinus,
+  mostGoalsFor,
   coinFlip,
 ];
-
-/**
- * Procedure B - PLAYOFF SEEDING. Branches on whether the tied teams all played
- * each other. Re-evaluated per (sub)group:
- *   all played:    Head-to-Head -> Least Goals Allowed -> Best Plus/Minus -> Coin flip
- *   not all played: Most Wins   -> Least Goals Allowed -> Best Plus/Minus -> Coin flip
- */
-export const playoffSeedingProcedure: Procedure = (group, ctx): Criterion[] => {
-  const base = [leastGoalsAllowed, bestPlusMinus, coinFlip];
-  return allPlayedEachOther(group, ctx.games)
-    ? [headToHead, ...base]
-    : [mostWins, ...base];
-};
 
 export interface ContextOptions {
   pointSystem?: PointSystem;
@@ -65,12 +59,9 @@ export function buildContext(
   };
 }
 
-export function resolveDivisional(group: string[], ctx: ResolveContext): ResolveResult {
-  return orderGroup(group, divisionalProcedure, ctx);
-}
-
-export function resolvePlayoffSeeding(group: string[], ctx: ResolveContext): ResolveResult {
-  return orderGroup(group, playoffSeedingProcedure, ctx);
+/** Resolve a tied group with the unified HNIB tie-breaking procedure. */
+export function resolveTiebreak(group: string[], ctx: ResolveContext): ResolveResult {
+  return orderGroup(group, tiebreakProcedure, ctx);
 }
 
 /**

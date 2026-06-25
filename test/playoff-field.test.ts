@@ -14,20 +14,20 @@ describe("playoff field builder (Jr. High top-two-per-division)", () => {
     now: () => "2026-06-09T00:00:00.000Z",
   });
 
-  it("ranks each division by divisional placing (head-to-head breaks the EAST tie)", () => {
+  it("ranks each division by the tie-breaking rules (Chelmsford over Danvers)", () => {
     const east = field.divisionStandings.get("div-east")!.map((s) => s.teamId);
-    // Chelmsford and Danvers tie on points; Chelmsford won head-to-head.
+    // Chelmsford and Danvers tie on points; the tie-breaking rules put Chelmsford ahead.
     expect(east).toEqual(["t-and", "t-bev", "t-che", "t-dan"]);
   });
 
   it("seeds winners 1-2, runners-up 3-4, then wildcards 5-8", () => {
     const order = field.seeds.map((s) => s.teamId);
     expect(order).toEqual([
-      "t-and", // 1 - EAST winner (beat Worcester head-to-head)
+      "t-and", // 1 - EAST winner
       "t-wor", // 2 - WEST winner
       "t-bev", // 3 - EAST runner-up
       "t-wes", // 4 - WEST runner-up
-      "t-che", // 5 - wildcard (beat Danvers head-to-head)
+      "t-che", // 5 - wildcard
       "t-dan", // 6 - wildcard
       "t-wak", // 7 - wildcard
       "t-wal", // 8 - wildcard

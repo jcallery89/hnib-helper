@@ -8,24 +8,29 @@ build/deploy and the design rationale in `.claude/plans/` if present.
 ## Confirmed decisions (do not silently change)
 
 - Point system: Win 2 / Tie 1 / Loss 0 (configurable in Setup).
-- Plus/minus: uncapped. "Least Goals Allowed" ranks AHEAD of Plus/Minus.
 - Minimum rest window: 120 minutes. Target games per team: 4.
-- Auto-qualifier seeding: division winners take the top seeds (ranked among
-  themselves by the playoff-seeding procedure), runners-up next (Jr. High);
-  wildcards are the best of the rest. 8-team single elim, 1v8 / 4v5 / 2v7 / 3v6.
+- Seeding (both events, "top two per division"): division winners take the top
+  tier of seeds, runners-up the next, wildcards the best of the rest. So 2
+  divisions (Jr. High) -> seeds 1-2 winners, 3-4 runners-up, 5-8 wildcards; 3
+  divisions (Sophomore) -> 1-3 winners, 4-6 runners-up, 7-8 wildcards. 8-team
+  single elim, 1v8 / 4v5 / 2v7 / 3v6.
 
 ## Domain rules the engine encodes
 
-Two tiebreaker procedures, kept distinct (`src/engine/tiebreak/`):
+ONE tie-breaking procedure (`src/engine/tiebreak/`), same for Jr. High and
+Sophomore, applied to teams tied on points and to every seeding/placing step:
 
-- **Divisional placing**: Head-to-Head, Least Goals Allowed, Best Plus/Minus, coin flip.
-- **Playoff seeding** branches per (sub)group on whether the tied teams all
-  played each other:
-  - all played: Head-to-Head, then Least GA, Plus/Minus, coin flip.
-  - not all played: Most Wins, then Least GA, Plus/Minus, coin flip.
-- Head-to-Head is a mini-table among only the tied teams. When a team breaks out
-  of a 3+ tie, the procedure RESTARTS for the rest (Head-to-Head recomputed).
-- Every decision is logged/explainable; coin flips carry a timestamp.
+1. Points (the grouping). 2. Most Wins. 3. Head-to-Head - ONLY when exactly two
+teams are tied (skipped for 3+). 4. Goals Against (fewest). 5. Goals For (most).
+6. Coin flip. 7. Director discretion (manual; not automated).
+
+- Head-to-Head is a mini-table among the tied teams; it is a no-op unless the
+  group is exactly two. When a team breaks out of a 3+ tie the procedure
+  RESTARTS for the rest, so a group that narrows to two then gets head-to-head.
+- No plus/minus in tiebreaking (GA then GF). Every decision is
+  logged/explainable; coin flips carry a timestamp.
+- The Schedule page shows the seeding explanation + these rules
+  (`src/engine/playoff/rules.ts`), scaled to the event's division count.
 - Round robin allows ties (no OT). Playoff ties: prelim/QF/SF shootout; final is
   3-on-3 OT then shootout. `decidedBy` recorded.
 - Unequal game counts are flagged rather than compared blindly.

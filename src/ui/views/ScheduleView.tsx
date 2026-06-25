@@ -5,6 +5,7 @@ import { buildSlotGrid, type VenueConfig } from "../../engine/schedule/slotGrid.
 import { placeSchedule } from "../../engine/schedule/placement.ts";
 import { reflow } from "../../engine/schedule/reflow.ts";
 import { fairnessReport } from "../../engine/schedule/fairness.ts";
+import { playoffSeedingRules } from "../../engine/playoff/rules.ts";
 import type { TeamAvailability } from "../../engine/schedule/constraints.ts";
 import type { Game } from "../../engine/types.ts";
 
@@ -211,7 +212,34 @@ export function ScheduleView({ dataset }: Props) {
           Sheet usage: {fairness.sheets.map((s) => `${s.sheet} ${s.games}`).join(", ")}
         </p>
       </div>
+
+      <PlayoffRulesCard dataset={dataset} />
     </section>
+  );
+}
+
+function PlayoffRulesCard({ dataset }: { dataset: Dataset }) {
+  const rules = playoffSeedingRules(dataset.event, dataset.divisions.length);
+  return (
+    <div class="card">
+      <p class="section-title">{rules.heading}</p>
+      {rules.seedingLines.map((line, i) => (
+        <p key={i}>{line}</p>
+      ))}
+      <p class="section-title" style={{ marginTop: 16 }}>
+        Tie-Breaking Rules
+      </p>
+      <ol style={{ margin: 0, paddingLeft: 20, lineHeight: 1.7 }}>
+        {rules.tiebreakRules.map((rule, i) => (
+          <li key={i}>{rule}</li>
+        ))}
+      </ol>
+      <p class="note" style={{ marginTop: 12 }}>
+        The same tie-breaking rules decide division placing and playoff seeding. Head-to-head applies
+        only when exactly two teams are tied. The tool resolves coin flips automatically and logs
+        them; director discretion is a manual override.
+      </p>
+    </div>
   );
 }
 

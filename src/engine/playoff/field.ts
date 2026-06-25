@@ -9,9 +9,8 @@ import type {
 import { computeStandings, hasUnequalSchedules } from "../standings.ts";
 import {
   buildContext,
-  divisionalProcedure,
-  playoffSeedingProcedure,
   rankStandings,
+  tiebreakProcedure,
   type ContextOptions,
 } from "../tiebreak/index.ts";
 
@@ -29,10 +28,10 @@ export interface FieldOptions extends ContextOptions {
 /**
  * Build the seeded playoff field for an event.
  *
- * Auto-qualifiers (confirmed seeding): division winners take the top seeds,
- * runners-up (Jr. High) take the next tier; each tier is ranked among itself by
- * the playoff-seeding procedure. Wildcards are the best of the rest across all
- * divisions, also ranked by the playoff-seeding procedure.
+ * Seeding: the division winners take the top tier of seeds, the runners-up the
+ * next tier, each tier ranked among itself by the HNIB tie-breaking procedure
+ * (so 2 divisions -> seeds 1-2 then 3-4; 3 divisions -> 1-3 then 4-6). Wildcards
+ * are the best of the rest across all divisions, by the same procedure.
  */
 export function buildPlayoffField(
   event: HnibEvent,
@@ -64,7 +63,7 @@ export function buildPlayoffField(
         `Division "${div.name}" has teams with different game counts; ranking compares raw totals.`,
       );
     }
-    divisionStandings.set(div.id, rankStandings(subset, divisionalProcedure, ctx));
+    divisionStandings.set(div.id, rankStandings(subset, tiebreakProcedure, ctx));
   }
 
   // 2. Auto-qualifier tiers by event rule.
@@ -82,7 +81,7 @@ export function buildPlayoffField(
     const tierStandings = tier
       .map((id) => overallById.get(id))
       .filter((s): s is Standing => Boolean(s));
-    const ranked = rankStandings(tierStandings, playoffSeedingProcedure, ctx);
+    const ranked = rankStandings(tierStandings, tiebreakProcedure, ctx);
     for (const s of ranked) {
       if (nextSeed > fieldSize) break;
       seeds.push({ seed: nextSeed++, teamId: s.teamId, source: "auto", notes: s.tieBreakNotes });
@@ -92,7 +91,7 @@ export function buildPlayoffField(
 
   // 3. Wildcards: best of the rest across all divisions.
   const rest = overall.filter((s) => !taken.has(s.teamId));
-  const rankedRest = rankStandings(rest, playoffSeedingProcedure, ctx);
+  const rankedRest = rankStandings(rest, tiebreakProcedure, ctx);
   for (const s of rankedRest) {
     if (nextSeed > fieldSize) break;
     seeds.push({

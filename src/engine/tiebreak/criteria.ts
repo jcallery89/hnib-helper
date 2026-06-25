@@ -27,10 +27,15 @@ export interface Criterion {
   format(teamId: string, ctx: ResolveContext, group: string[]): string;
 }
 
+// Head-to-Head among the tied teams. Per HNIB's rules this applies ONLY when
+// exactly two teams are tied; with three or more tied it is skipped, so for any
+// group that is not size 2 it returns a constant (no separation) and the
+// resolver moves on to the next criterion.
 export const headToHead: Criterion = {
   key: "h2h",
   label: "Head-to-Head",
   score(teamId, ctx, group) {
+    if (group.length !== 2) return 0;
     return headToHeadPoints(group, ctx.games, ctx.pointSystem).get(teamId) ?? 0;
   },
   format(teamId, ctx, group) {
@@ -38,11 +43,10 @@ export const headToHead: Criterion = {
   },
 };
 
-// Fewer goals allowed ranks better, so the score negates GA. This criterion
-// intentionally ranks AHEAD of plus/minus (defense-first ordering).
+// Fewer goals allowed ranks better, so the score negates GA.
 export const leastGoalsAllowed: Criterion = {
   key: "leastGA",
-  label: "Least Goals Allowed",
+  label: "Goals Against",
   score(teamId, ctx) {
     return -(ctx.standings.get(teamId)?.ga ?? 0);
   },
@@ -51,15 +55,15 @@ export const leastGoalsAllowed: Criterion = {
   },
 };
 
-export const bestPlusMinus: Criterion = {
-  key: "plusMinus",
-  label: "Best Plus/Minus",
+// More goals for ranks better.
+export const mostGoalsFor: Criterion = {
+  key: "mostGF",
+  label: "Goals For",
   score(teamId, ctx) {
-    return ctx.standings.get(teamId)?.plusMinus ?? 0;
+    return ctx.standings.get(teamId)?.gf ?? 0;
   },
   format(teamId, ctx) {
-    const pm = ctx.standings.get(teamId)?.plusMinus ?? 0;
-    return pm > 0 ? `+${pm}` : String(pm);
+    return String(ctx.standings.get(teamId)?.gf ?? 0);
   },
 };
 
