@@ -49,4 +49,6 @@ export interface Dataset {
   playerGameLogs?: Record<string, PlayerGameLine[]>;
   /** Hand-edited scouting writeups, keyed by player id (overrides generated). */
   playerWriteups?: Record<string, string>;
+  /** Player ids flagged for All-Star consideration. */
+  allStarIds?: string[];
 }

@@ -2,8 +2,9 @@ import { useMemo, useRef, useState } from "preact/hooks";
 import type { Dataset, EventLeaders, PlayerGameLine } from "../../io/dataset.ts";
 import { fetchPlayerGameLog } from "../../io/sync.ts";
 import type { Player, PlayerSummary } from "../../engine/types.ts";
-import { summarizePlayers, sortByScoring } from "../../engine/players/summary.ts";
+import { sortByScoring } from "../../engine/players/summary.ts";
 import { generateWriteup } from "../../engine/players/writeup.ts";
+import { playerSummaries } from "../state/store.ts";
 import { importPlayerStatsCsv, importRosterCsv } from "../../io/importPlayers.ts";
 import { isRegistrationCsv, listRegistrationEvents, mergeRegistration, type RegistrationReport } from "../../io/importRegistration.ts";
 import { PlayerCard } from "../../render/player/PlayerCard.tsx";
@@ -31,10 +32,7 @@ export function PlayersView({ dataset, update }: Props) {
   const exportRef = useRef<HTMLDivElement>(null);
 
   const players = dataset.players ?? [];
-  const summaries = useMemo(
-    () => new Map(summarizePlayers(players, dataset.playerStats ?? []).map((s) => [s.playerId, s])),
-    [players, dataset.playerStats],
-  );
+  const summaries = useMemo(() => playerSummaries(dataset), [dataset.players, dataset.playerStats, dataset.games]);
 
   const teamPlayers = players.filter((p) => p.teamId === teamId);
   const withSummary = teamPlayers.map((p) => ({ player: p, summary: summaries.get(p.id)! }));
@@ -216,7 +214,7 @@ export function PlayersView({ dataset, update }: Props) {
                   <th class="num">#</th>
                   <th>Name</th>
                   <th>Pos</th>
-                  <th class="num">Class</th>
+                  <th class="num">Birth Yr</th>
                   <th class="num">GP</th>
                   <th class="num">G</th>
                   <th class="num">A</th>
@@ -239,7 +237,7 @@ export function PlayersView({ dataset, update }: Props) {
                     <tr>
                       <th class="num">#</th>
                       <th>Name</th>
-                      <th class="num">Class</th>
+                      <th class="num">Birth Yr</th>
                       <th class="num">GP</th>
                       <th class="num">GAA</th>
                       <th class="num">SV%</th>
@@ -251,7 +249,7 @@ export function PlayersView({ dataset, update }: Props) {
                       <tr key={player.id} style={selected?.id === player.id ? { background: "rgba(168,204,224,.08)" } : undefined}>
                         <td class="num">{player.jersey ?? ""}</td>
                         <td>{player.firstName} {player.lastName}</td>
-                        <td class="num">{player.classYear ?? ""}</td>
+                        <td class="num">{player.birthYear ?? player.classYear ?? ""}</td>
                         <td class="num">{summary.gp}</td>
                         <td class="num">{summary.gaa !== undefined ? summary.gaa.toFixed(2) : "-"}</td>
                         <td class="num">{summary.savePct !== undefined ? summary.savePct.toFixed(3).replace(/^0/, "") : "-"}</td>
@@ -467,7 +465,7 @@ function PlayerRow({ player, summary, selected, onSelect }: { player: Player; su
       <td class="num">{player.jersey ?? ""}</td>
       <td>{player.firstName} {player.lastName}</td>
       <td>{player.position ?? ""}</td>
-      <td class="num">{player.classYear ?? ""}</td>
+      <td class="num">{player.birthYear ?? player.classYear ?? ""}</td>
       <td class="num">{summary.gp}</td>
       <td class="num">{summary.goals}</td>
       <td class="num">{summary.assists}</td>
