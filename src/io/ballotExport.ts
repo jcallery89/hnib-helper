@@ -18,7 +18,7 @@ export interface BallotRow {
   player_id: string;
   team_name: string;
   player_name: string;
-  jersey: string; // string so a missing jersey is "" not 0
+  jersey: number | null; // numeric so the ballot can sort 2,3,...10,11; null when unknown
   position: string; // F / D / G ("" when unknown)
   gp: number;
   g: number;
@@ -56,7 +56,7 @@ export function buildBallotRoster(data: Dataset, summaries: Map<string, PlayerSu
 
 function toRow(p: Player, s: PlayerSummary | undefined, team: string): BallotRow {
   const name = `${p.firstName} ${p.lastName}`.trim();
-  const jersey = p.jersey === null || p.jersey === undefined ? "" : String(p.jersey);
+  const jersey: number | null = p.jersey === null || p.jersey === undefined ? null : p.jersey;
   const isGoalie = s?.isGoalie ?? p.position === "G";
   const position = p.position ?? (isGoalie ? "G" : "");
   // Tourno reports goalie GP as fractional game-shares (split starts), which
@@ -70,7 +70,7 @@ function toRow(p: Player, s: PlayerSummary | undefined, team: string): BallotRow
   const gaa = s?.gaa !== undefined ? s.gaa.toFixed(2) : "";
   const svpct = s?.savePct !== undefined ? s.savePct.toFixed(3).replace(/^0/, "") : "";
 
-  const numTag = jersey ? `#${jersey} ` : "";
+  const numTag = jersey !== null ? `#${jersey} ` : "";
   const stat = isGoalie
     ? `${gaa || "-"}GAA ${svpct || "-"}SV%`
     : `${gp}GP ${g}G ${a}A ${pts}P`;
@@ -101,7 +101,7 @@ export function ballotRosterSql(rows: BallotRow[], tableName: string): string {
     "  `player_id` VARCHAR(64) NOT NULL,\n" +
     "  `team_name` VARCHAR(120) NOT NULL,\n" +
     "  `player_name` VARCHAR(120) NOT NULL,\n" +
-    "  `jersey` VARCHAR(8),\n" +
+    "  `jersey` INT,\n" +
     "  `position` VARCHAR(4),\n" +
     "  `gp` INT, `g` INT, `a` INT, `pts` INT,\n" +
     "  `gaa` VARCHAR(8), `svpct` VARCHAR(8),\n" +
@@ -133,17 +133,17 @@ export function defaultBallotTable(event: HnibEvent): string {
   return `gf_${slug}_rosters`;
 }
 
-function jerseyNum(j: string): number {
-  const n = Number(j);
-  return Number.isFinite(n) && j !== "" ? n : Number.MAX_SAFE_INTEGER;
+function jerseyNum(j: number | null): number {
+  return j === null ? Number.MAX_SAFE_INTEGER : j;
 }
 
-function csvCell(value: string | number): string {
-  const s = String(value);
+function csvCell(value: string | number | null): string {
+  const s = value === null ? "" : String(value);
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-function sqlLiteral(value: string | number): string {
+function sqlLiteral(value: string | number | null): string {
+  if (value === null) return "NULL";
   if (typeof value === "number") return Number.isFinite(value) ? String(value) : "NULL";
   if (value === "") return "''";
   return "'" + value.replace(/'/g, "''") + "'";

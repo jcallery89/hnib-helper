@@ -58,7 +58,7 @@ describe("buildBallotRoster", () => {
     expect(jane).toMatchObject({
       team_name: "Coastal",
       player_name: "Jane Smith",
-      jersey: "12",
+      jersey: 12,
       position: "F",
       gp: 2, g: 3, a: 5, pts: 8,
     });
@@ -86,7 +86,7 @@ describe("buildBallotRoster", () => {
 
   it("leaves a missing jersey blank rather than 0", () => {
     const row = buildBallotRoster(dataset, summaries()).find((r) => r.player_id === "p4")!;
-    expect(row.jersey).toBe("");
+    expect(row.jersey).toBeNull();
     expect(row.display).toBe("No Number - 0GP 0G 0A 0P");
   });
 
@@ -118,6 +118,12 @@ describe("ballotRosterSql", () => {
     expect(sql).toContain("CREATE TABLE `gf_soph_rosters`");
     expect(sql).toContain("INSERT INTO `gf_soph_rosters`");
     expect((sql.match(/\(\s*'p\d'/g) ?? [])).toHaveLength(4);
+  });
+
+  it("declares jersey as INT and emits it unquoted so the ballot can sort numerically", () => {
+    const sql = ballotRosterSql(buildBallotRoster(dataset, summaries()), "gf_soph_rosters");
+    expect(sql).toContain("`jersey` INT");
+    expect(sql).toContain("'Jane Smith', 12,"); // jersey 12 is a bare number, not '12'
   });
 
   it("escapes single quotes in names", () => {

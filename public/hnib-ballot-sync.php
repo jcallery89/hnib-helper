@@ -117,7 +117,7 @@ $ddl =
         `player_id` VARCHAR(64) NOT NULL,
         `team_name` VARCHAR(120) NOT NULL,
         `player_name` VARCHAR(120) NOT NULL,
-        `jersey` VARCHAR(8),
+        `jersey` INT,
         `position` VARCHAR(4),
         `gp` INT, `g` INT, `a` INT, `pts` INT,
         `gaa` VARCHAR(8), `svpct` VARCHAR(8),
