@@ -1,0 +1,51 @@
+name: Build and deploy to SiteGround
+
+# Auto-deploys the built site to SiteGround over FTPS whenever the working
+# branch updates, so no manual File Manager upload is needed. Can also be run
+# by hand from the Actions tab (workflow_dispatch).
+#
+# ONE-TIME SETUP (GitHub -> repo Settings -> Secrets and variables -> Actions):
+#   FTP_SERVER    - SiteGround FTP hostname (Site Tools -> Site -> FTP Accounts)
+#   FTP_USERNAME  - the FTP account username
+#   FTP_PASSWORD  - the FTP account password
+# Create the FTP account with its directory set to the tournament folder
+# (e.g. public_html/tournament). Then SERVER_DIR below can stay "./".
+
+on:
+  push:
+    branches:
+      - claude/stoic-babbage-toy386
+      - claude/stoic-babbage-toy386-xglxrh
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy dist/ to SiteGround over FTPS
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: ./dist/
+          # If the FTP account does NOT open directly in the tournament folder,
+          # set this to the path, e.g. "public_html/tournament/".
+          server-dir: "./"
