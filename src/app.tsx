@@ -71,6 +71,7 @@ export function App() {
   const [tab, setTab] = useState<TabKey>("results");
   const [asOf, setAsOf] = useState<string | null>(null);
   const [autoSync, setAutoSync] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState("");
 
   // Keep the URL pinned to the active event from first paint.
@@ -121,32 +122,44 @@ export function App() {
     }
   }
 
-  // Auto-sync: only offered once the loaded event came from an hnib.app sync
-  // (its id is the API event UUID). Re-syncs in place, keeping local playoff
-  // entries; a failed pass keeps the current data and reports quietly.
+  // Sync is available once the loaded event came from an hnib.app sync (its id
+  // is the API event UUID, set by the Sync button). Re-syncs in place, keeping
+  // all local work; a failed pass keeps current data and reports quietly.
   const datasetRef = useRef(dataset);
   datasetRef.current = dataset;
+  const syncingRef = useRef(false);
   const canAutoSync = /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(dataset.event.id);
+
+  async function runSync() {
+    if (!canAutoSync || syncingRef.current) return;
+    const eventId = datasetRef.current.event.id;
+    syncingRef.current = true;
+    setSyncing(true);
+    setSyncStatus("Syncing...");
+    try {
+      const r = await fullSync(eventId, datasetRef.current);
+      // Discard if the operator switched events while this was in flight.
+      if (datasetRef.current.event.id === eventId) {
+        replace(r.dataset);
+        setSyncStatus(`Last synced ${new Date().toLocaleTimeString()} - ${r.playerCount} players`);
+      }
+    } catch {
+      setSyncStatus(`Sync failed ${new Date().toLocaleTimeString()} - kept current data`);
+    } finally {
+      syncingRef.current = false;
+      setSyncing(false);
+    }
+  }
+
+  // Keep the timer calling the latest runSync without restarting on every render.
+  const runRef = useRef(runSync);
+  runRef.current = runSync;
 
   useEffect(() => {
     if (!autoSync || !canAutoSync) return;
-    let cancelled = false;
-    const run = async () => {
-      try {
-        const r = await fullSync(datasetRef.current.event.id, datasetRef.current);
-        if (cancelled) return;
-        replace(r.dataset);
-        setSyncStatus(`Last synced ${new Date().toLocaleTimeString()}`);
-      } catch {
-        if (!cancelled) setSyncStatus(`Sync failed ${new Date().toLocaleTimeString()} - kept current data`);
-      }
-    };
-    run();
-    const timer = setInterval(run, AUTO_SYNC_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-    };
+    runRef.current();
+    const timer = setInterval(() => runRef.current(), AUTO_SYNC_MS);
+    return () => clearInterval(timer);
   }, [autoSync, canAutoSync, dataset.event.id]);
 
   return (
@@ -214,14 +227,22 @@ export function App() {
           </div>
           <div class="row">
             {canAutoSync && (
-              <label class="row" style={{ gap: 6 }}>
-                <input
-                  type="checkbox"
-                  checked={autoSync}
-                  onChange={(e) => setAutoSync((e.target as HTMLInputElement).checked)}
-                />
-                Auto-sync (3 min)
-              </label>
+              <>
+                <button class="btn" disabled={syncing} onClick={() => runSync()}>
+                  {syncing ? "Syncing..." : "Sync now"}
+                </button>
+                <label class="row" style={{ gap: 6 }}>
+                  <input
+                    type="checkbox"
+                    checked={autoSync}
+                    onChange={(e) => setAutoSync((e.target as HTMLInputElement).checked)}
+                  />
+                  Auto-sync (3 min)
+                </label>
+              </>
+            )}
+            {!canAutoSync && (
+              <span class="note">Sync this event from Setup to enable live sync</span>
             )}
             {syncStatus && <span class="note">{syncStatus}</span>}
             <span class="note">

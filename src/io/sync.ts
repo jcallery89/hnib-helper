@@ -185,9 +185,15 @@ export async function fullSync(
     warnings.push("Leaders board could not be fetched.");
   }
 
-  // Preserve locally entered playoff results across re-syncs.
-  if (sameEvent && prev?.bracketResults) {
-    dataset.bracketResults = prev.bracketResults;
+  // Preserve everything entered locally across re-syncs (auto-sync re-runs
+  // every few minutes, so it must never wipe the operator's work): playoff
+  // results, All-Star flags, scouting writeups, and fetched game logs. These are
+  // keyed by stable ids, so carrying them forward keeps them attached.
+  if (sameEvent && prev) {
+    if (prev.bracketResults) dataset.bracketResults = prev.bracketResults;
+    if (prev.allStarIds) dataset.allStarIds = prev.allStarIds;
+    if (prev.playerWriteups) dataset.playerWriteups = prev.playerWriteups;
+    if (prev.playerGameLogs) dataset.playerGameLogs = prev.playerGameLogs;
   }
 
   return {

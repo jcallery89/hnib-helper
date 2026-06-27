@@ -123,12 +123,20 @@ describe("fullSync", () => {
     expect(r.dataset.leaders?.points[0].value).toBe(14);
   });
 
-  it("preserves locally entered playoff results on re-sync of the same event", async () => {
+  it("preserves all local work on re-sync of the same event", async () => {
     stubApi();
     const first = await fullSync("ev-12345678");
+    // Operator's local work that auto-sync must not wipe.
     first.dataset.bracketResults = { qf1: { highScore: 3, lowScore: 1, decidedBy: "regulation" } };
+    first.dataset.allStarIds = ["u-jack"];
+    first.dataset.playerWriteups = { "u-jack": "A standout." };
+    first.dataset.playerGameLogs = { "u-jack": [{ opponent: "Northeast", goals: 2, assists: 1, points: 3, pim: 0, shots: 6, saves: 0 }] };
+
     const second = await fullSync("ev-12345678", first.dataset);
     expect(second.dataset.bracketResults?.qf1).toMatchObject({ highScore: 3, lowScore: 1 });
+    expect(second.dataset.allStarIds).toEqual(["u-jack"]);
+    expect(second.dataset.playerWriteups?.["u-jack"]).toBe("A standout.");
+    expect(second.dataset.playerGameLogs?.["u-jack"]).toHaveLength(1);
   });
 
   it("keeps a team's previous roster when its fetch fails", async () => {
