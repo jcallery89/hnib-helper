@@ -10,22 +10,53 @@
 // credentials in this file, and every write is parameterized (no SQL built from
 // request text). Writes are gated by a shared secret.
 //
-// SETUP (do this on the SiteGround/WordPress side):
-//   1. Set BALLOT_SYNC_TOKEN below to a long random string. Put the same value
-//      in the app so its POST is accepted.
-//   2. Confirm WP_LOAD_PATH points at your site's wp-load.php (this file assumes
-//      it sits in the app folder under public_html; adjust ../ depth as needed).
-//   3. Confirm ALLOWED_TABLES lists the tables your ballots read from.
-//   4. Deploy alongside hnib-proxy.php. Test with a real POST before relying on it.
+// WHERE THIS FILE GOES: on the WordPress/Gravity Forms site (the one whose
+// database holds the ballot table), NOT necessarily with the app. It can only
+// reach that database from inside that site's directory.
+//   - Same site as the app (e.g. app at hnibonline.com/tournament): drop this at
+//     hnibonline.com/hnib-ballot-sync.php; the app calls "./hnib-ballot-sync.php"
+//     (same-origin, no CORS needed).
+//   - App on a different domain (e.g. jamiecallery.com/tournament, WordPress on
+//     hnibonline.com): put this on hnibonline.com, set ALLOWED_ORIGIN to the
+//     app's origin, and point the app's Endpoint URL at the full
+//     https://hnibonline.com/hnib-ballot-sync.php.
+//
+// SETUP:
+//   1. Set BALLOT_SYNC_TOKEN to a long random string; put the same value in the
+//      app (Setup -> All-Star ballot auto-sync -> Shared token).
+//   2. Confirm WP_LOAD_PATH reaches this site's wp-load.php (it is normally in
+//      the WordPress root; adjust the ../ depth for where you place this file).
+//   3. ALLOWED_TABLES must list the EXACT table names GPPA reads (the same bare
+//      names the app's SQL export uses, e.g. gf_soph_rosters - no wp_ prefix).
+//   4. Set ALLOWED_ORIGIN: the app's origin for cross-domain, or '' to skip CORS
+//      when the app is same-origin.
+//   5. Test with "Test push now" in the app before relying on it.
 //
 // This is a TEMPLATE: validate it against your live site before the event. The
 // app's manual SQL/CSV export remains the verified fallback.
 
+const BALLOT_SYNC_TOKEN = 'CHANGE-ME-to-a-long-random-string';
+const WP_LOAD_PATH = __DIR__ . '/wp-load.php';
+// The app's origin when it lives on a DIFFERENT domain than WordPress. Leave ''
+// if the app is served from this same site (same-origin needs no CORS header).
+const ALLOWED_ORIGIN = ''; // e.g. 'https://jamiecallery.com'
+$ALLOWED_TABLES = array('gf_soph_rosters', 'gf_jrhigh_rosters');
+
+if (ALLOWED_ORIGIN !== '') {
+    header('Access-Control-Allow-Origin: ' . ALLOWED_ORIGIN);
+    header('Vary: Origin');
+    header('Access-Control-Allow-Methods: POST, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, X-Ballot-Token');
+    header('Access-Control-Max-Age: 86400');
+}
 header('Content-Type: application/json');
 
-const BALLOT_SYNC_TOKEN = 'CHANGE-ME-to-a-long-random-string';
-const WP_LOAD_PATH = __DIR__ . '/../wp-load.php';
-$ALLOWED_TABLES = array('gf_soph_rosters', 'gf_jrhigh_rosters');
+// Cross-origin POSTs with a JSON body and a custom header trigger a preflight;
+// answer it before any auth so the real POST can follow.
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -57,7 +88,9 @@ if (!file_exists(WP_LOAD_PATH)) {
 }
 require_once WP_LOAD_PATH; // gives us $wpdb
 global $wpdb;
-$full = $wpdb->prefix . $table; // e.g. wp_gf_soph_rosters
+// Use the table name exactly as GPPA reads it (already checked against the
+// allowlist above). These are standalone tables, not wp_-prefixed core tables.
+$full = $table;
 
 // Create the table if it does not exist yet (matches the export's schema).
 $wpdb->query(

@@ -119,23 +119,38 @@ minute.
 The app can push the roster on every sync so you never touch phpMyAdmin during
 the event. Two pieces:
 
-1. **Deploy the endpoint.** `hnib-ballot-sync.php` ships in the build next to
-   `index.html` (it is in `public/`, so it lands in `dist/` automatically).
-   Open it once and set `BALLOT_SYNC_TOKEN` to a long random string; confirm
-   `WP_LOAD_PATH` points at your site's `wp-load.php` and that `ALLOWED_TABLES`
-   lists your ballot table(s). It writes the table through WordPress's own
-   database handle (`$wpdb`) - no separate credentials, parameterized writes
-   only - and only accepts requests carrying the matching token.
+1. **Deploy the endpoint where WordPress lives.** `hnib-ballot-sync.php` ships in
+   the build (it is in `public/`, so it lands in `dist/`), but it can only write
+   the ballot table from inside the WordPress site that owns that database. Put
+   it on the **Gravity Forms site**, not necessarily with the app. Open it once
+   and set `BALLOT_SYNC_TOKEN` to a long random string; confirm `WP_LOAD_PATH`
+   reaches that site's `wp-load.php` and that `ALLOWED_TABLES` lists the exact
+   bare table names GPPA reads (e.g. `gf_soph_rosters`). It writes through
+   WordPress's own database handle (`$wpdb`) - no separate credentials,
+   parameterized writes only - and only accepts requests carrying the token.
 
 2. **Turn it on in the app.** Setup tab -> **All-Star ballot auto-sync**: tick
-   "Push roster to the ballot on every sync", set the **Endpoint URL**
-   (default `./hnib-ballot-sync.php`) and the **Shared token** (the same string
-   you put in the PHP file), then **Test push now** to confirm. From then on,
-   every Sync now and every Auto-sync (3 min) also refreshes the ballot table.
-   A push failure never breaks the sync - it just notes "ballot push failed" in
-   the status line.
+   "Push roster to the ballot on every sync", set the **Endpoint URL** and the
+   **Shared token** (the same string you put in the PHP file), then **Test push
+   now** to confirm. From then on, every Sync now and every Auto-sync (3 min)
+   also refreshes the ballot table. A push failure never breaks the sync - it
+   just notes "ballot push failed" in the status line.
 
-The manual SQL/CSV path above still works any time as a fallback.
+### Same site vs different domains
+
+- **App and WordPress on the same site** (e.g. app at `hnibonline.com/tournament`,
+  WordPress at `hnibonline.com`): simplest. Endpoint URL stays `./hnib-ballot-sync.php`,
+  leave `ALLOWED_ORIGIN` empty - no CORS involved.
+- **App on a different domain** (e.g. app at `jamiecallery.com/tournament`,
+  WordPress at `hnibonline.com`): put the PHP on **hnibonline.com**, set the
+  app's Endpoint URL to the full `https://hnibonline.com/hnib-ballot-sync.php`,
+  and set `ALLOWED_ORIGIN` in the PHP to the app's origin
+  (`https://jamiecallery.com`) so the browser allows the cross-site POST.
+
+Hosting the helper on the same site as the ballot is the least fiddly option. The
+manual SQL/CSV path above still works any time regardless of where the app lives -
+phpMyAdmin reaches the WordPress database directly, so the domain split does not
+matter there.
 
 ---
 
