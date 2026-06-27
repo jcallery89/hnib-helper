@@ -152,6 +152,42 @@ manual SQL/CSV path above still works any time regardless of where the app lives
 phpMyAdmin reaches the WordPress database directly, so the domain split does not
 matter there.
 
+### Keeping a business-critical WordPress site safe
+
+The endpoint can write your database, so treat it like any write endpoint. Its
+containment, in layers:
+
+- **Token first.** The shared secret is checked before any database work and
+  before WordPress is loaded, so requests without it get a `401` and touch
+  nothing.
+- **Table allowlist.** It only ever writes the tables in `ALLOWED_TABLES`
+  (the ballot lookup tables). It cannot reach `wp_posts`, `wp_users`, or other
+  Gravity Forms tables - those live elsewhere. Never add a core or
+  Gravity-Forms-managed table to that list.
+- **Parameterized writes.** Row content is bound, never concatenated into SQL,
+  and the table name must match both the allowlist and a plain-identifier shape.
+
+**Worst case** if the token leaks: someone can overwrite or empty the two ballot
+lookup tables - which you rebuild instantly by pushing again. Other forms and the
+rest of the site are not in reach.
+
+**Two database modes** (top of `hnib-ballot-sync.php`):
+
+- **Mode A (recommended for a critical site):** point it at a dedicated MySQL
+  user `GRANT`ed `SELECT, INSERT, DELETE` on only the ballot tables. The script
+  then never loads WordPress, and the database itself - not just the code -
+  refuses any access beyond those tables. This is the strongest guarantee that a
+  bug or a stolen token cannot affect other Gravity Forms.
+- **Mode B (fallback):** uses WordPress's `$wpdb`. No credentials in the file,
+  but the script then carries WordPress-level database rights, so the allowlist
+  is the only wall. Fine, but Mode A is safer.
+
+**Operational hygiene either way:** use a long random token and rotate it after
+the festival; serve everything over HTTPS; back up the database before the first
+real push; and remember the token sits in the operator's browser, so only enable
+auto-sync on a machine you trust. If you want maximum caution, skip the endpoint
+entirely and use the manual SQL/CSV path - it adds no code to the production site.
+
 ---
 
 ## A question worth settling
