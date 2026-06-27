@@ -7,12 +7,21 @@ import type { Player, PlayerStatLine, PlayerSummary } from "../types.ts";
  * count of distinct games with a line.
  */
 export function summarizePlayers(players: Player[], lines: PlayerStatLine[]): PlayerSummary[] {
-  const goalieIds = new Set(players.filter((p) => p.position === "G").map((p) => p.id));
   const byPlayer = new Map<string, PlayerStatLine[]>();
   for (const line of lines) {
     const arr = byPlayer.get(line.playerId) ?? [];
     arr.push(line);
     byPlayer.set(line.playerId, arr);
+  }
+
+  // A player is a goalie if their roster position says so OR any of their stat
+  // lines carry goalie data (saves/shots/GA). The data-based check catches
+  // goalies whose roster position did not come through as "G".
+  const goalieIds = new Set(players.filter((p) => p.position === "G").map((p) => p.id));
+  for (const line of lines) {
+    if (line.saves !== undefined || line.goalsAgainst !== undefined || line.shots !== undefined) {
+      goalieIds.add(line.playerId);
+    }
   }
 
   const summaries: PlayerSummary[] = [];
@@ -28,6 +37,8 @@ export function summarizePlayers(players: Player[], lines: PlayerStatLine[]): Pl
     let goalsAgainst = 0;
     let shots = 0;
     let hasGoalieData = false;
+    let providedGaa: number | undefined;
+    let providedSavePct: number | undefined;
     const gameIds = new Set<string>();
 
     for (const l of pLines) {
@@ -36,11 +47,13 @@ export function summarizePlayers(players: Player[], lines: PlayerStatLine[]): Pl
       goals += l.goals ?? 0;
       assists += l.assists ?? 0;
       pim += l.pim ?? 0;
-      if (l.saves !== undefined || l.goalsAgainst !== undefined || l.shots !== undefined) {
+      if (l.saves !== undefined || l.goalsAgainst !== undefined || l.shots !== undefined || l.gaa !== undefined || l.savePct !== undefined) {
         hasGoalieData = true;
         saves += l.saves ?? 0;
         goalsAgainst += l.goalsAgainst ?? 0;
         shots += l.shots ?? 0;
+        if (l.gaa !== undefined) providedGaa = l.gaa;
+        if (l.savePct !== undefined) providedSavePct = l.savePct;
       }
     }
     if (gp === 0 && gameIds.size > 0) gp = gameIds.size;
@@ -59,8 +72,10 @@ export function summarizePlayers(players: Player[], lines: PlayerStatLine[]): Pl
       summary.goalsAgainst = goalsAgainst;
       summary.saves = saves;
       const shotsFaced = shots > 0 ? shots : saves + goalsAgainst;
-      summary.savePct = shotsFaced > 0 ? round3(saves / shotsFaced) : undefined;
-      summary.gaa = gp > 0 ? round2(goalsAgainst / gp) : undefined;
+      // Prefer the source's published rates; they account for split starts that
+      // a team-games count cannot.
+      summary.savePct = providedSavePct ?? (shotsFaced > 0 ? round3(saves / shotsFaced) : undefined);
+      summary.gaa = providedGaa ?? (gp > 0 ? round2(goalsAgainst / gp) : undefined);
     }
 
     summaries.push(summary);

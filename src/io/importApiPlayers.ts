@@ -30,6 +30,8 @@ interface ApiBoxPlayer {
   Shots?: number;
   Saves?: number;
   GP?: number;
+  SVPCT?: number;
+  GAA?: number;
 }
 
 interface ApiTeam {
@@ -97,6 +99,8 @@ export function parseTeamRoster(json: string, teamId: string, eventId: string): 
       continue;
     }
     const isGoalie = player.position === "G" || parsePosition(bp.Position ?? "") === "G";
+    // Make sure a goalie whose roster position was blank is still flagged.
+    if (isGoalie && !player.position) player.position = "G";
     const shots = num(bp.Shots);
     const saves = num(bp.Saves);
     stats.push({
@@ -111,6 +115,9 @@ export function parseTeamRoster(json: string, teamId: string, eventId: string): 
             shots,
             // The box score carries shots faced and saves; goals against is the difference.
             goalsAgainst: Math.max(0, shots - saves),
+            // Keep the platform's published rates when present (authoritative for split starts).
+            ...(typeof bp.GAA === "number" ? { gaa: bp.GAA } : {}),
+            ...(typeof bp.SVPCT === "number" ? { savePct: bp.SVPCT } : {}),
           }
         : {}),
     });

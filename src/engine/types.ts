@@ -136,6 +136,10 @@ export interface PlayerStatLine {
   saves?: number;
   goalsAgainst?: number;
   shots?: number;
+  // Authoritative goalie rates when the source provides them (goalies split
+  // starts, so these cannot be re-derived from a team-games count).
+  gaa?: number;
+  savePct?: number;
 }
 
 export interface PlayerSummary {

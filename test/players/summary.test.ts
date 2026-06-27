@@ -29,6 +29,23 @@ describe("summarizePlayers", () => {
     expect(s.savePct).toBe(0.9); // 36 / 40
   });
 
+  it("treats a player with goalie stat data as a goalie even without position 'G'", () => {
+    const noPos: Player = { id: "p3", eventId: "e", teamId: "t", jersey: 31, firstName: "Sam", lastName: "Net" };
+    const lines: PlayerStatLine[] = [{ playerId: "p3", gameId: null, gp: 3, goals: 0, assists: 0, saves: 30, shots: 33 }];
+    const s = summarizePlayers([noPos], lines)[0];
+    expect(s.isGoalie).toBe(true);
+    expect(s.savePct).toBeCloseTo(0.909, 3);
+  });
+
+  it("prefers source-published goalie rates over derived ones", () => {
+    const lines: PlayerStatLine[] = [
+      { playerId: "p2", gameId: null, gp: 7, goals: 0, assists: 0, saves: 121, shots: 130, gaa: 1.29, savePct: 0.931 },
+    ];
+    const s = summarizePlayers([goalie], lines)[0];
+    expect(s.gaa).toBe(1.29); // not 0/7
+    expect(s.savePct).toBe(0.931);
+  });
+
   it("returns a zeroed summary for a rostered player with no stats", () => {
     const s = summarizePlayers([skater], [])[0];
     expect(s).toMatchObject({ gp: 0, goals: 0, assists: 0, points: 0 });
