@@ -62,7 +62,7 @@ describe("buildBallotRoster", () => {
       position: "F",
       gp: 2, g: 3, a: 5, pts: 8,
     });
-    expect(jane.display).toBe("#12 Jane Smith - 2GP 3G 5A 8P");
+    expect(jane.display).toBe("#12 Jane Smith (F) - 2GP 3G 5A 8P");
   });
 
   it("formats goalie rows with GAA and SV%, omitting GP from the label", () => {
@@ -70,7 +70,7 @@ describe("buildBallotRoster", () => {
     expect(goalie.position).toBe("G");
     expect(goalie.gaa).toBe("2.00"); // 4 GA / 2 GP
     expect(goalie.svpct).toBe(".920"); // 46 / 50, leading zero stripped
-    expect(goalie.display).toBe("#31 Pat Lee - 2.00GAA .920SV%");
+    expect(goalie.display).toBe("#31 Pat Lee (G) - 2.00GAA .920SV%");
   });
 
   it("rounds a fractional goalie GP (Tourno split-start share) for the column", () => {
@@ -81,13 +81,13 @@ describe("buildBallotRoster", () => {
     };
     const row = buildBallotRoster(ds, new Map(summarizePlayers(ds.players!, ds.playerStats!).map((s) => [s.playerId, s])))[0];
     expect(row.gp).toBe(0); // 0.333 rounded - lands cleanly in the INT column
-    expect(row.display).toBe("#40 Split Start - 9.01GAA .670SV%"); // no fractional GP in the label
+    expect(row.display).toBe("#40 Split Start (G) - 9.01GAA .670SV%"); // no fractional GP in the label
   });
 
   it("leaves a missing jersey blank rather than 0", () => {
     const row = buildBallotRoster(dataset, summaries()).find((r) => r.player_id === "p4")!;
     expect(row.jersey).toBeNull();
-    expect(row.display).toBe("No Number - 0GP 0G 0A 0P");
+    expect(row.display).toBe("No Number (F) - 0GP 0G 0A 0P");
   });
 
   it("sorts by team then jersey so output is stable", () => {
@@ -107,7 +107,7 @@ describe("ballotRosterCsv", () => {
   it("quotes cells that contain commas or hyphenated displays safely", () => {
     const csv = ballotRosterCsv(buildBallotRoster(dataset, summaries()));
     // the display column contains a hyphen and spaces but no comma, so it stays unquoted
-    expect(csv).toContain("#12 Jane Smith - 2GP 3G 5A 8P");
+    expect(csv).toContain("#12 Jane Smith (F) - 2GP 3G 5A 8P");
   });
 });
 

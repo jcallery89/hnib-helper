@@ -71,10 +71,11 @@ function toRow(p: Player, s: PlayerSummary | undefined, team: string): BallotRow
   const svpct = s?.savePct !== undefined ? s.savePct.toFixed(3).replace(/^0/, "") : "";
 
   const numTag = jersey !== null ? `#${jersey} ` : "";
+  const posTag = position ? ` (${position})` : "";
   const stat = isGoalie
     ? `${gaa || "-"}GAA ${svpct || "-"}SV%`
     : `${gp}GP ${g}G ${a}A ${pts}P`;
-  const display = `${numTag}${name} - ${stat}`;
+  const display = `${numTag}${name}${posTag} - ${stat}`;
 
   return { player_id: p.id, team_name: team, player_name: name, jersey, position, gp, g, a, pts, gaa, svpct, display };
 }

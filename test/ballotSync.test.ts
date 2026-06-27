@@ -51,7 +51,7 @@ describe("pushBallotRoster", () => {
     expect(seen!.init.method).toBe("POST");
     expect((seen!.init.headers as Record<string, string>)["X-Ballot-Token"]).toBe("secret");
     const body = JSON.parse(seen!.init.body as string);
-    expect(body.rows[0].display).toBe("#12 Jane Smith - 1GP 2G 1A 3P");
+    expect(body.rows[0].display).toBe("#12 Jane Smith (F) - 1GP 2G 1A 3P");
   });
 
   it("rejects with the server's error message on a non-ok response", async () => {
