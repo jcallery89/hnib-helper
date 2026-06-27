@@ -2,11 +2,14 @@ import { useState } from "preact/hooks";
 import type { Dataset } from "../../io/dataset.ts";
 import type { SeedingRule } from "../../engine/types.ts";
 import { loadSampleDataset, loadDemoDataset } from "../../io/sampleData.ts";
-import { clearAllSessions, downloadFile, loadEvent } from "../../io/session.ts";
+import { clearAllSessions, downloadFile, loadEvent, loadBallotConfig, saveBallotConfig } from "../../io/session.ts";
 import { applyResultsCsv, gamesToCsv } from "../../io/csv.ts";
 import { parseSchedule } from "../../io/importSchedule.ts";
 import { importApiData } from "../../io/importApi.ts";
 import { fullSync } from "../../io/sync.ts";
+import { pushBallotRoster, type BallotSyncConfig } from "../../io/ballotSync.ts";
+import { playerSummaries } from "../state/store.ts";
+import { defaultBallotTable } from "../../io/ballotExport.ts";
 
 interface Props {
   dataset: Dataset;
@@ -28,6 +31,30 @@ export function SetupView({ dataset, replace, removeCurrent, eventCount }: Props
   const [apiName, setApiName] = useState("");
   const [syncId, setSyncId] = useState(DEFAULT_EVENT_ID);
   const [syncing, setSyncing] = useState(false);
+  const [ballot, setBallot] = useState<BallotSyncConfig>(() => loadBallotConfig());
+  const [ballotMsg, setBallotMsg] = useState("");
+  const [pushing, setPushing] = useState(false);
+
+  function editBallot(patch: Partial<BallotSyncConfig>) {
+    setBallot((prev) => {
+      const next = { ...prev, ...patch };
+      saveBallotConfig(next);
+      return next;
+    });
+  }
+
+  async function testBallotPush() {
+    setPushing(true);
+    setBallotMsg("");
+    try {
+      const pr = await pushBallotRoster(dataset, playerSummaries(dataset), ballot);
+      setBallotMsg(`Pushed ${pr.written} players to ${pr.table}.`);
+    } catch (e) {
+      setBallotMsg(e instanceof Error ? e.message : "Push failed.");
+    } finally {
+      setPushing(false);
+    }
+  }
 
   function applyApiJson(scheduleJson: string, teamsJson: string | null, eventId?: string) {
     const { dataset: next, summary } = importApiData(scheduleJson, teamsJson, {
@@ -165,6 +192,54 @@ export function SetupView({ dataset, replace, removeCurrent, eventCount }: Props
             Sync from JSON
           </button>
         </div>
+      </div>
+
+      <div class="card">
+        <p class="section-title">All-Star ballot auto-sync</p>
+        <p class="note">
+          Keep the Gravity Forms All-Star ballot current automatically. When enabled, every sync
+          (Sync now and Auto-sync) also pushes this event's roster - team, jersey, position, and
+          live stats - to a small endpoint on your site that refreshes the ballot's table.
+          hnib-ballot-sync.php ships with the site; set its token, then match it below. See
+          docs/ALL-STAR-BALLOT.md for the one-time setup.
+        </p>
+        <label class="row" style={{ marginBottom: 10 }}>
+          <input
+            type="checkbox"
+            checked={ballot.enabled}
+            onChange={(e) => editBallot({ enabled: (e.target as HTMLInputElement).checked })}
+          />
+          Push roster to the ballot on every sync
+        </label>
+        <div class="row" style={{ alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
+          <label style={{ flex: 1, minWidth: 260 }}>
+            <span class="note">Endpoint URL</span>
+            <input
+              type="text"
+              style={{ width: "100%" }}
+              placeholder="./hnib-ballot-sync.php"
+              value={ballot.url}
+              onInput={(e) => editBallot({ url: (e.target as HTMLInputElement).value })}
+            />
+          </label>
+          <label style={{ flex: 1, minWidth: 260 }}>
+            <span class="note">Shared token (matches the PHP file)</span>
+            <input
+              type="password"
+              style={{ width: "100%" }}
+              placeholder="long random string"
+              value={ballot.token}
+              onInput={(e) => editBallot({ token: (e.target as HTMLInputElement).value })}
+            />
+          </label>
+        </div>
+        <div class="toolbar" style={{ marginTop: 8 }}>
+          <button class="btn secondary" disabled={pushing || !ballot.url.trim()} onClick={testBallotPush}>
+            {pushing ? "Pushing..." : "Test push now"}
+          </button>
+          <span class="note">Target table: {defaultBallotTable(dataset.event)}</span>
+        </div>
+        {ballotMsg && <p class="note">{ballotMsg}</p>}
       </div>
 
       <div class="card">

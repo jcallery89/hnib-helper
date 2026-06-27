@@ -9,10 +9,12 @@ import {
   saveEvent,
   getActiveEventId,
   setActiveEventId,
+  loadBallotConfig,
 } from "./io/session.ts";
 import { fullSync } from "./io/sync.ts";
+import { pushBallotRoster } from "./io/ballotSync.ts";
 import { brandUrls } from "./render/brand.ts";
-import { analyze } from "./ui/state/store.ts";
+import { analyze, playerSummaries } from "./ui/state/store.ts";
 import { ResultsView } from "./ui/views/ResultsView.tsx";
 import { StandingsView } from "./ui/views/StandingsView.tsx";
 import { BracketView } from "./ui/views/BracketView.tsx";
@@ -141,7 +143,19 @@ export function App() {
       // Discard if the operator switched events while this was in flight.
       if (datasetRef.current.event.id === eventId) {
         replace(r.dataset);
-        setSyncStatus(`Last synced ${new Date().toLocaleTimeString()} - ${r.playerCount} players`);
+        let status = `Last synced ${new Date().toLocaleTimeString()} - ${r.playerCount} players`;
+        // Push the refreshed roster to the All-Star ballot when enabled. A push
+        // failure must never break the sync, so it only annotates the status.
+        const ballot = loadBallotConfig();
+        if (ballot.enabled && ballot.url.trim()) {
+          try {
+            const pr = await pushBallotRoster(r.dataset, playerSummaries(r.dataset), ballot);
+            status += ` - ballot updated (${pr.written})`;
+          } catch (e) {
+            status += ` - ballot push failed (${e instanceof Error ? e.message : "error"})`;
+          }
+        }
+        setSyncStatus(status);
       }
     } catch {
       setSyncStatus(`Sync failed ${new Date().toLocaleTimeString()} - kept current data`);

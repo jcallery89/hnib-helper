@@ -116,16 +116,26 @@ minute.
 
 ### Automatic (set up once, then hands-off)
 
-If you want the ballot to track stats without you exporting and pasting, see
-**`hnib-ballot-sync.php`** in this folder. It is a small same-origin endpoint
-(same idea as the existing `hnib-proxy.php`) that receives the roster from the
-app and writes `gf_soph_rosters` for you using WordPress's own database handle -
-no separate database credentials, parameterized writes only.
+The app can push the roster on every sync so you never touch phpMyAdmin during
+the event. Two pieces:
 
-This needs one code change in the app (have each auto-sync also POST the roster
-to the endpoint, guarded by a shared secret). That change is **not wired up
-yet** - ask and it can be added. The manual path above is the verified
-default in the meantime.
+1. **Deploy the endpoint.** `hnib-ballot-sync.php` ships in the build next to
+   `index.html` (it is in `public/`, so it lands in `dist/` automatically).
+   Open it once and set `BALLOT_SYNC_TOKEN` to a long random string; confirm
+   `WP_LOAD_PATH` points at your site's `wp-load.php` and that `ALLOWED_TABLES`
+   lists your ballot table(s). It writes the table through WordPress's own
+   database handle (`$wpdb`) - no separate credentials, parameterized writes
+   only - and only accepts requests carrying the matching token.
+
+2. **Turn it on in the app.** Setup tab -> **All-Star ballot auto-sync**: tick
+   "Push roster to the ballot on every sync", set the **Endpoint URL**
+   (default `./hnib-ballot-sync.php`) and the **Shared token** (the same string
+   you put in the PHP file), then **Test push now** to confirm. From then on,
+   every Sync now and every Auto-sync (3 min) also refreshes the ballot table.
+   A push failure never breaks the sync - it just notes "ballot push failed" in
+   the status line.
+
+The manual SQL/CSV path above still works any time as a fallback.
 
 ---
 
