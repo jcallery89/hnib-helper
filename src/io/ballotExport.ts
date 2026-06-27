@@ -59,7 +59,11 @@ function toRow(p: Player, s: PlayerSummary | undefined, team: string): BallotRow
   const jersey = p.jersey === null || p.jersey === undefined ? "" : String(p.jersey);
   const isGoalie = s?.isGoalie ?? p.position === "G";
   const position = p.position ?? (isGoalie ? "G" : "");
-  const gp = s?.gp ?? 0;
+  // Tourno reports goalie GP as fractional game-shares (split starts), which
+  // reads oddly on a ballot and does not fit the INT column. Round it for
+  // storage, and leave it out of the goalie label entirely - GAA and SV% are the
+  // metrics coaches judge a goalie on, and goalie GP is unreliable anyway.
+  const gp = Math.round(s?.gp ?? 0);
   const g = s?.goals ?? 0;
   const a = s?.assists ?? 0;
   const pts = s?.points ?? 0;
@@ -68,7 +72,7 @@ function toRow(p: Player, s: PlayerSummary | undefined, team: string): BallotRow
 
   const numTag = jersey ? `#${jersey} ` : "";
   const stat = isGoalie
-    ? `${gp}GP ${gaa || "-"}GAA ${svpct || "-"}SV%`
+    ? `${gaa || "-"}GAA ${svpct || "-"}SV%`
     : `${gp}GP ${g}G ${a}A ${pts}P`;
   const display = `${numTag}${name} - ${stat}`;
 
