@@ -101,10 +101,10 @@ describe("ballotRosterCsv", () => {
 });
 
 describe("ballotRosterSql", () => {
-  it("creates, truncates and inserts every row", () => {
+  it("drops, recreates and inserts every row", () => {
     const sql = ballotRosterSql(buildBallotRoster(dataset, summaries()), "gf_soph_rosters");
-    expect(sql).toContain("CREATE TABLE IF NOT EXISTS `gf_soph_rosters`");
-    expect(sql).toContain("TRUNCATE TABLE `gf_soph_rosters`;");
+    expect(sql).toContain("DROP TABLE IF EXISTS `gf_soph_rosters`;");
+    expect(sql).toContain("CREATE TABLE `gf_soph_rosters`");
     expect(sql).toContain("INSERT INTO `gf_soph_rosters`");
     expect((sql.match(/\(\s*'p\d'/g) ?? [])).toHaveLength(4);
   });
