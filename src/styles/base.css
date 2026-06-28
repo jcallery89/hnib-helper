@@ -305,3 +305,13 @@ footer.foot {
   color: var(--hnib-text-dim);
   font-size: 0.8rem;
 }
+
+/* Playoff scenarios: readable list of single-result triggers. */
+.scenario-list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  line-height: 1.7;
+}
+.scenario-list li {
+  margin-bottom: 2px;
+}

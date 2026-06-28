@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { playoffPicture, eliminatedTeamIds } from "../src/engine/playoff/scenarios.ts";
+import { playoffPicture, eliminatedTeamIds, forecastScenarios, applyHypotheticals } from "../src/engine/playoff/scenarios.ts";
 import type { Division, Game, HnibEvent, Team } from "../src/engine/types.ts";
 
 const event: HnibEvent = {
@@ -64,5 +64,47 @@ describe("playoffPicture", () => {
     const pic = playoffPicture(event, divisions, teams, many, 2);
     expect(pic.decided).toBe(false);
     expect(pic.remainingGames).toBe(9);
+  });
+});
+
+describe("forecastScenarios", () => {
+  // A has clinched (beat both); the last game B vs C decides the second seed.
+  const games: Game[] = [
+    game("g1", "A", "B", 3, 0),
+    game("g2", "A", "C", 3, 0),
+    game("bc", "B", "C", null, null), // remaining; B is home
+  ];
+
+  it("flags the single results that clinch or eliminate a team", () => {
+    const f = forecastScenarios(event, divisions, teams, games, 2);
+    expect(f.decided).toBe(true);
+    const bWins = f.triggers.find((t) => t.gameId === "bc" && t.outcome === "home")!;
+    expect(bWins).toBeTruthy();
+    expect(bWins.effects).toContainEqual({ teamId: "C", effect: "eliminated" });
+    expect(bWins.effects).toContainEqual({ teamId: "B", effect: "clinched" });
+    // The reverse result flips it.
+    const cWins = f.triggers.find((t) => t.gameId === "bc" && t.outcome === "away")!;
+    expect(cWins.effects).toContainEqual({ teamId: "B", effect: "eliminated" });
+  });
+
+  it("never triggers on an already-clinched team", () => {
+    const f = forecastScenarios(event, divisions, teams, games, 2);
+    const mentionsA = f.triggers.some((t) => t.effects.some((e) => e.teamId === "A"));
+    expect(mentionsA).toBe(false); // A is in regardless, so no scenario changes it
+  });
+});
+
+describe("applyHypotheticals", () => {
+  it("marks an overridden game final with the chosen result", () => {
+    const games: Game[] = [game("bc", "B", "C", null, null)];
+    const out = applyHypotheticals(games, { bc: "away" });
+    expect(out[0]).toMatchObject({ status: "final", homeScore: 0, awayScore: 1 });
+    // And the picture reflects it: C beats B, so B misses the 2-team field here.
+    const withWin = applyHypotheticals(
+      [game("g1", "A", "B", 3, 0), game("g2", "A", "C", 3, 0), game("bc", "B", "C", null, null)],
+      { bc: "away" },
+    );
+    const pic = playoffPicture(event, divisions, teams, withWin, 2);
+    expect(eliminatedTeamIds(pic)).toContain("B");
   });
 });

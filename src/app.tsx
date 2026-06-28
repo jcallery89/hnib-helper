@@ -17,6 +17,7 @@ import { brandUrls } from "./render/brand.ts";
 import { analyze, playerSummaries } from "./ui/state/store.ts";
 import { ResultsView } from "./ui/views/ResultsView.tsx";
 import { StandingsView } from "./ui/views/StandingsView.tsx";
+import { ScenariosView } from "./ui/views/ScenariosView.tsx";
 import { BracketView } from "./ui/views/BracketView.tsx";
 import { ScheduleView } from "./ui/views/ScheduleView.tsx";
 import { PlayersView } from "./ui/views/PlayersView.tsx";
@@ -24,11 +25,12 @@ import { StatsView } from "./ui/views/StatsView.tsx";
 import { ShareView } from "./ui/views/ShareView.tsx";
 import { SetupView } from "./ui/views/SetupView.tsx";
 
-type TabKey = "results" | "standings" | "bracket" | "schedule" | "players" | "stats" | "share" | "setup";
+type TabKey = "results" | "standings" | "scenarios" | "bracket" | "schedule" | "players" | "stats" | "share" | "setup";
 
 const TABS: Array<{ key: TabKey; label: string }> = [
   { key: "results", label: "Results" },
   { key: "standings", label: "Standings" },
+  { key: "scenarios", label: "Scenarios" },
   { key: "bracket", label: "Bracket" },
   { key: "schedule", label: "Schedule" },
   { key: "players", label: "Players" },
@@ -275,6 +277,7 @@ export function App() {
 
       {tab === "results" && <ResultsView dataset={dataset} analysis={analysis} update={update} />}
       {tab === "standings" && <StandingsView dataset={dataset} analysis={analysis} />}
+      {tab === "scenarios" && <ScenariosView dataset={dataset} analysis={analysis} />}
       {tab === "bracket" && <BracketView dataset={dataset} analysis={analysis} update={update} />}
       {tab === "schedule" && <ScheduleView dataset={dataset} />}
       {tab === "players" && <PlayersView dataset={dataset} update={update} />}
