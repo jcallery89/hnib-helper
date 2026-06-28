@@ -9,11 +9,17 @@ build/deploy and the design rationale in `.claude/plans/` if present.
 
 - Point system: Win 2 / Tie 1 / Loss 0 (configurable in Setup).
 - Minimum rest window: 120 minutes. Target games per team: 4.
-- Seeding (both events, "top two per division"): division winners take the top
-  tier of seeds, runners-up the next, wildcards the best of the rest. So 2
-  divisions (Jr. High) -> seeds 1-2 winners, 3-4 runners-up, 5-8 wildcards; 3
-  divisions (Sophomore) -> 1-3 winners, 4-6 runners-up, 7-8 wildcards. 8-team
-  single elim, 1v8 / 4v5 / 2v7 / 3v6.
+- Seeding differs by event (set via `seedingRule` + `fieldSize` in Setup):
+  - Jr. High: 2 divisions (East/West), **6-team** field. Division winners are
+    seeded 1-2; the **next two teams from each division are pooled** and ranked
+    3-6 by the tiebreakers (NO wildcards - each division is capped at 3). 6-team
+    single elim: seeds 1-2 bye, play-in 4v5 and 3v6.
+    (`seedingRule: "jrhigh_winners_next_two"`, `fieldSize: 6`)
+  - Sophomore: 3 divisions, **8-team** field. Division winners 1-3, runners-up
+    4-6, then 2 wildcards (best of the rest) 7-8. 8-team single elim,
+    1v8 / 4v5 / 2v7 / 3v6. (`seedingRule: "jrhigh_top2_per_division"`, fieldSize 8)
+  - Both events share the ONE tiebreak procedure below. Pooled tiers and wildcard
+    fills are all ranked by it.
 
 ## Domain rules the engine encodes
 

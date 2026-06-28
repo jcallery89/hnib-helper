@@ -36,7 +36,8 @@ export function BracketView({ dataset, analysis, update }: Props) {
   }
 
   const results = new Map<string, BracketResult>(Object.entries(dataset.bracketResults ?? {}));
-  const bracket = buildBracket(analysis.seeds, results);
+  const fieldSize = dataset.event.fieldSize ?? 8;
+  const bracket = buildBracket(analysis.seeds, results, fieldSize);
   const title = `${dataset.event.name} - Playoffs`;
 
   function setResult(gameId: string, patch: Partial<BracketResult>) {
@@ -87,6 +88,7 @@ export function BracketView({ dataset, analysis, update }: Props) {
             bracket={bracket}
             nameById={analysis.nameById}
             brand={brand}
+            fieldSize={fieldSize}
           />
         </div>
       </div>
@@ -110,6 +112,7 @@ export function BracketView({ dataset, analysis, update }: Props) {
             bracket={bracket}
             nameById={analysis.nameById}
             brand={brand}
+            fieldSize={fieldSize}
           />
         </div>
       </div>

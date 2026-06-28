@@ -1,5 +1,6 @@
 import type { HnibEvent } from "../types.ts";
 import { playoffSeedingRules, TIEBREAK_RULES } from "./rules.ts";
+import { fieldSizeFor } from "./field.ts";
 
 // Content for an on-brand shareable graphic (Instagram). Pure data so it can be
 // unit-tested and rendered the same way for preview and PNG export.
@@ -33,12 +34,14 @@ export function seedingCardContent(
   event: HnibEvent,
   divisionCount: number,
   seeds: SeedLine[] = [],
-  fieldSize = 8,
+  fieldSize = fieldSizeFor(event),
 ): ShareCardContent {
   const rules = playoffSeedingRules(event, divisionCount, fieldSize);
   const intro = [...rules.seedingLines];
   if (fieldSize === 8) {
     intro.push("Eight-team single elimination. Quarterfinals: 1 vs 8, 4 vs 5, 2 vs 7, 3 vs 6.");
+  } else if (fieldSize === 6) {
+    intro.push("Six-team single elimination. Seeds 1 and 2 earn a bye; play-in games are 4 vs 5 and 3 vs 6.");
   }
   const items = [...seeds]
     .sort((a, b) => a.seed - b.seed)
@@ -67,7 +70,7 @@ export function playoffPictureCardContent(
   seeds: SeedLine[],
   eliminated: EliminatedLine[],
   decided: boolean,
-  fieldSize = 8,
+  fieldSize = fieldSizeFor(event),
 ): ShareCardContent {
   const items: ShareCardItem[] = [];
   const inSeeds = [...seeds].sort((a, b) => a.seed - b.seed).slice(0, fieldSize);

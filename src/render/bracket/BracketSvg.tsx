@@ -10,10 +10,11 @@ interface Props {
   bracket: BracketGame[];
   nameById: (id: string) => string;
   brand?: BrandAssets;
+  fieldSize?: number;
 }
 
-export function BracketSvg({ width, height, title, bracket, nameById, brand }: Props) {
-  const layout = computeLayout(width, height);
+export function BracketSvg({ width, height, title, bracket, nameById, brand, fieldSize }: Props) {
+  const layout = computeLayout(width, height, fieldSize);
   const gameById = new Map(bracket.map((g) => [g.id, g]));
   const championId = gameById.get("final")?.winnerTeamId ?? null;
 

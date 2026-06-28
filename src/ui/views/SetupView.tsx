@@ -355,9 +355,20 @@ export function SetupView({ dataset, replace, removeCurrent, eventCount }: Props
               value={dataset.event.seedingRule}
               onChange={(e) => edit((d) => (d.event.seedingRule = (e.target as HTMLSelectElement).value as SeedingRule))}
             >
-              <option value="jrhigh_top2_per_division">Top two per division (Jr. High and Sophomore)</option>
+              <option value="jrhigh_winners_next_two">Winners + next two per division, pooled (Jr. High)</option>
+              <option value="jrhigh_top2_per_division">Winners + runners-up + wildcards (Sophomore)</option>
               <option value="soph_division_winners">Division winners only (legacy)</option>
             </select>
+          </label>
+          <label class="row">
+            Playoff teams:
+            <input
+              type="number"
+              style={{ width: 64 }}
+              min={2}
+              value={dataset.event.fieldSize ?? 8}
+              onInput={(e) => edit((d) => (d.event.fieldSize = Math.max(2, Number((e.target as HTMLInputElement).value) || 8)))}
+            />
           </label>
         </div>
         <div class="row" style={{ gap: 16, marginTop: 12 }}>

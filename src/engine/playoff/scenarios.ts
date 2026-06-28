@@ -1,5 +1,5 @@
 import type { Division, Game, HnibEvent, Team } from "../types.ts";
-import { buildPlayoffField } from "./field.ts";
+import { buildPlayoffField, fieldSizeFor } from "./field.ts";
 
 // Clinch / elimination picture for the playoff field. Because seeding is
 // division-based (a low-points division winner can make it, a high-points team
@@ -30,7 +30,7 @@ export function playoffPicture(
   divisions: Division[],
   teams: Team[],
   games: Game[],
-  fieldSize = 8,
+  fieldSize = fieldSizeFor(event),
 ): PlayoffPicture {
   const remaining = games.filter((g) => g.round === "rr" && g.status !== "final");
   const n = remaining.length;

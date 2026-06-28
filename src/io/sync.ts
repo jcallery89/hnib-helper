@@ -137,6 +137,15 @@ export async function fullSync(
   });
   warnings.push(...summary.warnings);
 
+  // Playoff configuration is operator-set, not in the API feed, so carry it
+  // forward across re-syncs instead of resetting to import defaults.
+  if (sameEvent && prev) {
+    dataset.event.seedingRule = prev.event.seedingRule;
+    dataset.event.fieldSize = prev.event.fieldSize;
+    dataset.event.hasPlayoffBracket = prev.event.hasPlayoffBracket;
+    dataset.event.pointSystem = prev.event.pointSystem;
+  }
+
   // Team rosters + stats.
   const players: Player[] = [];
   const stats: PlayerStatLine[] = [];
