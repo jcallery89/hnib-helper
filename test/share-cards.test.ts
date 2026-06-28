@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { h } from "preact";
 import { renderToString } from "preact-render-to-string";
-import { seedingCardContent, tiebreakCardContent, announcementCardContent } from "../src/engine/playoff/shareCards.ts";
+import { seedingCardContent, tiebreakCardContent, announcementCardContent, playoffPictureCardContent } from "../src/engine/playoff/shareCards.ts";
 import { ShareCard } from "../src/render/share/ShareCard.tsx";
 import type { HnibEvent } from "../src/engine/types.ts";
 
@@ -51,6 +51,27 @@ describe("announcementCardContent", () => {
 
   it("falls back to a default title when blank", () => {
     expect(announcementCardContent(event, "  ", "", "").title).toBe("Tournament Update");
+  });
+});
+
+describe("playoffPictureCardContent", () => {
+  it("groups current seeds, in the hunt, and eliminated under headings", () => {
+    const c = playoffPictureCardContent(
+      event,
+      [{ seed: 1, name: "Atlantic", color: "#111111" }],
+      [{ name: "Western", color: "#222222" }],
+      [{ name: "Coastal", color: "#d6453d" }],
+      true,
+      8,
+    );
+    const headings = c.items.filter((i) => i.heading).map((i) => i.text);
+    expect(headings).toEqual(["Current Seeds", "In the Hunt", "Eliminated"]);
+    expect(c.items.find((i) => i.text === "Western" && !i.heading)).toBeTruthy();
+  });
+
+  it("omits the In the Hunt heading when nobody is in the hunt", () => {
+    const c = playoffPictureCardContent(event, [{ seed: 1, name: "Atlantic" }], [], [], true, 8);
+    expect(c.items.filter((i) => i.heading).map((i) => i.text)).toEqual(["Current Seeds"]);
   });
 });
 

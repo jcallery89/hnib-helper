@@ -42,8 +42,14 @@ export function ShareView({ dataset, analysis }: Props) {
     if (cardType === "picture") {
       const pic = playoffPicture(dataset.event, dataset.divisions, dataset.teams, dataset.games);
       const elimIds = new Set(eliminatedTeamIds(pic));
+      const seedIds = new Set((analysis.seeds ?? []).map((s) => s.teamId));
+      const statusById = new Map(pic.statuses.map((s) => [s.teamId, s.state]));
       const eliminated = dataset.teams.filter((t) => elimIds.has(t.id)).map((t) => ({ name: t.name, color: COLORS.red }));
-      return playoffPictureCardContent(dataset.event, seeds, eliminated, pic.decided);
+      // Still alive but not currently holding a seed.
+      const inHunt = dataset.teams
+        .filter((t) => !seedIds.has(t.id) && statusById.get(t.id) === "alive")
+        .map((t) => ({ name: t.name, color: t.colorPrimary || "#8a93ab" }));
+      return playoffPictureCardContent(dataset.event, seeds, inHunt, eliminated, pic.decided);
     }
     return seedingCardContent(dataset.event, divisionCount, seeds);
   }, [cardType, dataset.event, dataset.divisions, dataset.teams, dataset.games, analysis.seeds, annTitle, annBody, annBullets]);

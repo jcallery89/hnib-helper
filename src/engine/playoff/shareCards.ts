@@ -56,19 +56,21 @@ export function seedingCardContent(
   };
 }
 
-export interface EliminatedLine {
+export interface PictureLine {
   name: string;
   color?: string;
 }
 
 /**
- * "Playoff Picture" card: the current seeds (in the field) and the teams that
- * are mathematically eliminated. Eliminated teams come from the scenario engine.
+ * "Playoff Picture" card: current seeds (in the field now), teams still in the
+ * hunt (not seeded but not yet eliminated), and teams that are mathematically
+ * eliminated. Hunt/eliminated come from the scenario engine.
  */
 export function playoffPictureCardContent(
   event: HnibEvent,
   seeds: SeedLine[],
-  eliminated: EliminatedLine[],
+  inHunt: PictureLine[],
+  eliminated: PictureLine[],
   decided: boolean,
   fieldSize = fieldSizeFor(event),
 ): ShareCardContent {
@@ -78,12 +80,16 @@ export function playoffPictureCardContent(
     items.push({ text: "Current Seeds", heading: true });
     for (const s of inSeeds) items.push({ badge: String(s.seed), text: s.name, color: s.color });
   }
+  if (inHunt.length) {
+    items.push({ text: "In the Hunt", heading: true });
+    for (const h of inHunt) items.push({ text: h.name, color: h.color });
+  }
   if (eliminated.length) {
     items.push({ text: "Eliminated", heading: true });
     for (const e of eliminated) items.push({ text: e.name, color: e.color });
   }
   const intro = [`The top ${fieldSize} make the playoffs.`];
-  if (!decided) intro.push("Too early to call eliminations; check back after the next round.");
+  if (!decided) intro.push("Nothing is clinched or eliminated yet; everyone below the line is still in the hunt.");
   else if (!eliminated.length) intro.push("No teams are eliminated yet.");
   return {
     kicker: `${event.name} - Playoff Picture`,
