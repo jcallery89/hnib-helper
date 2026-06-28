@@ -312,6 +312,31 @@ export function SetupView({ dataset, replace, removeCurrent, eventCount }: Props
       </div>
 
       <div class="card">
+        <p class="section-title">Team Colors</p>
+        <p class="note">
+          Colors for the Share graphics. The synced colors are HNIB brand shades that repeat across
+          teams, so set each team's real color here. Your choices are kept through re-syncs.
+        </p>
+        <div class="row" style={{ flexWrap: "wrap", gap: 12 }}>
+          {dataset.teams.map((t) => (
+            <label key={t.id} class="row" style={{ gap: 8, minWidth: 180 }}>
+              <input
+                type="color"
+                value={t.colorPrimary && /^#[0-9a-fA-F]{6}$/.test(t.colorPrimary) ? t.colorPrimary : "#1c2660"}
+                onChange={(e) =>
+                  edit((d) => {
+                    const tt = d.teams.find((x) => x.id === t.id);
+                    if (tt) tt.colorPrimary = (e.target as HTMLInputElement).value;
+                  })
+                }
+              />
+              {t.name}
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div class="card">
         <p class="section-title">Event</p>
         <div class="row" style={{ gap: 24 }}>
           <label class="row">

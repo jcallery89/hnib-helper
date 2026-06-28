@@ -137,6 +137,18 @@ export async function fullSync(
   });
   warnings.push(...summary.warnings);
 
+  // The API's team colors are static HNIB brand shades, so an operator can set
+  // real team colors in Setup. Carry those forward across re-syncs (matched by
+  // team id) so a refresh never wipes them.
+  if (sameEvent && prev?.teams) {
+    const prevById = new Map(prev.teams.map((t) => [t.id, t]));
+    for (const t of dataset.teams) {
+      const p = prevById.get(t.id);
+      if (p?.colorPrimary) t.colorPrimary = p.colorPrimary;
+      if (p?.colorSecondary) t.colorSecondary = p.colorSecondary;
+    }
+  }
+
   // Team rosters + stats.
   const players: Player[] = [];
   const stats: PlayerStatLine[] = [];
