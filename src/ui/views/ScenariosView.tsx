@@ -15,6 +15,12 @@ interface Props {
   analysis: Analysis;
 }
 
+const SEEDING_RULE_LABELS: Record<string, string> = {
+  jrhigh_winners_next_two: "Jr. High (division winners + next two per division, pooled)",
+  jrhigh_top2_per_division: "Sophomore (winners + runners-up + wildcards)",
+  soph_division_winners: "Legacy (division winners + wildcards)",
+};
+
 export function ScenariosView({ dataset, analysis }: Props) {
   const name = analysis.nameById;
   const [overrides, setOverrides] = useState<Record<string, Outcome>>({});
@@ -53,6 +59,11 @@ export function ScenariosView({ dataset, analysis }: Props) {
 
   const fieldSize = fieldSizeFor(dataset.event);
   const setCount = Object.keys(overrides).length;
+  const ruleLabel = SEEDING_RULE_LABELS[dataset.event.seedingRule] ?? dataset.event.seedingRule;
+  // When the field is as large as (or larger than) the team count, every team
+  // qualifies no matter what, so the "all clinched" picture is expected and the
+  // forecast has nothing to forecast. Surface that so it does not look like a bug.
+  const fieldCoversAll = fieldSize >= dataset.teams.length;
 
   function resultPhrase(t: ScenarioTrigger): string {
     if (t.outcome === "home") return `${name(t.homeTeamId)} beats ${name(t.awayTeamId)}`;
@@ -142,6 +153,17 @@ export function ScenariosView({ dataset, analysis }: Props) {
         <p class="section-title" style={{ marginTop: 16 }}>
           Resulting seeds {setCount > 0 ? "(with your hypotheticals)" : "(as it stands)"}
         </p>
+        <p class="note">
+          Playoff format: <strong>{fieldSize}-team</strong> field, {ruleLabel}. Change this in Setup
+          under Event if it is wrong.
+        </p>
+        {fieldCoversAll && (
+          <p class="note" style={{ color: "var(--warn, #f0a500)" }}>
+            This field holds {fieldSize} teams and the event has {dataset.teams.length}, so every team
+            qualifies regardless of results - that is why all seeds show as clinched. Set the Jr. High
+            rule and a 6-team field in Setup to forecast a real cut.
+          </p>
+        )}
         <table class="grid">
           <thead>
             <tr>
