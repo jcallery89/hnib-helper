@@ -75,7 +75,8 @@ export function ShareCard({ width, height, content, brand }: Props) {
   const footerTop = height - (footerStripH || Math.round(height * 0.05));
   const footLines = content.footnote ? wrap(content.footnote, Math.floor(innerW / (footFont * 0.47))).slice(0, 2) : [];
   const footReserve = footLines.length ? footLines.length * Math.round(footFont * 1.35) + Math.round(height * 0.03) : Math.round(height * 0.02);
-  const bodyBottom = footerTop - footReserve;
+  // Keep a little breathing room above the footnote/footer.
+  const bodyBottom = footerTop - footReserve - Math.round(height * 0.015);
 
   // ---- Body (scaled to fit) --------------------------------------------------
   const first = buildBody(1);
