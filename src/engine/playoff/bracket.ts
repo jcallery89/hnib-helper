@@ -31,6 +31,11 @@ function bracketSize(seeds: PlayoffSeed[], fieldSize?: number): 6 | 8 {
   return maxSeed <= 6 ? 6 : 8;
 }
 
+/** First-round pairings (seeds + which semifinal they feed) for a field size. */
+export function qfPairings(fieldSize: 6 | 8): Array<{ id: string; high: number; low: number; feeds: string }> {
+  return fieldSize === 6 ? QF_PAIRS_6 : QF_PAIRS_8;
+}
+
 /**
  * Build the single-elimination bracket from a seeded field, advancing winners
  * where playoff results are supplied. Supports 8-team and 6-team (byes for the

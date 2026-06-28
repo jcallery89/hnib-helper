@@ -207,6 +207,7 @@ export async function fullSync(
   // keyed by stable ids, so carrying them forward keeps them attached.
   if (sameEvent && prev) {
     if (prev.bracketResults) dataset.bracketResults = prev.bracketResults;
+    if (prev.playoffSchedule) dataset.playoffSchedule = prev.playoffSchedule;
     if (prev.allStarIds) dataset.allStarIds = prev.allStarIds;
     if (prev.playerWriteups) dataset.playerWriteups = prev.playerWriteups;
     if (prev.playerGameLogs) dataset.playerGameLogs = prev.playerGameLogs;

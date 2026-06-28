@@ -7,6 +7,7 @@ import { BracketSvg } from "../../render/bracket/BracketSvg.tsx";
 import { EXPORT_SIZES } from "../../render/bracket/theme.ts";
 import { exportBracketPng } from "../../render/bracket/export.ts";
 import { useBrandAssets } from "../state/useBrand.ts";
+import { parsePlayoffSchedule } from "../../io/importPlayoffSchedule.ts";
 
 interface Props {
   dataset: Dataset;
@@ -18,6 +19,8 @@ export function BracketView({ dataset, analysis, update }: Props) {
   const brand = useBrandAssets();
   const [sizeKey, setSizeKey] = useState(EXPORT_SIZES[0].key);
   const [busy, setBusy] = useState(false);
+  const [schedText, setSchedText] = useState("");
+  const [schedMsg, setSchedMsg] = useState("");
   const exportRef = useRef<HTMLDivElement>(null);
   const size = EXPORT_SIZES.find((s) => s.key === sizeKey) ?? EXPORT_SIZES[0];
 
@@ -41,6 +44,38 @@ export function BracketView({ dataset, analysis, update }: Props) {
   const title = `${dataset.event.name} - Playoffs`;
   const colorByTeam = new Map(dataset.teams.map((t) => [t.id, t.colorPrimary] as const));
   const colorById = (id: string) => colorByTeam.get(id);
+  const scheduleByCell = (id: string) => dataset.playoffSchedule?.[id];
+
+  // Pick the keyword that selects this event's rows from the master schedule.
+  function eventKeyword(): string {
+    const n = dataset.event.name.toLowerCase();
+    if (/jr|junior/.test(n)) return "jr";
+    if (/soph/.test(n)) return "soph";
+    return "";
+  }
+
+  function applySchedule() {
+    const res = parsePlayoffSchedule(schedText, {
+      fieldSize,
+      eventKeyword: eventKeyword(),
+      year: dataset.event.year,
+    });
+    if (res.matched === 0) {
+      setSchedMsg("No games matched. Paste the rows with tabs between columns (game number, time, rink, matchup).");
+      return;
+    }
+    update((d) => (d.playoffSchedule = res.byCell));
+    setSchedText("");
+    setSchedMsg(
+      `Placed times on ${res.matched} game${res.matched === 1 ? "" : "s"}.` +
+        (res.warnings.length ? ` ${res.warnings.slice(0, 2).join(" ")}` : ""),
+    );
+  }
+
+  function clearSchedule() {
+    update((d) => delete d.playoffSchedule);
+    setSchedMsg("Cleared game times.");
+  }
 
   function setResult(gameId: string, patch: Partial<BracketResult>) {
     update((draft) => {
@@ -90,10 +125,38 @@ export function BracketView({ dataset, analysis, update }: Props) {
             bracket={bracket}
             nameById={analysis.nameById}
             colorById={colorById}
+            scheduleByCell={scheduleByCell}
             brand={brand}
             fieldSize={fieldSize}
           />
         </div>
+      </div>
+
+      <div class="card">
+        <p class="section-title">Game Times</p>
+        <p class="note">
+          Paste the playoff rows from the master schedule (day, time, rink, game number, matchup) and
+          the times land on each bracket game. Rows are matched to slots by their seeds (Soph 1st,
+          Jr High 4th) and winner references (W 43), so a re-seed keeps them correct. Only this
+          event's rows are used.
+        </p>
+        <textarea
+          style={{ width: "100%", height: 120 }}
+          placeholder={"Mon 6/29\t9:00 AM\tLamacchia\t45\tSoph 1st\tSoph 8th\tSophomore"}
+          value={schedText}
+          onInput={(e) => setSchedText((e.target as HTMLTextAreaElement).value)}
+        />
+        <div class="toolbar" style={{ marginTop: 8 }}>
+          <button class="btn primary" disabled={!schedText.trim()} onClick={applySchedule}>
+            Apply times
+          </button>
+          {dataset.playoffSchedule && Object.keys(dataset.playoffSchedule).length > 0 && (
+            <button class="btn" onClick={clearSchedule}>
+              Clear times
+            </button>
+          )}
+        </div>
+        {schedMsg && <p class="note">{schedMsg}</p>}
       </div>
 
       <div class="card">
@@ -115,6 +178,7 @@ export function BracketView({ dataset, analysis, update }: Props) {
             bracket={bracket}
             nameById={analysis.nameById}
             colorById={colorById}
+            scheduleByCell={scheduleByCell}
             brand={brand}
             fieldSize={fieldSize}
             embedFonts

@@ -1,4 +1,5 @@
 import type { BracketGame } from "../../engine/types.ts";
+import type { PlayoffSlot } from "../../io/dataset.ts";
 import { computeLayout, type CellBox } from "./layout.ts";
 import { COLORS, FONTS } from "./theme.ts";
 import { LOGO_ASPECT, type BrandAssets } from "../brand.ts";
@@ -11,12 +12,13 @@ interface Props {
   bracket: BracketGame[];
   nameById: (id: string) => string;
   colorById?: (id: string) => string | undefined;
+  scheduleByCell?: (id: string) => PlayoffSlot | undefined;
   brand?: BrandAssets;
   fieldSize?: number;
   embedFonts?: boolean;
 }
 
-export function BracketSvg({ width, height, title, bracket, nameById, colorById, brand, fieldSize, embedFonts }: Props) {
+export function BracketSvg({ width, height, title, bracket, nameById, colorById, scheduleByCell, brand, fieldSize, embedFonts }: Props) {
   const layout = computeLayout(width, height, fieldSize);
   const gameById = new Map(bracket.map((g) => [g.id, g]));
   const championId = gameById.get("final")?.winnerTeamId ?? null;
@@ -140,6 +142,7 @@ export function BracketSvg({ width, height, title, bracket, nameById, colorById,
         return renderCell(cell, game, {
           nameById,
           colorById,
+          slot: scheduleByCell?.(cell.id),
           seedSize,
           nameSize,
           rowH: layout.rowH,
@@ -178,9 +181,27 @@ export function BracketSvg({ width, height, title, bracket, nameById, colorById,
 interface CellOpts {
   nameById: (id: string) => string;
   colorById?: (id: string) => string | undefined;
+  slot?: PlayoffSlot;
   seedSize: number;
   nameSize: number;
   rowH: number;
+}
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+// "2026-06-29T09:00:00" + rink -> "Mon 9:00 AM · Lamacchia" (TZ-safe parse).
+function formatSlot(slot: PlayoffSlot): string {
+  let when = "";
+  const m = /(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(slot.slotStart ?? "");
+  if (m) {
+    const [, y, mo, d, hh, mm] = m;
+    const dow = WEEKDAYS[new Date(Date.UTC(+y, +mo - 1, +d)).getUTCDay()];
+    let h = +hh;
+    const ampm = h >= 12 ? "PM" : "AM";
+    h = h % 12 || 12;
+    when = `${dow} ${h}:${mm} ${ampm}`;
+  }
+  return [when, slot.rink].filter(Boolean).join(" · ");
 }
 
 // Pick navy or white text for legibility on a given bubble fill.
@@ -195,8 +216,22 @@ function renderCell(cell: CellBox, game: BracketGame, opts: CellOpts) {
   const { rowH } = opts;
   const tag =
     game.decidedBy === "ot" ? "OT" : game.decidedBy === "shootout" ? "SO" : "";
+  const caption = opts.slot ? formatSlot(opts.slot) : "";
   return (
     <g key={cell.id}>
+      {caption && (
+        <text
+          x={cell.x + 2}
+          y={cell.y - Math.round(rowH * 0.22)}
+          fill={COLORS.royal}
+          font-family={FONTS.body}
+          font-size={Math.round(rowH * 0.34)}
+          font-weight={600}
+          letter-spacing="0.04em"
+        >
+          {caption}
+        </text>
+      )}
       <rect
         x={cell.x}
         y={cell.y}
