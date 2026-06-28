@@ -11,11 +11,11 @@ interface Props {
 }
 
 /**
- * On-brand shareable graphic (kicker, big title, intro paragraphs, a numbered
- * or bulleted list, footnote) rendered as one SVG, matching the player card and
- * bracket styling. Laid out with a running vertical cursor so a variable number
- * of items and wrapped lines stack without overlapping. Same node feeds the live
- * preview and the PNG export.
+ * On-brand shareable graphic (kicker, big title, intro paragraphs, a numbered or
+ * bulleted list, footnote) rendered as one SVG. The header is fixed; the body
+ * (intro + items) is laid out once at full size and, if it would run past the
+ * footer, re-laid-out at a smaller scale so a dense card (e.g. a full Playoff
+ * Picture) always fits. Same node feeds the preview and the PNG export.
  */
 export function ShareCard({ width, height, content, brand }: Props) {
   const pad = Math.round(width * 0.075);
@@ -23,39 +23,40 @@ export function ShareCard({ width, height, content, brand }: Props) {
   const stripH = brand?.cardHeader ? Math.round((width * 60) / 1080) : 0;
   const footerStripH = brand?.cardFooter ? Math.round((width * 60) / 1080) : 0;
 
-  // Type scale (relative to height so all three export sizes look consistent).
-  const kickerFont = Math.round(height * 0.019);
-  const titleFont = Math.round(height * 0.058);
-  const introFont = Math.round(height * 0.023);
-  const itemFont = Math.round(height * 0.0225);
+  // Title is capped by width too, so a tall export size cannot blow it up enough
+  // to wrap; kicker shrinks to clear the top-right logo.
+  const titleFont = Math.min(Math.round(height * 0.058), Math.round(width * 0.072));
   const footFont = Math.round(height * 0.016);
+  const introFontBase = Math.round(height * 0.023);
+  const itemFontBase = Math.round(height * 0.0225);
+  const headFontBase = Math.round(height * 0.019);
 
-  const introLineH = Math.round(introFont * 1.32);
-  const itemLineH = Math.round(itemFont * 1.3);
-  const badgeR = Math.round(itemFont * 0.92);
-  const itemTextX = pad + badgeR * 2 + Math.round(width * 0.02);
-  const itemTextW = width - pad - itemTextX;
-
-  // Crisp shield logo top-right; reserve room so a long title wraps before it.
   const logoW = brand?.logoNavy ? Math.round(width * 0.15) : 0;
   const logoH = logoW ? Math.round(logoW / LOGO_ASPECT) : 0;
+  const logoReserve = logoW ? logoW + Math.round(width * 0.03) : 0;
 
   const els: JSX.Element[] = [];
   let key = 0;
-  let y = stripH + Math.round(height * 0.06); // running baseline cursor
 
-  // Kicker
+  // ---- Header (fixed) --------------------------------------------------------
+  let y = stripH + Math.round(height * 0.055);
+
+  // Shrink the kicker so it clears the top-right logo. The 0.67 factor accounts
+  // for bold caps plus the letter-spacing below (conservative for Barlow).
+  const kickerMaxW = innerW - logoReserve;
+  const kCharW = 0.67;
+  let kickerFont = Math.round(height * 0.019);
+  if (content.kicker.length * kickerFont * kCharW > kickerMaxW) {
+    kickerFont = Math.max(13, Math.floor(kickerMaxW / (content.kicker.length * kCharW)));
+  }
   els.push(
-    <text key={key++} x={pad} y={y} fill={COLORS.royal} font-family={FONTS.body} font-size={kickerFont} font-weight={700} letter-spacing="0.18em">
+    <text key={key++} x={pad} y={y} fill={COLORS.royal} font-family={FONTS.body} font-size={kickerFont} font-weight={700} letter-spacing="0.12em">
       {content.kicker.toUpperCase()}
     </text>,
   );
   y += Math.round(height * 0.012);
 
-  // Title (wraps if long; leaves room for the top-right logo)
-  const titleW = innerW - (logoW ? logoW + Math.round(width * 0.03) : 0);
-  const titleLines = wrap(content.title.toUpperCase(), Math.floor(titleW / (titleFont * 0.5)));
-  for (const ln of titleLines) {
+  for (const ln of wrap(content.title.toUpperCase(), Math.floor((innerW - logoReserve) / (titleFont * 0.5)))) {
     y += titleFont;
     els.push(
       <text key={key++} x={pad} y={y} fill={COLORS.navy} font-family={FONTS.head} font-size={titleFont} font-weight={600} letter-spacing="0.01em">
@@ -65,92 +66,97 @@ export function ShareCard({ width, height, content, brand }: Props) {
     y += Math.round(titleFont * 0.12);
   }
 
-  // Accent rule under the title
   y += Math.round(height * 0.012);
   els.push(<rect key={key++} x={pad} y={y} width={Math.round(width * 0.16)} height={Math.round(height * 0.006)} fill={COLORS.royal} />);
-  y += Math.round(height * 0.03);
+  y += Math.round(height * 0.028);
+  const bodyTop = y;
 
-  // Intro paragraphs
-  const introMax = Math.floor(innerW / (introFont * 0.47));
-  for (const para of content.intro) {
-    for (const ln of wrap(para, introMax)) {
-      y += introFont;
-      els.push(
-        <text key={key++} x={pad} y={y} fill={COLORS.textDim} font-family={FONTS.body} font-size={introFont} font-weight={500}>
-          {ln}
-        </text>,
-      );
-      y += introLineH - introFont;
-    }
-    y += Math.round(introFont * 0.4);
-  }
-
-  // Items (numbered/bulleted)
-  y += Math.round(height * 0.015);
-  const itemMax = Math.floor(itemTextW / (itemFont * 0.47));
-  for (const item of content.items) {
-    if (item.heading) {
-      y += Math.round(height * 0.014);
-      els.push(
-        <text key={key++} x={pad} y={y + kickerFont} fill={COLORS.royal} font-family={FONTS.body} font-size={kickerFont} font-weight={700} letter-spacing="0.16em">
-          {item.text.toUpperCase()}
-        </text>,
-      );
-      y += kickerFont + Math.round(height * 0.014);
-      continue;
-    }
-    const firstBaseline = y + itemFont;
-    const cy = firstBaseline - Math.round(itemFont * 0.36);
-    if (item.badge) {
-      els.push(<circle key={key++} cx={pad + badgeR} cy={cy} r={badgeR} fill={COLORS.navy} />);
-      els.push(
-        <text key={key++} x={pad + badgeR} y={cy + badgeR * 0.36} fill={COLORS.white} font-family={FONTS.head} font-size={Math.round(badgeR * 1.15)} font-weight={600} text-anchor="middle">
-          {item.badge}
-        </text>,
-      );
-    } else {
-      els.push(<circle key={key++} cx={pad + badgeR} cy={cy} r={Math.round(badgeR * 0.32)} fill={COLORS.royal} />);
-    }
-
-    if (item.color) {
-      // Team-color bubble holding the name on a single line.
-      const padX = Math.round(itemFont * 0.7);
-      const chipH = Math.round(itemFont * 1.55);
-      const chipW = Math.round(item.text.length * itemFont * 0.62) + padX * 2;
-      const chipY = firstBaseline - itemFont + Math.round(itemFont * 0.04);
-      els.push(<rect key={key++} x={itemTextX} y={chipY} width={chipW} height={chipH} rx={Math.round(chipH / 2)} fill={item.color} stroke={COLORS.line} stroke-width={1} />);
-      els.push(
-        <text key={key++} x={itemTextX + padX} y={chipY + chipH * 0.68} fill={readableOn(item.color)} font-family={FONTS.body} font-size={itemFont} font-weight={600} letter-spacing="0.02em">
-          {item.text}
-        </text>,
-      );
-      y = chipY + chipH + Math.round(itemFont * 0.45);
-    } else {
-      const lines = wrap(item.text, itemMax);
-      lines.forEach((ln, i) => {
-        els.push(
-          <text key={key++} x={itemTextX} y={firstBaseline + i * itemLineH} fill={COLORS.navy} font-family={FONTS.body} font-size={itemFont} font-weight={i === 0 ? 600 : 500}>
-            {ln}
-          </text>,
-        );
-      });
-      y = firstBaseline + (lines.length - 1) * itemLineH + Math.round(itemFont * 0.85);
-    }
-  }
-
-  // Footnote, pinned just above the footer strip
+  // ---- Footnote area + body budget ------------------------------------------
   const footerTop = height - (footerStripH || Math.round(height * 0.05));
-  if (content.footnote) {
-    for (const ln of wrap(content.footnote, Math.floor(innerW / (footFont * 0.47))).slice(0, 2).reverse()) {
-      els.push(
-        <text key={key++} x={pad} y={footerTop - Math.round(height * 0.028)} fill={COLORS.textDim} font-family={FONTS.body} font-size={footFont} font-weight={500} font-style="italic">
-          {ln}
-        </text>,
-      );
-    }
+  const footLines = content.footnote ? wrap(content.footnote, Math.floor(innerW / (footFont * 0.47))).slice(0, 2) : [];
+  const footReserve = footLines.length ? footLines.length * Math.round(footFont * 1.35) + Math.round(height * 0.03) : Math.round(height * 0.02);
+  const bodyBottom = footerTop - footReserve;
+
+  // ---- Body (scaled to fit) --------------------------------------------------
+  const first = buildBody(1);
+  let body = first;
+  if (first.bottom > bodyBottom) {
+    const scale = Math.max(0.5, (bodyBottom - bodyTop) / (first.bottom - bodyTop));
+    body = buildBody(scale);
+  }
+  els.push(...body.els);
+
+  // ---- Footnote --------------------------------------------------------------
+  let fy = footerTop - footReserve + Math.round(height * 0.012);
+  for (const ln of footLines) {
+    fy += Math.round(footFont * 1.1);
+    els.push(
+      <text key={key++} x={pad} y={fy} fill={COLORS.textDim} font-family={FONTS.body} font-size={footFont} font-weight={500} font-style="italic">
+        {ln}
+      </text>,
+    );
   }
 
-  // Watermark, bottom-right above the footer
+  // Builds the intro + item list at a given scale, returning the elements and the
+  // final baseline so the caller can decide whether to shrink and retry.
+  function buildBody(scale: number): { els: JSX.Element[]; bottom: number } {
+    const out: JSX.Element[] = [];
+    const introFont = Math.max(11, Math.round(introFontBase * scale));
+    const itemFont = Math.max(11, Math.round(itemFontBase * scale));
+    const headFont = Math.max(10, Math.round(headFontBase * scale));
+    const introLineH = Math.round(introFont * 1.32);
+    const itemLineH = Math.round(itemFont * 1.3);
+    const badgeR = Math.round(itemFont * 0.92);
+    const itemTextX = pad + badgeR * 2 + Math.round(width * 0.02);
+    const itemTextW = width - pad - itemTextX;
+    let by = bodyTop;
+
+    const introMax = Math.floor(innerW / (introFont * 0.47));
+    for (const para of content.intro) {
+      for (const ln of wrap(para, introMax)) {
+        by += introFont;
+        out.push(<text key={key++} x={pad} y={by} fill={COLORS.textDim} font-family={FONTS.body} font-size={introFont} font-weight={500}>{ln}</text>);
+        by += introLineH - introFont;
+      }
+      by += Math.round(introFont * 0.4);
+    }
+
+    by += Math.round(itemFont * 0.6);
+    const itemMax = Math.floor(itemTextW / (itemFont * 0.47));
+    for (const item of content.items) {
+      if (item.heading) {
+        by += Math.round(itemFont * 0.5);
+        out.push(<text key={key++} x={pad} y={by + headFont} fill={COLORS.royal} font-family={FONTS.body} font-size={headFont} font-weight={700} letter-spacing="0.16em">{item.text.toUpperCase()}</text>);
+        by += headFont + Math.round(itemFont * 0.5);
+        continue;
+      }
+      const firstBaseline = by + itemFont;
+      const cy = firstBaseline - Math.round(itemFont * 0.36);
+      if (item.badge) {
+        out.push(<circle key={key++} cx={pad + badgeR} cy={cy} r={badgeR} fill={COLORS.navy} />);
+        out.push(<text key={key++} x={pad + badgeR} y={cy + badgeR * 0.36} fill={COLORS.white} font-family={FONTS.head} font-size={Math.round(badgeR * 1.15)} font-weight={600} text-anchor="middle">{item.badge}</text>);
+      } else {
+        out.push(<circle key={key++} cx={pad + badgeR} cy={cy} r={Math.round(badgeR * 0.32)} fill={COLORS.royal} />);
+      }
+      if (item.color) {
+        const padX = Math.round(itemFont * 0.7);
+        const chipH = Math.round(itemFont * 1.55);
+        const chipW = Math.round(item.text.length * itemFont * 0.62) + padX * 2;
+        const chipY = firstBaseline - itemFont + Math.round(itemFont * 0.04);
+        out.push(<rect key={key++} x={itemTextX} y={chipY} width={chipW} height={chipH} rx={Math.round(chipH / 2)} fill={item.color} stroke={COLORS.line} stroke-width={1} />);
+        out.push(<text key={key++} x={itemTextX + padX} y={chipY + chipH * 0.68} fill={readableOn(item.color)} font-family={FONTS.body} font-size={itemFont} font-weight={600} letter-spacing="0.02em">{item.text}</text>);
+        by = chipY + chipH + Math.round(itemFont * 0.45);
+      } else {
+        const lines = wrap(item.text, itemMax);
+        lines.forEach((ln, i) => {
+          out.push(<text key={key++} x={itemTextX} y={firstBaseline + i * itemLineH} fill={COLORS.navy} font-family={FONTS.body} font-size={itemFont} font-weight={i === 0 ? 600 : 500}>{ln}</text>);
+        });
+        by = firstBaseline + (lines.length - 1) * itemLineH + Math.round(itemFont * 0.85);
+      }
+    }
+    return { els: out, bottom: by };
+  }
+
   const wmW = Math.round(width * 0.5);
   const wmH = Math.round(wmW / LOGO_ASPECT);
 
@@ -188,14 +194,7 @@ export function ShareCard({ width, height, content, brand }: Props) {
         <image href={brand.cardFooter} x={0} y={height - footerStripH} width={width} height={footerStripH} preserveAspectRatio="none" />
       )}
       {brand?.logoNavy && (
-        <image
-          href={brand.logoNavy}
-          x={width - pad - logoW}
-          y={stripH + Math.round(height * 0.038)}
-          width={logoW}
-          height={logoH}
-          preserveAspectRatio="xMidYMid meet"
-        />
+        <image href={brand.logoNavy} x={width - pad - logoW} y={stripH + Math.round(height * 0.038)} width={logoW} height={logoH} preserveAspectRatio="xMidYMid meet" />
       )}
 
       {els}
@@ -226,8 +225,7 @@ export function ShareCard({ width, height, content, brand }: Props) {
   );
 }
 
-// Navy or white text, whichever is legible on the given fill (so a pale team
-// color does not produce white-on-white).
+// Navy or white text, whichever is legible on the given fill.
 function readableOn(hex: string): string {
   const m = hex.match(/^#?([0-9a-f]{6})$/i);
   if (!m) return COLORS.white;
