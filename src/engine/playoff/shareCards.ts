@@ -6,6 +6,7 @@ import { playoffSeedingRules, TIEBREAK_RULES } from "./rules.ts";
 export interface ShareCardItem {
   badge?: string; // small number/letter in a circle (seed number, list index)
   text: string;
+  color?: string; // hex fill for a team-color bubble behind the text
 }
 
 export interface ShareCardContent {
@@ -19,6 +20,7 @@ export interface ShareCardContent {
 export interface SeedLine {
   seed: number;
   name: string;
+  color?: string; // team primary color, when known
 }
 
 /**
@@ -40,7 +42,7 @@ export function seedingCardContent(
   const items = [...seeds]
     .sort((a, b) => a.seed - b.seed)
     .slice(0, fieldSize)
-    .map((s) => ({ badge: String(s.seed), text: s.name }));
+    .map((s) => ({ badge: String(s.seed), text: s.name, color: s.color }));
   return {
     kicker: `${event.name} - Playoffs`,
     title: "Playoff Seeding",

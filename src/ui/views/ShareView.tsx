@@ -34,9 +34,10 @@ export function ShareView({ dataset, analysis }: Props) {
     const divisionCount = dataset.divisions.length;
     if (cardType === "tiebreakers") return tiebreakCardContent(dataset.event);
     if (cardType === "announcement") return announcementCardContent(dataset.event, annTitle, annBody, annBullets);
-    const seeds = (analysis.seeds ?? []).map((s) => ({ seed: s.seed, name: analysis.nameById(s.teamId) }));
+    const colorById = new Map(dataset.teams.map((t) => [t.id, t.colorPrimary]));
+    const seeds = (analysis.seeds ?? []).map((s) => ({ seed: s.seed, name: analysis.nameById(s.teamId), color: colorById.get(s.teamId) }));
     return seedingCardContent(dataset.event, divisionCount, seeds);
-  }, [cardType, dataset.event, dataset.divisions.length, analysis.seeds, annTitle, annBody, annBullets]);
+  }, [cardType, dataset.event, dataset.divisions.length, dataset.teams, analysis.seeds, annTitle, annBody, annBullets]);
 
   async function doExport() {
     if (!exportRef.current) return;

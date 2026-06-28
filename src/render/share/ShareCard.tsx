@@ -36,6 +36,10 @@ export function ShareCard({ width, height, content, brand }: Props) {
   const itemTextX = pad + badgeR * 2 + Math.round(width * 0.02);
   const itemTextW = width - pad - itemTextX;
 
+  // Crisp shield logo top-right; reserve room so a long title wraps before it.
+  const logoW = brand?.logoNavy ? Math.round(width * 0.15) : 0;
+  const logoH = logoW ? Math.round(logoW / LOGO_ASPECT) : 0;
+
   const els: JSX.Element[] = [];
   let key = 0;
   let y = stripH + Math.round(height * 0.06); // running baseline cursor
@@ -48,8 +52,9 @@ export function ShareCard({ width, height, content, brand }: Props) {
   );
   y += Math.round(height * 0.012);
 
-  // Title (wraps if long)
-  const titleLines = wrap(content.title.toUpperCase(), Math.floor(innerW / (titleFont * 0.5)));
+  // Title (wraps if long; leaves room for the top-right logo)
+  const titleW = innerW - (logoW ? logoW + Math.round(width * 0.03) : 0);
+  const titleLines = wrap(content.title.toUpperCase(), Math.floor(titleW / (titleFont * 0.5)));
   for (const ln of titleLines) {
     y += titleFont;
     els.push(
@@ -84,7 +89,6 @@ export function ShareCard({ width, height, content, brand }: Props) {
   y += Math.round(height * 0.015);
   const itemMax = Math.floor(itemTextW / (itemFont * 0.47));
   for (const item of content.items) {
-    const lines = wrap(item.text, itemMax);
     const firstBaseline = y + itemFont;
     const cy = firstBaseline - Math.round(itemFont * 0.36);
     if (item.badge) {
@@ -97,14 +101,31 @@ export function ShareCard({ width, height, content, brand }: Props) {
     } else {
       els.push(<circle key={key++} cx={pad + badgeR} cy={cy} r={Math.round(badgeR * 0.32)} fill={COLORS.royal} />);
     }
-    lines.forEach((ln, i) => {
+
+    if (item.color) {
+      // Team-color bubble holding the name on a single line.
+      const padX = Math.round(itemFont * 0.7);
+      const chipH = Math.round(itemFont * 1.55);
+      const chipW = Math.round(item.text.length * itemFont * 0.62) + padX * 2;
+      const chipY = firstBaseline - itemFont + Math.round(itemFont * 0.04);
+      els.push(<rect key={key++} x={itemTextX} y={chipY} width={chipW} height={chipH} rx={Math.round(chipH / 2)} fill={item.color} stroke={COLORS.line} stroke-width={1} />);
       els.push(
-        <text key={key++} x={itemTextX} y={firstBaseline + i * itemLineH} fill={COLORS.navy} font-family={FONTS.body} font-size={itemFont} font-weight={i === 0 ? 600 : 500}>
-          {ln}
+        <text key={key++} x={itemTextX + padX} y={chipY + chipH * 0.68} fill={readableOn(item.color)} font-family={FONTS.body} font-size={itemFont} font-weight={600} letter-spacing="0.02em">
+          {item.text}
         </text>,
       );
-    });
-    y = firstBaseline + (lines.length - 1) * itemLineH + Math.round(itemFont * 0.85);
+      y = chipY + chipH + Math.round(itemFont * 0.45);
+    } else {
+      const lines = wrap(item.text, itemMax);
+      lines.forEach((ln, i) => {
+        els.push(
+          <text key={key++} x={itemTextX} y={firstBaseline + i * itemLineH} fill={COLORS.navy} font-family={FONTS.body} font-size={itemFont} font-weight={i === 0 ? 600 : 500}>
+            {ln}
+          </text>,
+        );
+      });
+      y = firstBaseline + (lines.length - 1) * itemLineH + Math.round(itemFont * 0.85);
+    }
   }
 
   // Footnote, pinned just above the footer strip
@@ -156,6 +177,16 @@ export function ShareCard({ width, height, content, brand }: Props) {
       {brand?.cardFooter && (
         <image href={brand.cardFooter} x={0} y={height - footerStripH} width={width} height={footerStripH} preserveAspectRatio="none" />
       )}
+      {brand?.logoNavy && (
+        <image
+          href={brand.logoNavy}
+          x={width - pad - logoW}
+          y={stripH + Math.round(height * 0.038)}
+          width={logoW}
+          height={logoH}
+          preserveAspectRatio="xMidYMid meet"
+        />
+      )}
 
       {els}
 
@@ -183,6 +214,16 @@ export function ShareCard({ width, height, content, brand }: Props) {
       </text>
     </svg>
   );
+}
+
+// Navy or white text, whichever is legible on the given fill (so a pale team
+// color does not produce white-on-white).
+function readableOn(hex: string): string {
+  const m = hex.match(/^#?([0-9a-f]{6})$/i);
+  if (!m) return COLORS.white;
+  const n = parseInt(m[1], 16);
+  const luma = 0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255);
+  return luma > 150 ? COLORS.navy : COLORS.white;
 }
 
 // Greedy word wrap to a max character count per line.
