@@ -304,6 +304,7 @@ export function PlayersView({ dataset, update }: Props) {
                 brand={brand}
                 gameLog={dataset.playerGameLogs?.[selected.id]}
                 writeup={writeup}
+                embedFonts
               />
             </div>
           </div>

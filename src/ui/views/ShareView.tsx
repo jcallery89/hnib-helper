@@ -136,7 +136,7 @@ export function ShareView({ dataset, analysis }: Props) {
       {/* Hidden full-size node used for rasterization */}
       <div style={{ position: "absolute", left: -99999, top: 0 }} aria-hidden="true">
         <div ref={exportRef} style={{ width: size.width, height: size.height }}>
-          <ShareCard width={size.width} height={size.height} content={content} brand={brand} />
+          <ShareCard width={size.width} height={size.height} content={content} brand={brand} embedFonts />
         </div>
       </div>
     </section>

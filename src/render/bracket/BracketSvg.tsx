@@ -2,6 +2,7 @@ import type { BracketGame } from "../../engine/types.ts";
 import { computeLayout, type CellBox } from "./layout.ts";
 import { COLORS, FONTS } from "./theme.ts";
 import { LOGO_ASPECT, type BrandAssets } from "../brand.ts";
+import { FONT_FACE_CSS } from "../fontEmbed.ts";
 
 interface Props {
   width: number;
@@ -11,9 +12,10 @@ interface Props {
   nameById: (id: string) => string;
   brand?: BrandAssets;
   fieldSize?: number;
+  embedFonts?: boolean;
 }
 
-export function BracketSvg({ width, height, title, bracket, nameById, brand, fieldSize }: Props) {
+export function BracketSvg({ width, height, title, bracket, nameById, brand, fieldSize, embedFonts }: Props) {
   const layout = computeLayout(width, height, fieldSize);
   const gameById = new Map(bracket.map((g) => [g.id, g]));
   const championId = gameById.get("final")?.winnerTeamId ?? null;
@@ -41,6 +43,7 @@ export function BracketSvg({ width, height, title, bracket, nameById, brand, fie
       xmlns="http://www.w3.org/2000/svg"
       style={{ display: "block" }}
     >
+      {embedFonts && <style>{FONT_FACE_CSS}</style>}
       <rect x={0} y={0} width={width} height={height} fill={COLORS.card} />
       {brand?.watermarkNavy && (
         <image

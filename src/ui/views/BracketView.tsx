@@ -113,6 +113,7 @@ export function BracketView({ dataset, analysis, update }: Props) {
             nameById={analysis.nameById}
             brand={brand}
             fieldSize={fieldSize}
+            embedFonts
           />
         </div>
       </div>

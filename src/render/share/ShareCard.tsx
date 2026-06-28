@@ -2,12 +2,15 @@ import type { JSX } from "preact";
 import type { ShareCardContent } from "../../engine/playoff/shareCards.ts";
 import { COLORS, FONTS } from "../bracket/theme.ts";
 import { LOGO_ASPECT, type BrandAssets } from "../brand.ts";
+import { FONT_FACE_CSS } from "../fontEmbed.ts";
 
 interface Props {
   width: number;
   height: number;
   content: ShareCardContent;
   brand?: BrandAssets;
+  /** Inline the @font-face so a rasterized export keeps Teko/Barlow. */
+  embedFonts?: boolean;
 }
 
 /**
@@ -17,7 +20,7 @@ interface Props {
  * footer, re-laid-out at a smaller scale so a dense card (e.g. a full Playoff
  * Picture) always fits. Same node feeds the preview and the PNG export.
  */
-export function ShareCard({ width, height, content, brand }: Props) {
+export function ShareCard({ width, height, content, brand, embedFonts }: Props) {
   const pad = Math.round(width * 0.075);
   const innerW = width - pad * 2;
   const stripH = brand?.cardHeader ? Math.round((width * 60) / 1080) : 0;
@@ -163,6 +166,7 @@ export function ShareCard({ width, height, content, brand }: Props) {
 
   return (
     <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} xmlns="http://www.w3.org/2000/svg" style={{ display: "block" }}>
+      {embedFonts && <style>{FONT_FACE_CSS}</style>}
       <rect x={0} y={0} width={width} height={height} fill={COLORS.card} />
       {brand?.watermarkNavy && (
         <image
