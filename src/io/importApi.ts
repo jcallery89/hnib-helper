@@ -123,6 +123,13 @@ export function importApiData(
     divisions = [{ id: "unassigned", eventId, name: "Unassigned", teamIds: teams.map((t) => t.id) }];
   }
 
+  // Default the playoff format by division count (operator can override in Setup;
+  // re-syncs preserve their choice). Two divisions reads as Jr. High (6-team,
+  // pooled next-two); anything else as Sophomore (8-team, winners + runners-up +
+  // wildcards).
+  const realDivisions = divisions.filter((d) => d.id !== "unassigned" && d.teamIds.length > 0).length;
+  const jrHigh = realDivisions === 2;
+
   const dataset: Dataset = {
     event: {
       id: eventId,
@@ -131,7 +138,8 @@ export function importApiData(
       venues: uniqueLocations(games),
       format: "festival",
       hasPlayoffBracket: true,
-      seedingRule: "jrhigh_top2_per_division",
+      seedingRule: jrHigh ? "jrhigh_winners_next_two" : "jrhigh_top2_per_division",
+      fieldSize: jrHigh ? 6 : 8,
       pointSystem: { ...DEFAULT_POINT_SYSTEM },
     },
     divisions,
