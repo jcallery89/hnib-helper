@@ -9,15 +9,18 @@ import {
   seedingCardContent,
   tiebreakCardContent,
   announcementCardContent,
+  playoffPictureCardContent,
   type ShareCardContent,
 } from "../../engine/playoff/shareCards.ts";
+import { playoffPicture, eliminatedTeamIds } from "../../engine/playoff/scenarios.ts";
+import { COLORS } from "../../render/bracket/theme.ts";
 
 interface Props {
   dataset: Dataset;
   analysis: Analysis;
 }
 
-type CardType = "seeding" | "tiebreakers" | "announcement";
+type CardType = "seeding" | "picture" | "tiebreakers" | "announcement";
 
 export function ShareView({ dataset, analysis }: Props) {
   const brand = useBrandAssets();
@@ -36,8 +39,14 @@ export function ShareView({ dataset, analysis }: Props) {
     if (cardType === "announcement") return announcementCardContent(dataset.event, annTitle, annBody, annBullets);
     const colorById = new Map(dataset.teams.map((t) => [t.id, t.colorPrimary]));
     const seeds = (analysis.seeds ?? []).map((s) => ({ seed: s.seed, name: analysis.nameById(s.teamId), color: colorById.get(s.teamId) }));
+    if (cardType === "picture") {
+      const pic = playoffPicture(dataset.event, dataset.divisions, dataset.teams, dataset.games);
+      const elimIds = new Set(eliminatedTeamIds(pic));
+      const eliminated = dataset.teams.filter((t) => elimIds.has(t.id)).map((t) => ({ name: t.name, color: COLORS.red }));
+      return playoffPictureCardContent(dataset.event, seeds, eliminated, pic.decided);
+    }
     return seedingCardContent(dataset.event, divisionCount, seeds);
-  }, [cardType, dataset.event, dataset.divisions.length, dataset.teams, analysis.seeds, annTitle, annBody, annBullets]);
+  }, [cardType, dataset.event, dataset.divisions, dataset.teams, dataset.games, analysis.seeds, annTitle, annBody, annBullets]);
 
   async function doExport() {
     if (!exportRef.current) return;
@@ -63,6 +72,7 @@ export function ShareView({ dataset, analysis }: Props) {
             Card:
             <select value={cardType} onChange={(e) => setCardType((e.target as HTMLSelectElement).value as CardType)}>
               <option value="seeding">Playoff Seeding</option>
+              <option value="picture">Playoff Picture</option>
               <option value="tiebreakers">Tiebreakers</option>
               <option value="announcement">Announcement / Scenario</option>
             </select>

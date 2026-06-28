@@ -137,18 +137,6 @@ export async function fullSync(
   });
   warnings.push(...summary.warnings);
 
-  // The API's team colors are static HNIB brand shades, so an operator can set
-  // real team colors in Setup. Carry those forward across re-syncs (matched by
-  // team id) so a refresh never wipes them.
-  if (sameEvent && prev?.teams) {
-    const prevById = new Map(prev.teams.map((t) => [t.id, t]));
-    for (const t of dataset.teams) {
-      const p = prevById.get(t.id);
-      if (p?.colorPrimary) t.colorPrimary = p.colorPrimary;
-      if (p?.colorSecondary) t.colorSecondary = p.colorSecondary;
-    }
-  }
-
   // Team rosters + stats.
   const players: Player[] = [];
   const stats: PlayerStatLine[] = [];
@@ -167,6 +155,13 @@ export async function fullSync(
       players.push(...parsed.players);
       stats.push(...parsed.stats);
       warnings.push(...parsed.warnings);
+      // The per-team endpoint carries the real team colors (the schedule feed's
+      // are static brand shades). Use them as the base; manual overrides win below.
+      const dst = dataset.teams.find((t) => t.id === team.id);
+      if (dst) {
+        if (parsed.colorPrimary) dst.colorPrimary = parsed.colorPrimary;
+        if (parsed.colorSecondary) dst.colorSecondary = parsed.colorSecondary;
+      }
       rosterTeams++;
     } else {
       // Keep this team's previous roster rather than dropping it.
@@ -206,6 +201,14 @@ export async function fullSync(
     if (prev.allStarIds) dataset.allStarIds = prev.allStarIds;
     if (prev.playerWriteups) dataset.playerWriteups = prev.playerWriteups;
     if (prev.playerGameLogs) dataset.playerGameLogs = prev.playerGameLogs;
+    // Manual team-color overrides win over the API base and survive re-syncs.
+    if (prev.teamColors) {
+      dataset.teamColors = prev.teamColors;
+      for (const t of dataset.teams) {
+        const c = prev.teamColors[t.id];
+        if (c) t.colorPrimary = c;
+      }
+    }
   }
 
   return {

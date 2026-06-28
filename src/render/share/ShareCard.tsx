@@ -89,6 +89,16 @@ export function ShareCard({ width, height, content, brand }: Props) {
   y += Math.round(height * 0.015);
   const itemMax = Math.floor(itemTextW / (itemFont * 0.47));
   for (const item of content.items) {
+    if (item.heading) {
+      y += Math.round(height * 0.014);
+      els.push(
+        <text key={key++} x={pad} y={y + kickerFont} fill={COLORS.royal} font-family={FONTS.body} font-size={kickerFont} font-weight={700} letter-spacing="0.16em">
+          {item.text.toUpperCase()}
+        </text>,
+      );
+      y += kickerFont + Math.round(height * 0.014);
+      continue;
+    }
     const firstBaseline = y + itemFont;
     const cy = firstBaseline - Math.round(itemFont * 0.36);
     if (item.badge) {

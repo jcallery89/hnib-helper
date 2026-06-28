@@ -37,6 +37,8 @@ interface ApiBoxPlayer {
 interface ApiTeam {
   ID?: string;
   Name?: string;
+  PrimaryRGB?: string | null;
+  SecondaryRGB?: string | null;
   Players?: ApiRosterPlayer[];
   BoxPlayers?: ApiBoxPlayer[];
 }
@@ -45,6 +47,8 @@ export interface TeamRosterResult {
   players: Player[];
   stats: PlayerStatLine[];
   warnings: string[];
+  colorPrimary?: string;
+  colorSecondary?: string;
 }
 
 /**
@@ -123,7 +127,24 @@ export function parseTeamRoster(json: string, teamId: string, eventId: string): 
     });
   }
 
-  return { players, stats, warnings };
+  return { players, stats, warnings, colorPrimary: parseColor(team.PrimaryRGB), colorSecondary: parseColor(team.SecondaryRGB) };
+}
+
+/**
+ * Normalize a color from the API to a #rrggbb hex. Accepts "#rrggbb", "rrggbb",
+ * or an "r,g,b" / "r g b" triple. Returns undefined for anything unrecognized.
+ */
+function parseColor(c: string | null | undefined): string | undefined {
+  const v = (c ?? "").trim();
+  if (!v) return undefined;
+  const hex = v.match(/^#?([0-9a-fA-F]{6})$/);
+  if (hex) return `#${hex[1].toLowerCase()}`;
+  const rgb = v.match(/^(\d{1,3})\s*[,\s]\s*(\d{1,3})\s*[,\s]\s*(\d{1,3})$/);
+  if (rgb) {
+    const [r, g, b] = [rgb[1], rgb[2], rgb[3]].map((n) => Math.min(255, Number(n)));
+    return "#" + [r, g, b].map((n) => n.toString(16).padStart(2, "0")).join("");
+  }
+  return undefined;
 }
 
 interface ApiProfileStatLine {

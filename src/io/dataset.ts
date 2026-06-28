@@ -51,4 +51,6 @@ export interface Dataset {
   playerWriteups?: Record<string, string>;
   /** Player ids flagged for All-Star consideration. */
   allStarIds?: string[];
+  /** Manual team color overrides keyed by team id; survive re-syncs. */
+  teamColors?: Record<string, string>;
 }

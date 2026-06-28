@@ -314,8 +314,8 @@ export function SetupView({ dataset, replace, removeCurrent, eventCount }: Props
       <div class="card">
         <p class="section-title">Team Colors</p>
         <p class="note">
-          Colors for the Share graphics. The synced colors are HNIB brand shades that repeat across
-          teams, so set each team's real color here. Your choices are kept through re-syncs.
+          Colors for the Share graphics. Each team's color is pulled from its record in the API on
+          sync; override any here if it is wrong. Your overrides are kept through re-syncs.
         </p>
         <div class="row" style={{ flexWrap: "wrap", gap: 12 }}>
           {dataset.teams.map((t) => (
@@ -325,8 +325,10 @@ export function SetupView({ dataset, replace, removeCurrent, eventCount }: Props
                 value={t.colorPrimary && /^#[0-9a-fA-F]{6}$/.test(t.colorPrimary) ? t.colorPrimary : "#1c2660"}
                 onChange={(e) =>
                   edit((d) => {
+                    const hex = (e.target as HTMLInputElement).value;
                     const tt = d.teams.find((x) => x.id === t.id);
-                    if (tt) tt.colorPrimary = (e.target as HTMLInputElement).value;
+                    if (tt) tt.colorPrimary = hex;
+                    d.teamColors = { ...(d.teamColors ?? {}), [t.id]: hex };
                   })
                 }
               />
