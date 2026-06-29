@@ -2,9 +2,11 @@ import { useMemo, useRef, useState } from "preact/hooks";
 import type { Dataset } from "../../io/dataset.ts";
 import type { Analysis } from "../state/store.ts";
 import { ShareCard } from "../../render/share/ShareCard.tsx";
+import { SchedulePosterSvg } from "../../render/schedule/SchedulePosterSvg.tsx";
 import { EXPORT_SIZES } from "../../render/bracket/theme.ts";
 import { exportNodePng } from "../../render/exportImage.ts";
 import { useBrandAssets } from "../state/useBrand.ts";
+import { parseDaySchedule, posterRowsFor, scheduleDays, dayLabel } from "../../io/importDaySchedule.ts";
 import {
   seedingCardContent,
   tiebreakCardContent,
@@ -20,7 +22,7 @@ interface Props {
   analysis: Analysis;
 }
 
-type CardType = "seeding" | "picture" | "tiebreakers" | "announcement";
+type CardType = "seeding" | "picture" | "tiebreakers" | "announcement" | "schedule";
 
 export function ShareView({ dataset, analysis }: Props) {
   const brand = useBrandAssets();
@@ -30,8 +32,20 @@ export function ShareView({ dataset, analysis }: Props) {
   const [annTitle, setAnnTitle] = useState("Elimination Watch");
   const [annBody, setAnnBody] = useState("");
   const [annBullets, setAnnBullets] = useState("");
+  const [schedText, setSchedText] = useState("");
+  const [schedDay, setSchedDay] = useState("");
+  const [schedTitle, setSchedTitle] = useState("Championship Day");
   const exportRef = useRef<HTMLDivElement>(null);
   const size = EXPORT_SIZES.find((s) => s.key === sizeKey) ?? EXPORT_SIZES[0];
+
+  // Day-schedule poster (combines every event in the pasted master schedule).
+  const schedRows = useMemo(() => parseDaySchedule(schedText, dataset.event.year), [schedText, dataset.event.year]);
+  const days = useMemo(() => scheduleDays(schedRows), [schedRows]);
+  const activeDay = (schedDay && days.some((d) => d.date === schedDay) && schedDay) || days[0]?.date || "";
+  const posterRows = useMemo(() => (activeDay ? posterRowsFor(schedRows, activeDay) : []), [schedRows, activeDay]);
+  const venue = dataset.event.venues?.[0] ?? "";
+  const schedSubtitle = activeDay ? `${dayLabel(activeDay)}${venue ? ` · ${venue}` : ""}` : "Paste a schedule below";
+  const isSchedule = cardType === "schedule";
 
   const content: ShareCardContent = useMemo(() => {
     const divisionCount = dataset.divisions.length;
@@ -58,7 +72,8 @@ export function ShareView({ dataset, analysis }: Props) {
     if (!exportRef.current) return;
     setBusy(true);
     try {
-      await exportNodePng(exportRef.current, size.width, size.height, `${slug(dataset.event.name)}-${cardType}-${size.width}x${size.height}.png`);
+      const base = isSchedule ? `schedule-${activeDay || "day"}` : `${slug(dataset.event.name)}-${cardType}`;
+      await exportNodePng(exportRef.current, size.width, size.height, `${base}-${size.width}x${size.height}.png`);
     } finally {
       setBusy(false);
     }
@@ -81,6 +96,7 @@ export function ShareView({ dataset, analysis }: Props) {
               <option value="picture">Playoff Picture</option>
               <option value="tiebreakers">Tiebreakers</option>
               <option value="announcement">Announcement / Scenario</option>
+              <option value="schedule">Day Schedule (all events)</option>
             </select>
           </label>
           <label class="row">
@@ -97,6 +113,41 @@ export function ShareView({ dataset, analysis }: Props) {
             {busy ? "Rendering..." : "Export PNG"}
           </button>
         </div>
+
+        {isSchedule && (
+          <div style={{ marginTop: 8 }}>
+            <p class="note">
+              Paste the master schedule (all events, tab-separated: day, time, rink, game number, home,
+              away, event). Both Jr. High and Sophomore rows are combined into one poster, color-coded
+              by event. Pick the day to feature.
+            </p>
+            <div class="row" style={{ gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
+              <label class="row">
+                Title:
+                <input type="text" value={schedTitle} onInput={(e) => setSchedTitle((e.target as HTMLInputElement).value)} />
+              </label>
+              {days.length > 0 && (
+                <label class="row">
+                  Day:
+                  <select value={activeDay} onChange={(e) => setSchedDay((e.target as HTMLSelectElement).value)}>
+                    {days.map((d) => (
+                      <option value={d.date} key={d.date}>
+                        {d.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              {activeDay && <span class="note">{posterRows.length} games on this day</span>}
+            </div>
+            <textarea
+              style={{ width: "100%", height: 120 }}
+              placeholder={"Mon 6/29\t8:00 AM\tLamacchia\t43\tSoph 2nd\tSoph 7th\tSophomore"}
+              value={schedText}
+              onInput={(e) => setSchedText((e.target as HTMLTextAreaElement).value)}
+            />
+          </div>
+        )}
 
         {cardType === "announcement" && (
           <div class="row" style={{ alignItems: "flex-start", gap: 16, flexWrap: "wrap", marginTop: 8 }}>
@@ -129,14 +180,22 @@ export function ShareView({ dataset, analysis }: Props) {
       <div class="card">
         {/* Live preview - the SVG viewBox scales to the container. */}
         <div style={{ maxWidth: 420, margin: "0 auto" }}>
-          <ShareCard width={size.width} height={size.height} content={content} brand={brand} />
+          {isSchedule ? (
+            <SchedulePosterSvg width={size.width} height={size.height} title={schedTitle} subtitle={schedSubtitle} rows={posterRows} brand={brand} />
+          ) : (
+            <ShareCard width={size.width} height={size.height} content={content} brand={brand} />
+          )}
         </div>
       </div>
 
       {/* Hidden full-size node used for rasterization */}
       <div style={{ position: "absolute", left: -99999, top: 0 }} aria-hidden="true">
         <div ref={exportRef} style={{ width: size.width, height: size.height }}>
-          <ShareCard width={size.width} height={size.height} content={content} brand={brand} embedFonts />
+          {isSchedule ? (
+            <SchedulePosterSvg width={size.width} height={size.height} title={schedTitle} subtitle={schedSubtitle} rows={posterRows} brand={brand} embedFonts />
+          ) : (
+            <ShareCard width={size.width} height={size.height} content={content} brand={brand} embedFonts />
+          )}
         </div>
       </div>
     </section>
