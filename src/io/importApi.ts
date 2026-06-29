@@ -1,6 +1,7 @@
 import type { Dataset } from "./dataset.ts";
 import type { Division, Game, GameRound, Team } from "../engine/types.ts";
 import { DEFAULT_POINT_SYSTEM } from "../engine/pointSystem.ts";
+import { extractPlayoffSlots } from "./importPlayoffApi.ts";
 
 export interface ApiImportSummary {
   teamCount: number;
@@ -148,6 +149,10 @@ export function importApiData(
   };
 
   if (teams.length === 0) warnings.push("No teams were found in the schedule JSON.");
+
+  // Pull playoff game times from the same feed so the bracket shows them.
+  const slots = extractPlayoffSlots(scheduleJson, dataset.event.fieldSize ?? 8).byCell;
+  if (Object.keys(slots).length) dataset.playoffSchedule = slots;
 
   return {
     dataset,

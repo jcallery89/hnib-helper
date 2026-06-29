@@ -7,6 +7,7 @@
 // (/teams) are best-effort.
 
 import { importApiData } from "./importApi.ts";
+import { extractPlayoffSlots } from "./importPlayoffApi.ts";
 import { parseLeaders, parsePlayerProfile, parseTeamRoster } from "./importApiPlayers.ts";
 import type { Dataset, PlayerGameLine } from "./dataset.ts";
 import type { Player, PlayerStatLine } from "../engine/types.ts";
@@ -146,6 +147,11 @@ export async function fullSync(
     dataset.event.pointSystem = prev.event.pointSystem;
   }
 
+  // Re-extract playoff game times using the carried-forward field size (the
+  // import default may have guessed a different size before config was applied).
+  const autoSlots = extractPlayoffSlots(base.scheduleJson, dataset.event.fieldSize ?? 8).byCell;
+  if (Object.keys(autoSlots).length) dataset.playoffSchedule = autoSlots;
+
   // Team rosters + stats.
   const players: Player[] = [];
   const stats: PlayerStatLine[] = [];
@@ -207,7 +213,11 @@ export async function fullSync(
   // keyed by stable ids, so carrying them forward keeps them attached.
   if (sameEvent && prev) {
     if (prev.bracketResults) dataset.bracketResults = prev.bracketResults;
-    if (prev.playoffSchedule) dataset.playoffSchedule = prev.playoffSchedule;
+    // Auto-detected times are the baseline; any the operator fixed by hand
+    // (pasted on the Bracket page) win and survive the re-sync.
+    if (prev.playoffSchedule) {
+      dataset.playoffSchedule = { ...(dataset.playoffSchedule ?? {}), ...prev.playoffSchedule };
+    }
     if (prev.allStarIds) dataset.allStarIds = prev.allStarIds;
     if (prev.playerWriteups) dataset.playerWriteups = prev.playerWriteups;
     if (prev.playerGameLogs) dataset.playerGameLogs = prev.playerGameLogs;
