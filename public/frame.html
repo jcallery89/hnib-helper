@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HNIB Video Frame Builder</title>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=Barlow+Condensed:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="./headshots/manifest.js"></script>
+  <style>
+    :root {
+      --navy-deep: #111e3f; --navy: #1a2856; --navy-mid: #24366b;
+      --border: #263a66; --gold: #d4a843; --ice: #a8cce0; --ice-light: #c5ddf0;
+      --text: #c0cfe0; --dim: #7a8daa; --white: #ffffff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--navy-deep); color: var(--text);
+      font-family: 'Barlow Condensed', sans-serif; font-size: .95rem; line-height: 1.65;
+      min-height: 100vh; padding: 24px;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; }
+    h1 {
+      font-family: 'Teko', sans-serif; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .02em; line-height: 1.05; color: var(--white); font-size: 1.9rem;
+    }
+    .sub { color: var(--dim); margin-bottom: 24px; }
+    .panel {
+      background: rgba(30,46,86,.45); border: 1px solid var(--border);
+      border-radius: 6px; padding: 16px; margin-bottom: 16px;
+    }
+    .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+    label {
+      display: block; font-weight: 700; text-transform: uppercase;
+      font-size: .72rem; letter-spacing: .1em; color: var(--dim); margin-bottom: 4px;
+    }
+    select, input[type=text] {
+      background: var(--navy-deep); color: var(--white); border: 1px solid var(--border);
+      border-radius: 6px; padding: 8px 10px; font-family: inherit; font-size: .95rem; min-width: 180px;
+    }
+    button {
+      font-family: 'Barlow Condensed', sans-serif; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .06em; border-radius: 6px; padding: 10px 22px; cursor: pointer;
+      border: 1px solid transparent; transition: all .2s cubic-bezier(.4,0,.2,1); font-size: .95rem;
+    }
+    .btn-gold { background: var(--gold); color: var(--navy-deep); }
+    .btn-gold:hover { transform: translateY(-2px); }
+    .btn-ghost { background: transparent; border-color: var(--border); color: var(--ice); }
+    .btn-ghost:hover { border-color: var(--ice); }
+    .note { color: var(--dim); font-size: .85rem; }
+    .stage { text-align: center; padding: 24px; }
+    /* checkerboard so the transparent middle is obvious */
+    #cv {
+      max-width: 380px; width: 100%; height: auto; border-radius: 6px;
+      background: repeating-conic-gradient(#3a4a72 0% 25%, #2a3a62 0% 50%) 50% / 24px 24px;
+      border: 1px solid var(--border);
+    }
+    .err { color: #e05252; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>HNIB Video Frame Builder</h1>
+    <p class="sub">Player card frames with a transparent middle. Export a PNG and drop it over video in your editor - the video shows through the open area. - Get Seen. Get Recruited. PlayHNIB.com.</p>
+
+    <div class="panel">
+      <div class="row">
+        <div>
+          <label>Event ID</label>
+          <input type="text" id="eventId" value="ebc5c5b9-9a1e-44f7-a6b8-466aefac97ee" size="38" />
+        </div>
+        <button class="btn-ghost" id="loadBtn">Load rosters</button>
+        <span class="note" id="loadNote">Rosters load from hnib.app.</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="row">
+        <div>
+          <label>Team</label>
+          <select id="teamSel" disabled><option>Load rosters first</option></select>
+        </div>
+        <div>
+          <label>Player</label>
+          <select id="playerSel" disabled><option>-</option></select>
+        </div>
+        <div>
+          <label>Size</label>
+          <select id="sizeSel">
+            <option value="story" selected>Story 1080x1920</option>
+            <option value="portrait">Portrait 1080x1350</option>
+            <option value="square">Square 1080x1080</option>
+          </select>
+        </div>
+        <div>
+          <label>Bottom banner</label>
+          <select id="footSel">
+            <option value="cta" selected>Get Seen. Get Recruited.</option>
+            <option value="event">Event name</option>
+            <option value="none">No bottom banner</option>
+          </select>
+        </div>
+        <button class="btn-gold" id="exportBtn" disabled>Export PNG</button>
+      </div>
+    </div>
+
+    <div class="stage panel">
+      <canvas id="cv" width="1080" height="1920"></canvas>
+      <p class="note">Checkerboard = transparent. It will not appear in the export.</p>
+    </div>
+  </div>
+
+<script>
+(function () {
+  var API = "https://hnib.app/api";
+  var PROXY = "./hnib-proxy.php";
+  var SHOTS = window.HNIB_HEADSHOTS || {};
+  var SIZES = { story: [1080, 1920], portrait: [1080, 1350], square: [1080, 1080] };
+
+  var state = { eventName: "", teams: [], rosters: {}, images: {} };
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  function loadImg(src) {
+    if (state.images[src]) return Promise.resolve(state.images[src]);
+    return new Promise(function (res, rej) {
+      var im = new Image();
+      im.onload = function () { state.images[src] = im; res(im); };
+      im.onerror = function () { rej(new Error("image failed: " + src)); };
+      im.src = src;
+    });
+  }
+
+  function getJson(path) {
+    return fetch(API + "/" + path).then(function (r) {
+      if (!r.ok) throw new Error("api " + r.status);
+      return r.json();
+    }).catch(function () {
+      return fetch(PROXY + "?path=" + path).then(function (r) {
+        if (!r.ok) throw new Error("proxy " + r.status);
+        return r.json();
+      });
+    });
+  }
+
+  function loadRosters() {
+    var ev = $("eventId").value.trim();
+    $("loadNote").textContent = "Loading...";
+    $("loadNote").className = "note";
+    Promise.all([getJson("event/" + ev), getJson("teams/" + ev)]).then(function (rs) {
+      state.eventName = (rs[0] && rs[0].Title) || "HNIB Event";
+      var divs = rs[1] || [];
+      state.teams = [];
+      divs.forEach(function (d) {
+        (d.Teams || []).forEach(function (t) { state.teams.push({ id: t.ID, name: t.Name }); });
+      });
+      state.teams.sort(function (a, b) { return a.name.localeCompare(b.name); });
+      var sel = $("teamSel");
+      sel.innerHTML = "";
+      state.teams.forEach(function (t, i) {
+        var o = document.createElement("option");
+        o.value = t.id; o.textContent = t.name;
+        sel.appendChild(o);
+      });
+      sel.disabled = false;
+      $("loadNote").textContent = state.eventName + " - " + state.teams.length + " teams.";
+      pickTeam();
+    }).catch(function (e) {
+      $("loadNote").textContent = "Could not load rosters (" + e.message + ").";
+      $("loadNote").className = "note err";
+    });
+  }
+
+  function pickTeam() {
+    var tid = $("teamSel").value;
+    var fill = function (players) {
+      var sel = $("playerSel");
+      sel.innerHTML = "";
+      players.forEach(function (p, i) {
+        var o = document.createElement("option");
+        o.value = i;
+        o.textContent = "#" + p.jersey + " " + p.name + (SHOTS[p.id] ? "" : " (no photo)");
+        sel.appendChild(o);
+      });
+      sel.disabled = false;
+      $("exportBtn").disabled = false;
+      draw();
+    };
+    if (state.rosters[tid]) { fill(state.rosters[tid]); return; }
+    getJson("team/" + tid).then(function (t) {
+      var players = (t.Players || []).map(function (u) {
+        return {
+          id: u.ID || "",
+          jersey: typeof u.Number === "number" ? u.Number : 0,
+          name: ((u.FirstName || "") + " " + (u.LastName || "")).trim(),
+          pos: u.Position || "",
+          hometown: u.Hometown || ""
+        };
+      }).sort(function (a, b) { return a.jersey - b.jersey; });
+      state.rosters[tid] = players;
+      fill(players);
+    }).catch(function (e) {
+      $("loadNote").textContent = "Roster failed (" + e.message + ").";
+      $("loadNote").className = "note err";
+    });
+  }
+
+  function currentPlayer() {
+    var tid = $("teamSel").value;
+    var players = state.rosters[tid] || [];
+    return players[parseInt($("playerSel").value || "0", 10)] || null;
+  }
+
+  function teamName() {
+    var t = state.teams.filter(function (x) { return x.id === $("teamSel").value; })[0];
+    return t ? t.name : "";
+  }
+
+  // signature gradient bar
+  function gradBar(g, x, y, w, h) {
+    var gr = g.createLinearGradient(x, 0, x + w, 0);
+    gr.addColorStop(0, "#1a2856"); gr.addColorStop(.3, "#2e4a8a");
+    gr.addColorStop(.7, "#a8cce0"); gr.addColorStop(1, "#dae8f3");
+    g.fillStyle = gr; g.fillRect(x, y, w, h);
+  }
+
+  function fitText(g, text, font, maxW, startPx) {
+    var px = startPx;
+    do {
+      g.font = font.replace("{px}", px);
+      if (g.measureText(text).width <= maxW) break;
+      px -= 2;
+    } while (px > 20);
+    return px;
+  }
+
+  function draw() {
+    var p = currentPlayer();
+    if (!p) return;
+    var dims = SIZES[$("sizeSel").value];
+    var W = dims[0], H = dims[1];
+    var cv = $("cv"); cv.width = W; cv.height = H;
+    var g = cv.getContext("2d");
+    g.clearRect(0, 0, W, H);
+
+    var footMode = $("footSel").value;
+    var headerH = 320;
+    var footerH = footMode === "none" ? 60 : 220;
+
+    var fonts = [
+      "600 90px Teko", "700 60px Teko", "700 34px 'Barlow Condensed'",
+      "400 34px 'Barlow Condensed'", "700 26px 'Barlow Condensed'"
+    ];
+    Promise.all(fonts.map(function (f) { return document.fonts.load(f); }))
+      .then(function () {
+        return Promise.all([
+          loadImg("./frame-assets/cardheader_1080x60.png"),
+          loadImg("./frame-assets/cardfooter_1080x60.png"),
+          SHOTS[p.id] ? loadImg(SHOTS[p.id]).catch(function () { return null; }) : Promise.resolve(null)
+        ]);
+      })
+      .then(function (imgs) {
+        var header = imgs[0], footer = imgs[1], shot = imgs[2];
+
+        /* ---------- TOP BAND ---------- */
+        g.fillStyle = "#ffffff";
+        g.fillRect(0, 0, W, headerH);
+        g.drawImage(header, 0, 0, W, 60);
+        gradBar(g, 0, headerH - 6, W, 6);
+
+        // headshot circle or initials
+        var cx = 150, cy = 60 + (headerH - 66) / 2, r = 92;
+        g.save();
+        g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.closePath();
+        g.fillStyle = "#eef2f8"; g.fill();
+        g.clip();
+        if (shot) {
+          var s = Math.max((r * 2) / shot.width, (r * 2) / shot.height);
+          g.drawImage(shot, cx - (shot.width * s) / 2, cy - (shot.height * s) / 2, shot.width * s, shot.height * s);
+        } else {
+          g.fillStyle = "#1a2856";
+          g.font = "600 78px Teko"; g.textAlign = "center"; g.textBaseline = "middle";
+          var initials = p.name.split(/\s+/).map(function (w) { return w[0] || ""; }).join("").slice(0, 2).toUpperCase();
+          g.fillText(initials, cx, cy + 6);
+        }
+        g.restore();
+        g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2);
+        g.lineWidth = 5; g.strokeStyle = "#1a2856"; g.stroke();
+
+        // jersey number, right side
+        g.fillStyle = "#1a2856"; g.textAlign = "right"; g.textBaseline = "alphabetic";
+        g.font = "600 150px Teko";
+        var numW = g.measureText(String(p.jersey)).width;
+        g.fillText(String(p.jersey), W - 50, cy + 55);
+
+        // name + badge, middle
+        var nameX = cx + r + 40;
+        var nameMax = W - 50 - numW - 40 - nameX;
+        g.textAlign = "left";
+        var nm = p.name.toUpperCase();
+        fitText(g, nm, "600 {px}px Teko", nameMax, 92);
+        g.fillStyle = "#1a2856";
+        g.fillText(nm, nameX, cy - 4);
+
+        // gold badge: TEAM #N
+        var badge = (teamName() + "  #" + p.jersey).toUpperCase();
+        g.font = "700 30px 'Barlow Condensed'";
+        var bw = g.measureText(badge).width + 36;
+        g.fillStyle = "#d4a843";
+        g.beginPath();
+        if (g.roundRect) g.roundRect(nameX, cy + 14, bw, 46, 6); else g.rect(nameX, cy + 14, bw, 46);
+        g.fill();
+        g.fillStyle = "#111e3f"; g.textBaseline = "middle";
+        g.fillText(badge, nameX + 18, cy + 14 + 24);
+
+        // event name, dim, right of badge if room
+        g.font = "700 26px 'Barlow Condensed'";
+        g.fillStyle = "#7a8daa";
+        var evTxt = state.eventName.toUpperCase();
+        if (nameX + bw + 24 + g.measureText(evTxt).width < W - 50 - numW - 30) {
+          g.fillText(evTxt, nameX + bw + 24, cy + 14 + 24);
+        }
+        g.textBaseline = "alphabetic";
+
+        /* ---------- BOTTOM BAND ---------- */
+        var fy = H - footerH;
+        if (footMode === "none") {
+          gradBar(g, 0, fy, W, 6);
+          g.drawImage(footer, 0, H - 60, W, 60);
+          // thin white strip between bar and footer art so it reads as a band
+          g.fillStyle = "#ffffff"; g.fillRect(0, fy + 6, W, H - 60 - (fy + 6));
+        } else {
+          gradBar(g, 0, fy, W, 6);
+          g.fillStyle = "#ffffff";
+          g.fillRect(0, fy + 6, W, footerH - 66);
+          g.drawImage(footer, 0, H - 60, W, 60);
+          g.textAlign = "center";
+          var mainTxt = footMode === "cta" ? "GET SEEN. GET RECRUITED." : state.eventName.toUpperCase();
+          var mpx = fitText(g, mainTxt, "600 {px}px Teko", W - 120, 72);
+          g.fillStyle = "#1a2856";
+          g.fillText(mainTxt, W / 2, fy + 6 + (footerH - 66) / 2 + 6);
+          g.font = "700 30px 'Barlow Condensed'";
+          g.fillStyle = "#7a8daa";
+          g.fillText("@HOCKEY.NIGHT  -  PLAYHNIB.COM", W / 2, fy + footerH - 60 - 18);
+        }
+      })
+      .catch(function (e) {
+        $("loadNote").textContent = "Draw failed (" + e.message + ").";
+        $("loadNote").className = "note err";
+      });
+  }
+
+  function exportPng() {
+    var p = currentPlayer();
+    if (!p) return;
+    var a = document.createElement("a");
+    a.download = "HNIB_frame_" + p.name.replace(/[^a-z0-9]+/gi, "_") + "_" + $("sizeSel").value + ".png";
+    a.href = $("cv").toDataURL("image/png");
+    a.click();
+  }
+
+  $("loadBtn").addEventListener("click", loadRosters);
+  $("teamSel").addEventListener("change", pickTeam);
+  $("playerSel").addEventListener("change", draw);
+  $("sizeSel").addEventListener("change", draw);
+  $("footSel").addEventListener("change", draw);
+  $("exportBtn").addEventListener("click", exportPng);
+
+  loadRosters();
+})();
+</script>
+</body>
+</html>
