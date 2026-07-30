@@ -181,7 +181,7 @@
       players.forEach(function (p, i) {
         var o = document.createElement("option");
         o.value = i;
-        o.textContent = "#" + p.jersey + " " + p.name + (SHOTS[p.id] ? "" : " (no photo)");
+        o.textContent = "#" + p.jersey + " " + p.name;
         sel.appendChild(o);
       });
       sel.disabled = false;
@@ -258,7 +258,10 @@
         return Promise.all([
           loadImg("./frame-assets/cardheader_1080x60.png"),
           loadImg("./frame-assets/cardfooter_1080x60.png"),
-          SHOTS[p.id] ? loadImg(SHOTS[p.id]).catch(function () { return null; }) : Promise.resolve(null)
+          // Static same-origin copy first; otherwise relay the live Tourno
+          // photo through the proxy (same-origin, so the export stays clean).
+          // New uploads to Tourno appear here without redeploying headshots/.
+          loadImg(SHOTS[p.id] || (PROXY + "?path=headshot/" + p.id)).catch(function () { return null; })
         ]);
       })
       .then(function (imgs) {
