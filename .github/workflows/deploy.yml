@@ -16,6 +16,7 @@ on:
     branches:
       - claude/stoic-babbage-toy386
       - claude/stoic-babbage-toy386-xglxrh
+      - claude/transparent-social-cards-gn5sou
       - main
   workflow_dispatch:
 
