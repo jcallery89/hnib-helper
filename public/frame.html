@@ -87,6 +87,10 @@
           <select id="playerSel" disabled><option>-</option></select>
         </div>
         <div>
+          <label>Post-game stats</label>
+          <select id="gameSel" disabled><option value="">Season card (no game)</option></select>
+        </div>
+        <div>
           <label>Size</label>
           <select id="sizeSel">
             <option value="story" selected>Story 1080x1920</option>
@@ -119,7 +123,7 @@
   var SHOTS = window.HNIB_HEADSHOTS || {};
   var SIZES = { story: [1080, 1920], portrait: [1080, 1350], square: [1080, 1080] };
 
-  var state = { eventName: "", teams: [], rosters: {}, images: {} };
+  var state = { eventName: "", teams: [], rosters: {}, images: {}, profiles: {} };
 
   var $ = function (id) { return document.getElementById(id); };
 
@@ -186,6 +190,7 @@
       });
       sel.disabled = false;
       $("exportBtn").disabled = false;
+      loadGames();
       draw();
     };
     if (state.rosters[tid]) { fill(state.rosters[tid]); return; }
@@ -196,7 +201,8 @@
           jersey: typeof u.Number === "number" ? u.Number : 0,
           name: ((u.FirstName || "") + " " + (u.LastName || "")).trim(),
           pos: u.Position || "",
-          hometown: u.Hometown || ""
+          hometown: u.Hometown || "",
+          birthYear: yearOf(u.BirthYear) || yearOf(u.Dob)
         };
       }).sort(function (a, b) { return a.jersey - b.jersey; });
       state.rosters[tid] = players;
@@ -211,6 +217,70 @@
     var tid = $("teamSel").value;
     var players = state.rosters[tid] || [];
     return players[parseInt($("playerSel").value || "0", 10)] || null;
+  }
+
+  function yearOf(s) {
+    var m = String(s || "").match(/20\d\d/);
+    return m ? m[0] : "";
+  }
+
+  // Per-game stat lines from /player_profile/{id}, cached per player. The
+  // dropdown resets to the season card whenever the player changes.
+  function fillGames(lines) {
+    var sel = $("gameSel");
+    sel.innerHTML = "";
+    var o0 = document.createElement("option");
+    o0.value = ""; o0.textContent = "Season card (no game)";
+    sel.appendChild(o0);
+    lines.forEach(function (l, i) {
+      var o = document.createElement("option");
+      o.value = i; o.textContent = "vs " + (l.opponent || "unknown");
+      sel.appendChild(o);
+    });
+    sel.disabled = lines.length === 0;
+  }
+
+  function loadGames() {
+    var p = currentPlayer();
+    fillGames([]);
+    if (!p || !p.id) return;
+    if (state.profiles[p.id]) { fillGames(state.profiles[p.id]); return; }
+    getJson("player_profile/" + p.id).then(function (data) {
+      var lines = ((data && data.Stats) || []).map(function (l) {
+        return {
+          opponent: (l.Opponent || "").trim(),
+          goals: l.Goals || 0, assists: l.Assists || 0,
+          pim: l.PIM || 0, shots: l.Shots || 0, saves: l.Saves || 0
+        };
+      });
+      state.profiles[p.id] = lines;
+      // Only fill if the user is still on the same player.
+      var now = currentPlayer();
+      if (now && now.id === p.id) fillGames(lines);
+    }).catch(function () { /* season card still works without game stats */ });
+  }
+
+  function currentGame() {
+    var p = currentPlayer();
+    var v = $("gameSel").value;
+    if (!p || v === "") return null;
+    var lines = state.profiles[p.id] || [];
+    return lines[parseInt(v, 10)] || null;
+  }
+
+  // "1 GOAL, 1 ASSIST VS BRAINTREE" for skaters; saves on shots for goalies.
+  function statText(p, gl) {
+    var opp = (gl.opponent || "").toUpperCase();
+    var vs = opp ? " VS " + opp : "";
+    var n = function (v, one, many) { return v + " " + (v === 1 ? one : many); };
+    if ((p.pos || "").toUpperCase().charAt(0) === "G") {
+      return n(gl.saves, "SAVE", "SAVES") + " ON " + n(gl.shots, "SHOT", "SHOTS") + vs;
+    }
+    var parts = [];
+    if (gl.goals) parts.push(n(gl.goals, "GOAL", "GOALS"));
+    if (gl.assists) parts.push(n(gl.assists, "ASSIST", "ASSISTS"));
+    if (!parts.length) parts.push(gl.shots ? n(gl.shots, "SHOT", "SHOTS") : "0 G, 0 A");
+    return parts.join(", ") + vs;
   }
 
   function teamName() {
@@ -246,8 +316,11 @@
     g.clearRect(0, 0, W, H);
 
     var footMode = $("footSel").value;
+    var gl = currentGame();
+    // A selected game always gets the full bottom band for its stat line.
+    var showBand = gl !== null || footMode !== "none";
     var headerH = 320;
-    var footerH = footMode === "none" ? 60 : 220;
+    var footerH = showBand ? 220 : 60;
 
     var fonts = [
       "600 90px Teko", "700 60px Teko", "700 34px 'Barlow Condensed'",
@@ -318,18 +391,21 @@
         g.fillStyle = "#111e3f"; g.textBaseline = "middle";
         g.fillText(badge, nameX + 18, cy + 14 + 24);
 
-        // event name, dim, right of badge if room
-        g.font = "700 26px 'Barlow Condensed'";
+        // hometown + birth year under the badge (falls back to the event name
+        // when the roster has neither)
+        var bioParts = [];
+        if (p.hometown) bioParts.push(p.hometown.toUpperCase());
+        if (p.birthYear) bioParts.push("BORN " + p.birthYear);
+        var bioTxt = bioParts.length ? bioParts.join("  -  ") : state.eventName.toUpperCase();
+        var bioMax = W - 50 - numW - 40 - nameX;
+        fitText(g, bioTxt, "700 {px}px 'Barlow Condensed'", bioMax, 30);
         g.fillStyle = "#7a8daa";
-        var evTxt = state.eventName.toUpperCase();
-        if (nameX + bw + 24 + g.measureText(evTxt).width < W - 50 - numW - 30) {
-          g.fillText(evTxt, nameX + bw + 24, cy + 14 + 24);
-        }
+        g.fillText(bioTxt, nameX, cy + 92);
         g.textBaseline = "alphabetic";
 
         /* ---------- BOTTOM BAND ---------- */
         var fy = H - footerH;
-        if (footMode === "none") {
+        if (!showBand) {
           gradBar(g, 0, fy, W, 6);
           g.drawImage(footer, 0, H - 60, W, 60);
           // thin white strip between bar and footer art so it reads as a band
@@ -340,7 +416,8 @@
           g.fillRect(0, fy + 6, W, footerH - 66);
           g.drawImage(footer, 0, H - 60, W, 60);
           g.textAlign = "center";
-          var mainTxt = footMode === "cta" ? "GET SEEN. GET RECRUITED." : state.eventName.toUpperCase();
+          var mainTxt = gl ? statText(p, gl)
+            : footMode === "cta" ? "GET SEEN. GET RECRUITED." : state.eventName.toUpperCase();
           var mpx = fitText(g, mainTxt, "600 {px}px Teko", W - 120, 72);
           g.fillStyle = "#1a2856";
           g.fillText(mainTxt, W / 2, fy + 6 + (footerH - 66) / 2 + 6);
@@ -358,15 +435,19 @@
   function exportPng() {
     var p = currentPlayer();
     if (!p) return;
+    var gl = currentGame();
     var a = document.createElement("a");
-    a.download = "HNIB_frame_" + p.name.replace(/[^a-z0-9]+/gi, "_") + "_" + $("sizeSel").value + ".png";
+    a.download = "HNIB_frame_" + p.name.replace(/[^a-z0-9]+/gi, "_") +
+      (gl ? "_vs_" + (gl.opponent || "game").replace(/[^a-z0-9]+/gi, "_") : "") +
+      "_" + $("sizeSel").value + ".png";
     a.href = $("cv").toDataURL("image/png");
     a.click();
   }
 
   $("loadBtn").addEventListener("click", loadRosters);
   $("teamSel").addEventListener("change", pickTeam);
-  $("playerSel").addEventListener("change", draw);
+  $("playerSel").addEventListener("change", function () { loadGames(); draw(); });
+  $("gameSel").addEventListener("change", draw);
   $("sizeSel").addEventListener("change", draw);
   $("footSel").addEventListener("change", draw);
   $("exportBtn").addEventListener("click", exportPng);
