@@ -117,8 +117,10 @@ The HNIB app is built on Tourno. Public read API at `https://hnib.app/api`:
 
 - **Setup -> Sync event** with the event UUID pulls schedule, scores, real team
   colors, exact playoff rounds (from each game's Description), divisions, every
-  team roster with player stats, and the leaders board. The 2025 Jr. High event
-  id is `63655fc1-1db9-46a5-a948-44f63d297810`.
+  team roster with player stats, and the leaders board. Known event ids (also
+  quick-pick buttons in Setup): 2026 Boys Major Showcase
+  `ebc5c5b9-9a1e-44f7-a6b8-466aefac97ee`, 2025 Jr. High
+  `63655fc1-1db9-46a5-a948-44f63d297810`.
 - `src/io/sync.ts` tries the browser call first; if blocked (CORS) it falls back
   to `public/hnib-proxy.php` (a same-origin, whitelist-only GET relay) shipped in
   `dist/`. Re-sync PRESERVES all local work: playoff results, All-Star flags,

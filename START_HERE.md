@@ -33,4 +33,5 @@ will see nothing. Always work from the branch.
   `public_html/tournament`, flush SiteGround cache, hard-refresh.
 - Your tool data (events, scores, All-Star flags) lives in your browser on
   SiteGround, not in the code - starting a new chat never touches it.
+- The 2026 Boys Major Showcase event id is `ebc5c5b9-9a1e-44f7-a6b8-466aefac97ee`.
 - The 2025 Jr. High event id is `63655fc1-1db9-46a5-a948-44f63d297810`.
