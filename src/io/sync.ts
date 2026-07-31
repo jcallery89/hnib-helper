@@ -194,6 +194,7 @@ export async function fullSync(
     if (prev.allStarIds) dataset.allStarIds = prev.allStarIds;
     if (prev.playerWriteups) dataset.playerWriteups = prev.playerWriteups;
     if (prev.playerGameLogs) dataset.playerGameLogs = prev.playerGameLogs;
+    if (prev.ballot) dataset.ballot = prev.ballot;
   }
 
   return {

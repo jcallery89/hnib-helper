@@ -72,6 +72,14 @@ plus **Sync now / Auto-sync (3 min)** when the event was loaded from hnib.app.
 - **Stats** - ALL players in sortable tables (skaters: GP/G/A/PTS; goalies:
   GP/GAA/SV%), team filter, **All-Star flagging** (star toggle) with an
   All-Star Pool and CSV export.
+- **Ballot** - All-Star coaches ballot over the flagged pool (Boys Major
+  Showcase at-large team). Sections by position pre-sorted by production,
+  configurable targets (16 F / 10 D / 3 G), one rank column per coach with
+  Avg Rank + Votes (spreadsheet model), duplicate-rank warnings, directors'
+  Final rank and Roster/Alternate calls, final roster summary. Exports: blank
+  ballot CSV, results CSV, and per-position Gravity Forms choice lists
+  ("Last, First - Team (GP-G-A-P)"). Engine logic in `src/engine/ballot/`;
+  state in `Dataset.ballot`, preserved across re-sync.
 - **Setup** - sync/import events, assign divisions, event settings, data
   reset/remove, CSV/JSON export, registration import.
 
@@ -180,7 +188,8 @@ file spans multiple events.
 
 ## Open / possible next steps
 
-- All-Star roster builder from the flagged pool (balanced squads, exportable).
+- Balanced All-Star game squads from the flagged pool (the coaches ballot and
+  final at-large roster are built; see the Ballot tab).
 - Read divisions automatically from the standings page if needed.
 - Headshots into the card avatar once registration provides photo URLs.
 - Fuller AI-written scouting reports (needs an API key path; static site cannot
