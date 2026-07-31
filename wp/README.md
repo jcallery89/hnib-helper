@@ -1,0 +1,63 @@
+# Dynamic Gravity Forms ballot - Boys Major Showcase
+
+Coaches see live player stats in the ballot dropdowns. The pieces:
+
+- `hnib-ballot-sync.php` - server-side sync. Pulls every roster and stat line
+  from the Tourno API (hnib.app) and refreshes the `gf_boysmajor_rosters`
+  MySQL table. Runs on the WordPress server, so browser CORS does not apply.
+- `boys-major-ballot-form.json` - importable Gravity Forms form. Every player
+  dropdown is wired to GP Populate Anything (GPPA, already installed - the
+  Sophomore ballot uses it) reading that table, so choices refresh on every
+  page load. Regenerate with `node wp/generate-form.mjs` if edits are needed.
+
+Because GPPA stores the choice VALUE in entries - here a stable
+`Last, First (Team #9)` key, not the stat label - stats can keep updating
+after ballots are submitted without corrupting anything.
+
+## Setup (one time, about 20 minutes)
+
+1. Open `hnib-ballot-sync.php` and set `HNIB_SYNC_KEY` to a long random
+   secret (the script refuses to run with the default). `HNIB_EVENT_ID` is
+   already the 2026 Boys Major Showcase.
+2. Upload the file to the WordPress ROOT folder - the one containing
+   `wp-load.php` (on SiteGround usually `public_html/`). Note this is the
+   WordPress site, not the `/tournament` tool folder.
+3. Visit `https://YOUR-SITE/hnib-ballot-sync.php?key=YOUR-KEY` in a browser.
+   You should get JSON like `{"ok":true,"teams":8,"players":160,...}`.
+   Sanity-check the count against the tool's sync message, and spot-check
+   rows in phpMyAdmin (`gf_boysmajor_rosters`).
+4. Site Tools -> Devs -> Cron Jobs -> add:
+   `curl -s "https://YOUR-SITE/hnib-ballot-sync.php?key=YOUR-KEY" >/dev/null`
+   every 15 minutes. Remove the cron after the event.
+5. WP admin -> Forms -> Import/Export -> Import Forms -> upload
+   `boys-major-ballot-form.json`. Open the new form in the editor, click one
+   player dropdown, and confirm the GPPA panel shows the table and a live
+   preview of choices.
+6. Embed on an unlinked page with an Enfold Text Block:
+   `[gravityform id="NN" title="false" description="false" ajax="true"]`
+   (NN = the new form's id). Preview: forwards sorted by points, goalies by
+   SV%, stats in every label.
+7. Test-submit once and check the entry stores values like
+   `Sullivan, Jack (Middlesex #9)`.
+
+## During the event
+
+Nothing to do. The cron refreshes stats; every coach who opens the form sees
+current numbers. To force a refresh, hit the sync URL manually.
+
+## After ballots close
+
+Forms -> Import/Export -> Export Entries (coach fields + all rank dropdowns).
+Enter each coach's ranks in the HNIB tool's Ballot tab, which computes Avg
+Rank / Votes, flags duplicate picks, and holds the directors' final calls.
+The stored `Last, First (Team #9)` values match players unambiguously.
+
+## Notes
+
+- Do not edit the live form by re-importing JSON over it (that creates a
+  duplicate form with a new id and breaks embeds) - tweak in the editor.
+- The sync never wipes the table on a failed fetch: it only replaces rows
+  after a full successful parse. Failed team fetches are listed in
+  `skipped_teams`.
+- To reuse for another event next year: change `HNIB_EVENT_ID` (and table
+  name if you want to keep history), re-run, re-import a fresh form.

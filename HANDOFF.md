@@ -82,6 +82,9 @@ plus **Sync now / Auto-sync (3 min)** when the event was loaded from hnib.app.
   ballot CSV, results CSV, and per-position Gravity Forms choice lists
   ("Last, First - Team (GP-G-A-P)"). Engine logic in `src/engine/ballot/`;
   state in `Dataset.ballot`, preserved across re-sync.
+  For the LIVE-STATS Gravity Forms ballot (GP Populate Anything reading a
+  MySQL table refreshed from the API by a server-side cron), see `wp/` -
+  sync PHP, importable form JSON, and the setup runbook.
 - **Setup** - sync/import events, assign divisions, event settings, data
   reset/remove, CSV/JSON export, registration import.
 
