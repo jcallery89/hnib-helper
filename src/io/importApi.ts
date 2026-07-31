@@ -220,7 +220,7 @@ function classifyRound(description: string): GameRound | null {
   if (/all[-\s]?star|exhibition/.test(d)) return null;
   if (/champ|final(?!ist)/.test(d) && !/semi/.test(d)) return "final";
   if (/semi/.test(d)) return "sf";
-  if (/playoff|quarter|\bqf\b/.test(d)) return "qf";
+  if (/playoff|quarter|\bqf\b|play[-\s]?in/.test(d)) return "qf";
   if (/prelim/.test(d)) return "prelim";
   if (/^game\b|round\s*robin|^rr\b/.test(d)) return "rr";
   return "rr"; // default unknown descriptions to round robin

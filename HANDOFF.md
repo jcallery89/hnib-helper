@@ -121,11 +121,13 @@ The HNIB app is built on Tourno. Public read API at `https://hnib.app/api`:
   quick-pick buttons in Setup): 2026 Boys Major Showcase
   `ebc5c5b9-9a1e-44f7-a6b8-466aefac97ee`, 2025 Jr. High
   `63655fc1-1db9-46a5-a948-44f63d297810`.
-- The full reverse-engineered OpenAPI spec is checked in at
-  `docs/tourno-api.html` (open in a browser; Redoc). Notables beyond what the
-  tool consumes: `/game/{id}` returns a full box score with per-game player
-  lines and a goal-by-goal ScoringSummary (scorer + assists), and
-  `/search/{eventId}` finds players by name.
+- API docs are checked in under `docs/`: `TOURNO-API.md` (field-by-field
+  reference with real observed shapes, date/time quirks, and playoff
+  Description gotchas - the practical source of truth) and `tourno-api.html`
+  (reverse-engineered OpenAPI spec; open in a browser, Redoc). Notables
+  beyond what the tool consumes: `/game/{id}` returns a full box score with
+  per-game player lines and a goal-by-goal ScoringSummary (scorer +
+  assists), and `/search/{eventId}` finds players by name.
 - `src/io/sync.ts` tries the browser call first; if blocked (CORS) it falls back
   to `public/hnib-proxy.php` (a same-origin, whitelist-only GET relay) shipped in
   `dist/`. Re-sync PRESERVES all local work: playoff results, All-Star flags,

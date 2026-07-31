@@ -38,6 +38,18 @@ describe("importApiData", () => {
     expect(byId.get("g1")!.slotStart).toBe("2025-06-27T09:45:00"); // Z stripped
   });
 
+  it("classifies Play-in games as bracket games, not round robin", () => {
+    const schedule = JSON.stringify({
+      Games: [
+        { GameID: "pi1", HomeTeamName: "Eastern", HomeTeamCode: "Eastern", AwayTeamName: "Suburban", AwayTeamCode: "Suburban", HomeTeamScore: 0, AwayTeamScore: 0, Status: "SCHEDULED", Date: "2026-07-31T12:00:00Z", Time: "12:00 PM", Description: "Play-in 1" },
+      ],
+    });
+    const { dataset, summary } = importApiData(schedule, null);
+    expect(dataset.games[0].round).toBe("qf");
+    expect(summary.roundRobinGames).toBe(0);
+    expect(summary.playoffGames).toBe(1);
+  });
+
   it("combines a date-only Date with the 12-hour Time field, per the API docs", () => {
     const schedule = JSON.stringify({
       Games: [
