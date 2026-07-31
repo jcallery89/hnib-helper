@@ -27,7 +27,8 @@ function dataset(): Dataset {
       { playerId: "p2", gameId: null, gp: 4, goals: 1, assists: 1 },
       { playerId: "p3", gameId: null, gp: 3, goals: 0, assists: 0, saves: 40, shots: 44, savePct: 0.909, gaa: 1.33 },
     ],
-    allStarIds: ["p1", "p2", "p3"],
+    // Only p1 is flagged; the default pool is every rostered player anyway.
+    allStarIds: ["p1"],
     ballot: {
       targets: { F: 16, D: 10, G: 3 },
       coaches: [
@@ -41,14 +42,16 @@ function dataset(): Dataset {
 }
 
 describe("BallotView", () => {
-  it("renders position sections with coach columns, consensus, and the final roster", () => {
+  it("puts every rostered player on the ballot by default, with coach columns, consensus, and the final roster", () => {
     const html = renderToString(h(BallotView, { dataset: dataset(), update: () => {} }));
-    expect(html).toContain("All-Star Coaches Ballot (3 eligible)");
+    expect(html).toContain("Coaches Ballot - E (3 eligible)");
     expect(html).toContain("Forwards (1) - rank about 16");
     expect(html).toContain("Defense (1) - rank about 10");
     expect(html).toContain("Goaltenders (1) - rank about 3");
     expect(html).toContain("Sullivan");
-    // Blank-position goalie classified by stats, not dropped.
+    // Unflagged players are still on the ballot in the default event-wide pool,
+    // and the blank-position goalie is classified by stats, not dropped.
+    expect(html).toContain("Carrier");
     expect(html).toContain("Olsen");
     // Coach columns and their entered ranks.
     expect(html).toContain("P. Doyle");
@@ -60,9 +63,10 @@ describe("BallotView", () => {
     expect(html).toContain("(alt)");
   });
 
-  it("points the operator at the Stats tab when nothing is flagged", () => {
+  it("explains an empty pool when restricted to All-Star flags with none set", () => {
     const d = dataset();
     d.allStarIds = [];
+    d.ballot!.poolMode = "flagged";
     const html = renderToString(h(BallotView, { dataset: d, update: () => {} }));
     expect(html).toContain("ballot pool is empty");
     expect(html).toContain("Stats tab");

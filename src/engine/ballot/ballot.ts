@@ -32,8 +32,17 @@ export interface CoachBallot {
 
 export type BallotSelection = "roster" | "alternate";
 
+/**
+ * Who is ballot-eligible. "event" is the Boys Major Showcase case: every
+ * player on the event's rosters is on the ballot. "flagged" restricts the
+ * pool to the All-Star flags from the Stats tab (the festival case, where the
+ * ballot covers only the All-Star game rosters).
+ */
+export type BallotPoolMode = "event" | "flagged";
+
 export interface BallotState {
   targets: BallotTargets;
+  poolMode?: BallotPoolMode; // absent = "event"
   coaches: CoachBallot[];
   /** Directors' agreed final order, keyed by player id. */
   finalRanks: Record<string, number>;
@@ -42,7 +51,7 @@ export interface BallotState {
 }
 
 export function emptyBallot(): BallotState {
-  return { targets: { ...DEFAULT_TARGETS }, coaches: [], finalRanks: {}, selections: {} };
+  return { targets: { ...DEFAULT_TARGETS }, poolMode: "event", coaches: [], finalRanks: {}, selections: {} };
 }
 
 export interface BallotLine {

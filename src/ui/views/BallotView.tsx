@@ -2,6 +2,7 @@ import { useMemo, useState } from "preact/hooks";
 import type { Dataset } from "../../io/dataset.ts";
 import type { Player, PlayerSummary } from "../../engine/types.ts";
 import {
+  type BallotPoolMode,
   type BallotPosition,
   type BallotSelection,
   type BallotState,
@@ -38,12 +39,16 @@ export function BallotView({ dataset, update }: Props) {
     [dataset.players, dataset.playerStats, dataset.games],
   );
 
-  // The ballot pool is the All-Star pool flagged on the Stats tab: every
-  // player on the All-Star game rosters is ballot-eligible.
+  // Default pool is the whole event: for the Boys Major Showcase every
+  // rostered player is ballot-eligible, straight from the synced API rosters.
+  // "flagged" narrows to the All-Star flags from the Stats tab instead.
+  const poolMode: BallotPoolMode = ballot.poolMode ?? "event";
   const pool = useMemo(() => {
+    const players = dataset.players ?? [];
+    if (poolMode === "event") return players;
     const flagged = new Set(dataset.allStarIds ?? []);
-    return (dataset.players ?? []).filter((p) => flagged.has(p.id));
-  }, [dataset.players, dataset.allStarIds]);
+    return players.filter((p) => flagged.has(p.id));
+  }, [dataset.players, dataset.allStarIds, poolMode]);
 
   const groups = useMemo(() => {
     const g: Record<BallotPosition, Player[]> = { F: [], D: [], G: [] };
@@ -140,6 +145,12 @@ export function BallotView({ dataset, update }: Props) {
     });
   }
 
+  function setPoolMode(value: string) {
+    edit((b) => {
+      b.poolMode = value === "flagged" ? "flagged" : "event";
+    });
+  }
+
   function orderedGroup(pos: BallotPosition): Player[] {
     if (orderBy === "production") return groups[pos];
     return [...groups[pos]].sort((a, b) => {
@@ -208,22 +219,10 @@ export function BallotView({ dataset, update }: Props) {
     return (
       <section>
         <div class="card">
-          <p class="section-title">All-Star Coaches Ballot</p>
-          <p class="note">No players yet. Sync the event on Setup, then flag the All-Star rosters on the Stats tab.</p>
-        </div>
-      </section>
-    );
-  }
-
-  if (pool.length === 0) {
-    return (
-      <section>
-        <div class="card">
-          <p class="section-title">All-Star Coaches Ballot</p>
+          <p class="section-title">Coaches Ballot</p>
           <p class="note">
-            The ballot pool is empty. Every player on the All-Star game rosters is ballot-eligible: flag them
-            with the star on the Stats tab and they will appear here, grouped by position and pre-sorted by
-            production.
+            No players yet. Sync the event on Setup with its hnib.app id and every rostered player appears
+            here with their stats, ready to rank.
           </p>
         </div>
       </section>
@@ -235,13 +234,21 @@ export function BallotView({ dataset, update }: Props) {
   return (
     <section>
       <div class="card premium">
-        <p class="section-title">All-Star Coaches Ballot ({pool.length} eligible)</p>
+        <p class="section-title">Coaches Ballot - {dataset.event.name} ({pool.length} eligible)</p>
         <p class="note">
-          Rank 1 = best. Coaches rank only players they have an opinion on; blanks are fine. Avg Rank is the
-          average across the coaches who ranked the player (lower = stronger consensus) and Votes is how many
-          coaches ranked them. Directors set the Final column and the roster calls.
+          Every rostered player in this event is ballot-eligible. Rank 1 = best. Coaches rank only players
+          they have an opinion on; blanks are fine. Avg Rank is the average across the coaches who ranked the
+          player (lower = stronger consensus) and Votes is how many coaches ranked them. Directors set the
+          Final column and the roster calls.
         </p>
         <div class="toolbar" style={{ marginTop: 8 }}>
+          <label class="row" style={{ gap: 4 }}>
+            Pool:
+            <select value={poolMode} onChange={(e) => setPoolMode((e.target as HTMLSelectElement).value)}>
+              <option value="event">Every player in this event</option>
+              <option value="flagged">All-Star flagged only (Stats tab)</option>
+            </select>
+          </label>
           <span>Targets:</span>
           {POSITIONS.map((pos) => (
             <label class="row" key={pos} style={{ gap: 4 }}>
@@ -266,6 +273,15 @@ export function BallotView({ dataset, update }: Props) {
           <button class="btn secondary" onClick={exportResults}>Results (CSV)</button>
         </div>
       </div>
+
+      {pool.length === 0 && (
+        <div class="card">
+          <p class="note">
+            The ballot pool is empty because it is set to All-Star flagged players and none are flagged.
+            Star players on the Stats tab, or switch the pool to every player in this event.
+          </p>
+        </div>
+      )}
 
       <div class="card">
         <p class="section-title">Coaches ({ballot.coaches.length})</p>

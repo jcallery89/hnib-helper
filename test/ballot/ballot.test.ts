@@ -116,4 +116,8 @@ describe("emptyBallot", () => {
   it("starts from the documented targets: 16 forwards, 10 defense, 3 goalies", () => {
     expect(emptyBallot().targets).toEqual({ F: 16, D: 10, G: 3 });
   });
+
+  it("defaults the pool to every player in the event", () => {
+    expect(emptyBallot().poolMode).toBe("event");
+  });
 });

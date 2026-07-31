@@ -72,8 +72,10 @@ plus **Sync now / Auto-sync (3 min)** when the event was loaded from hnib.app.
 - **Stats** - ALL players in sortable tables (skaters: GP/G/A/PTS; goalies:
   GP/GAA/SV%), team filter, **All-Star flagging** (star toggle) with an
   All-Star Pool and CSV export.
-- **Ballot** - All-Star coaches ballot over the flagged pool (Boys Major
-  Showcase at-large team). Sections by position pre-sorted by production,
+- **Ballot** - coaches ballot built for the Boys Major Showcase: by default
+  every rostered player in the event is ballot-eligible (a pool switch can
+  narrow it to the All-Star flags from Stats). Sections by position
+  pre-sorted by production,
   configurable targets (16 F / 10 D / 3 G), one rank column per coach with
   Avg Rank + Votes (spreadsheet model), duplicate-rank warnings, directors'
   Final rank and Roster/Alternate calls, final roster summary. Exports: blank
