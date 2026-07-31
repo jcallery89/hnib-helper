@@ -100,7 +100,7 @@ export function importApiData(
       divisionId: null,
       round,
       rink: g.LocationCode || g.Location || null,
-      slotStart: normalizeDate(g.Date),
+      slotStart: normalizeDate(g.Date, g.Time),
       homeTeamId: home.id,
       awayTeamId: away.id,
       homeScore: status === "final" ? (g.HomeTeamScore as number) : g.HomeTeamScore ?? null,
@@ -228,10 +228,28 @@ function classifyRound(description: string): GameRound | null {
 
 // "2025-06-27T09:45:00Z" -> "2025-06-27T09:45:00" (the clock time is local; the
 // Z is cosmetic, matching the Time field, so we keep the wall-clock naive).
-function normalizeDate(date: string | undefined): string | null {
+// The API docs also allow a date-only Date ("2026-07-30") with the clock in
+// the separate Time field ("04:40 PM" or "16:40:00"); combine them so game
+// times are not lost.
+function normalizeDate(date: string | undefined, time?: string): string | null {
   if (!date) return null;
   const m = date.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
-  return m ? m[0] : date.slice(0, 19) || null;
+  if (m) return m[0];
+  const d = date.match(/^\d{4}-\d{2}-\d{2}$/);
+  const t = parseClock(time);
+  if (d && t) return `${d[0]}T${t}`;
+  return date.slice(0, 19) || null;
+}
+
+// "04:40 PM" / "9:45 AM" / "16:40:00" -> "HH:mm:ss" (24-hour).
+function parseClock(time: string | undefined): string | null {
+  const m = (time ?? "").trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i);
+  if (!m) return null;
+  let h = Number(m[1]);
+  const ampm = m[4]?.toUpperCase();
+  if (ampm === "PM" && h < 12) h += 12;
+  if (ampm === "AM" && h === 12) h = 0;
+  return `${String(h).padStart(2, "0")}:${m[2]}:${m[3] ?? "00"}`;
 }
 
 function yearFromGames(games: Game[]): number {

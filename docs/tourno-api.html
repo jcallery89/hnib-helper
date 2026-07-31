@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tourno API Documentation</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,700|Roboto:300,400,700" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Roboto', sans-serif;
+      background-color: #fafafa;
+    }
+  </style>
+</head>
+<body>
+  <div id="redoc-container"></div>
+  <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
+  <script>
+    const spec = {
+      "openapi": "3.0.3",
+      "info": {
+        "title": "Tourno API",
+        "description": "Reverse-engineered API specification for the Tourno hockey tournament application. Accessible via the base URL `https://hnib.app/api`.",
+        "version": "1.0.0"
+      },
+      "servers": [
+        {
+          "url": "https://hnib.app/api",
+          "description": "Production API Server"
+        }
+      ],
+      "paths": {
+        "/events/{clientId}": {
+          "get": {
+            "summary": "Get Events by Client ID",
+            "description": "Retrieves all events owned by or associated with a specific client.",
+            "parameters": [
+              {
+                "name": "clientId",
+                "in": "path",
+                "required": true,
+                "description": "Unique identifier for the client owner",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "description": "Successfully retrieved list of events",
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Event"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "/event/{id}": {
+          "get": {
+            "summary": "Get Event Details by ID",
+            "description": "Retrieves comprehensive tournament configuration and listings for a specific event ID.",
+            "parameters": [
+              {
+                "name": "id",
+                "in": "path",
+                "required": true,
+                "description": "The event ID",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "description": "Event detailed configuration",
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/Event"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "/teams/{eventId}": {
+          "get": {
+            "summary": "Get Division Roster Listings",
+            "description": "Retrieves division listings containing team names, coaches, and codes registered under a specific event.",
+            "parameters": [
+              {
+                "name": "eventId",
+                "in": "path",
+                "required": true,
+                "description": "The tournament event ID",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "description": "List of divisions and their team listings",
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DivisionListing"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "/standings/{eventId}": {
+          "get": {
+            "summary": "Get Standings by Event ID",
+            "description": "Fetches standing rankings grouped by division for a tournament event.",
+            "parameters": [
+              {
+                "name": "eventId",
+                "in": "path",
+                "required": true,
+                "description": "The tournament event ID",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "description": "Division standings listings",
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DivisionStanding"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "/schedule/{eventId}": {
+          "get": {
+            "summary": "Get Schedule and Game Listings",
+            "description": "Retrieves all game schedule slots, statuses, and location details for an event.",
+            "parameters": [
+              {
+                "name": "eventId",
+                "in": "path",
+                "required": true,
+                "description": "The tournament event ID",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "description": "Schedule envelope object",
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/ScheduleEnvelope"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "/game/{id}": {
+          "get": {
+            "summary": "Get Game Box Score details",
+            "description": "Fetches a full box score breakdown for a specific game, including period-by-period scoring, team goals, rosters, and stats.",
+            "parameters": [
+              {
+                "name": "id",
+                "in": "path",
+                "required": true,
+                "description": "The game ID",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "description": "Detailed box score data",
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/BoxScore"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "/team/{teamId}": {
+          "get": {
+            "summary": "Get Team Roster and History",
+            "description": "Retrieves details of a specific team, player roster, team colors, and associated match history.",
+            "parameters": [
+              {
+                "name": "teamId",
+                "in": "path",
+                "required": true,
+                "description": "The team ID",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "description": "Full team object",
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/Team"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "/player_profile/{id}": {
+          "get": {
+            "summary": "Get Player Profile",
+            "description": "Retrieves a player's physical information, roster metadata, game schedule, and historical game-by-game statistics.",
+            "parameters": [
+              {
+                "name": "id",
+                "in": "path",
+                "required": true,
+                "description": "The player ID",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "description": "Player profile statistics and information",
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/ProfilePlayer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "/search/{eventId}": {
+          "get": {
+            "summary": "Search Players within Event",
+            "description": "Performs a text search to find players registered within a specific tournament event.",
+            "parameters": [
+              {
+                "name": "eventId",
+                "in": "path",
+                "required": true,
+                "description": "The event ID to search within",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              {
+                "name": "query",
+                "in": "query",
+                "required": true,
+                "description": "Text query of first or last name (minimum 3 characters)",
+                "schema": {
+                  "type": "string",
+                  "minLength": 3
+                }
+              },
+              {
+                "name": "filter",
+                "in": "query",
+                "required": true,
+                "description": "Search scope (must be set to 'event')",
+                "schema": {
+                  "type": "string",
+                  "enum": ["event"]
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "description": "List of matching players",
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/RosterPlayer"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "/leaders/{eventId}": {
+          "get": {
+            "summary": "Get Event Stat Leaders",
+            "description": "Retrieves lists of tournament leaders for goals, assists, points, GAA, save percentage, and PIM.",
+            "parameters": [
+              {
+                "name": "eventId",
+                "in": "path",
+                "required": true,
+                "description": "The tournament event ID",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "description": "Leaders stats data",
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/Leaders"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "/stories/{eventId}": {
+          "get": {
+            "summary": "Get News Stories by Event ID",
+            "description": "Fetches coverage, news feeds, and articles featuring an event.",
+            "parameters": [
+              {
+                "name": "eventId",
+                "in": "path",
+                "required": true,
+                "description": "The tournament event ID",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "description": "News feed stories list",
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Story"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "/advertisements/{eventId}": {
+          "get": {
+            "summary": "Get Advertisements",
+            "description": "Retrieves list of sponsored banner details and action campaigns scheduled for the event.",
+            "parameters": [
+              {
+                "name": "eventId",
+                "in": "path",
+                "required": true,
+                "description": "The tournament event ID",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "description": "Advertisements list",
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Ad"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "/locations/{eventId}": {
+          "get": {
+            "summary": "Get Venues / Locations by Event ID",
+            "description": "Retrieves the list of rink venues, locations, and addresses associated with games scheduled for an event.",
+            "parameters": [
+              {
+                "name": "eventId",
+                "in": "path",
+                "required": true,
+                "description": "The tournament event ID",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "description": "Location listings array",
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/LocationListing"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "components": {
+        "schemas": {
+          "Event": {
+            "type": "object",
+            "required": ["ID", "Title"],
+            "properties": {
+              "ID": {
+                "type": "string",
+                "description": "Unique identifier of the event."
+              },
+              "Title": {
+                "type": "string",
+                "description": "Title or name of the tournament event."
+              },
+              "HotelLink": {
+                "type": "string",
+                "default": "",
+                "description": "Reservation url link."
+              },
+              "StartDate": {
+                "type": "string",
+                "default": "",
+                "description": "Start date representation."
+              },
+              "EndDate": {
+                "type": "string",
+                "default": "",
+                "description": "End date representation."
+              },
+              "WebSlug": {
+                "type": "string",
+                "default": "",
+                "description": "Slug for web URL."
+              },
+              "Divisions": {
+                "type": "array",
+                "default": [],
+                "items": {
+                  "$ref": "#/components/schemas/DivisionListing"
+                }
+              },
+              "Locations": {
+                "type": "array",
+                "default": [],
+                "items": {
+                  "$ref": "#/components/schemas/LocationListing"
+                }
+              },
+              "Games": {
+                "type": "array",
+                "default": [],
+                "items": {
+                  "$ref": "#/components/schemas/GameListing"
+                }
+              },
+              "Teams": {
+                "type": "array",
+                "default": [],
+                "items": {
+                  "$ref": "#/components/schemas/TeamListing"
+                }
+              }
+            }
+          },
+          "DivisionListing": {
+            "type": "object",
+            "required": ["ID", "Name", "Teams"],
+            "properties": {
+              "ID": {
+                "type": "string"
+              },
+              "Name": {
+                "type": "string"
+              },
+              "Teams": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/TeamListing"
+                }
+              }
+            }
+          },
+          "TeamListing": {
+            "type": "object",
+            "required": ["Coach", "ID", "Code", "Name"],
+            "properties": {
+              "Coach": {
+                "type": "string"
+              },
+              "ID": {
+                "type": "string"
+              },
+              "Code": {
+                "type": "string"
+              },
+              "Name": {
+                "type": "string"
+              }
+            }
+          },
+          "DivisionStanding": {
+            "type": "object",
+            "required": ["ID", "Name", "Teams"],
+            "properties": {
+              "ID": {
+                "type": "string"
+              },
+              "Name": {
+                "type": "string"
+              },
+              "Teams": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/TeamStanding"
+                }
+              }
+            }
+          },
+          "TeamStanding": {
+            "type": "object",
+            "required": ["ID", "Code", "Name", "Wins", "Losses", "Ties", "Points", "GoalsFor", "GoalsAgainst"],
+            "properties": {
+              "ID": {
+                "type": "string"
+              },
+              "Code": {
+                "type": "string"
+              },
+              "Name": {
+                "type": "string"
+              },
+              "Wins": {
+                "type": "integer"
+              },
+              "Losses": {
+                "type": "integer"
+              },
+              "Ties": {
+                "type": "integer"
+              },
+              "Points": {
+                "type": "integer"
+              },
+              "GoalsFor": {
+                "type": "integer"
+              },
+              "GoalsAgainst": {
+                "type": "integer"
+              }
+            }
+          },
+          "LocationListing": {
+            "type": "object",
+            "required": ["Code", "ID", "Name", "MapLink", "Address"],
+            "properties": {
+              "Code": {
+                "type": "string"
+              },
+              "ID": {
+                "type": "string"
+              },
+              "Name": {
+                "type": "string"
+              },
+              "MapLink": {
+                "type": "string"
+              },
+              "Address": {
+                "$ref": "#/components/schemas/AddressListing"
+              }
+            }
+          },
+          "AddressListing": {
+            "type": "object",
+            "required": ["ID", "Address1", "Address2", "City", "State", "Zip", "Country", "PostalCode"],
+            "properties": {
+              "ID": {
+                "type": "string"
+              },
+              "Address1": {
+                "type": "string"
+              },
+              "Address2": {
+                "type": "string"
+              },
+              "City": {
+                "type": "string"
+              },
+              "State": {
+                "type": "string"
+              },
+              "Zip": {
+                "type": "string"
+              },
+              "Country": {
+                "type": "string"
+              },
+              "PostalCode": {
+                "type": "string"
+              }
+            }
+          },
+          "ScheduleEnvelope": {
+            "type": "object",
+            "required": ["Games"],
+            "properties": {
+              "Games": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/GameListing"
+                }
+              }
+            }
+          },
+          "GameListing": {
+            "type": "object",
+            "required": [
+              "GameID",
+              "AwayTeamScore",
+              "HomeTeamScore",
+              "Date",
+              "Time",
+              "HomeTeamPlaceholder",
+              "HomeTeamCode",
+              "AwayTeamPlaceholder",
+              "AwayTeamCode",
+              "Location",
+              "LocationCode",
+              "Description",
+              "Status"
+            ],
+            "properties": {
+              "GameID": {
+                "type": "string"
+              },
+              "AwayTeamScore": {
+                "type": "integer"
+              },
+              "HomeTeamScore": {
+                "type": "integer"
+              },
+              "Date": {
+                "type": "string",
+                "description": "ISO date representation (e.g. YYYY-MM-DD)"
+              },
+              "Time": {
+                "type": "string",
+                "description": "Match time representation (e.g. HH:mm:ss)"
+              },
+              "HomeTeamName": {
+                "type": "string",
+                "nullable": true
+              },
+              "HomeTeamPlaceholder": {
+                "type": "string"
+              },
+              "HomeTeamCode": {
+                "type": "string"
+              },
+              "AwayTeamName": {
+                "type": "string",
+                "nullable": true
+              },
+              "AwayTeamPlaceholder": {
+                "type": "string"
+              },
+              "AwayTeamCode": {
+                "type": "string"
+              },
+              "Location": {
+                "type": "string"
+              },
+              "LocationCode": {
+                "type": "string"
+              },
+              "Description": {
+                "type": "string"
+              },
+              "Status": {
+                "type": "string"
+              }
+            }
+          },
+          "BoxScore": {
+            "type": "object",
+            "required": [
+              "GameID",
+              "Date",
+              "Time",
+              "Status",
+              "Location",
+              "LocationCode",
+              "Description",
+              "AwayTeamID",
+              "HomeTeamID",
+              "AwayTeamCode",
+              "AwayTeamName",
+              "AwayTeamPrimaryRGB",
+              "AwayTeamSecondaryRGB",
+              "AwayTeamTotalGoals",
+              "AwayTeamFirstGoals",
+              "AwayTeamSecondGoals",
+              "AwayTeamThirdGoals",
+              "AwayTeamRoster",
+              "AwayTeamPlayers",
+              "HomeTeamCode",
+              "HomeTeamName",
+              "HomeTeamPrimaryRGB",
+              "HomeTeamSecondaryRGB",
+              "HomeTeamTotalGoals",
+              "HomeTeamFirstGoals",
+              "HomeTeamSecondGoals",
+              "HomeTeamThirdGoals",
+              "HomeTeamRoster",
+              "HomeTeamPlayers",
+              "ScoringSummary"
+            ],
+            "properties": {
+              "GameID": { "type": "string" },
+              "Date": { "type": "string" },
+              "Time": { "type": "string" },
+              "Status": { "type": "string" },
+              "Location": { "type": "string" },
+              "LocationCode": { "type": "string" },
+              "Description": { "type": "string" },
+              "AwayTeamID": { "type": "string" },
+              "HomeTeamID": { "type": "string" },
+              "AwayTeamCode": { "type": "string" },
+              "AwayTeamName": { "type": "string" },
+              "AwayTeamPrimaryRGB": { "type": "string" },
+              "AwayTeamSecondaryRGB": { "type": "string" },
+              "AwayTeamTotalGoals": { "type": "integer" },
+              "AwayTeamFirstGoals": { "type": "integer" },
+              "AwayTeamSecondGoals": { "type": "integer" },
+              "AwayTeamThirdGoals": { "type": "integer" },
+              "AwayTeamRoster": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/BoxPlayer" }
+              },
+              "AwayTeamPlayers": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/RosterPlayer" }
+              },
+              "HomeTeamCode": { "type": "string" },
+              "HomeTeamName": { "type": "string" },
+              "HomeTeamPrimaryRGB": { "type": "string" },
+              "HomeTeamSecondaryRGB": { "type": "string" },
+              "HomeTeamTotalGoals": { "type": "integer" },
+              "HomeTeamFirstGoals": { "type": "integer" },
+              "HomeTeamSecondGoals": { "type": "integer" },
+              "HomeTeamThirdGoals": { "type": "integer" },
+              "HomeTeamRoster": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/BoxPlayer" }
+              },
+              "HomeTeamPlayers": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/RosterPlayer" }
+              },
+              "ScoringSummary": {
+                "$ref": "#/components/schemas/ScoreSummary"
+              }
+            }
+          },
+          "BoxPlayer": {
+            "type": "object",
+            "required": [
+              "Name",
+              "ID",
+              "Position",
+              "Number",
+              "Goals",
+              "Assists",
+              "Points",
+              "Shots",
+              "Saves",
+              "GP",
+              "SVPCT",
+              "GAA",
+              "ProfileUrl"
+            ],
+            "properties": {
+              "Name": { "type": "string", "default": "" },
+              "ID": { "type": "string", "default": "" },
+              "Position": { "type": "string", "default": "" },
+              "Number": { "type": "integer", "default": 0 },
+              "Goals": { "type": "integer", "default": 0 },
+              "Assists": { "type": "integer", "default": 0 },
+              "Points": { "type": "integer", "default": 0 },
+              "Shots": { "type": "integer", "default": 0 },
+              "Saves": { "type": "integer", "default": 0 },
+              "GP": { "type": "number", "format": "double", "default": 0.0 },
+              "SVPCT": { "type": "number", "format": "double", "default": 0.0 },
+              "GAA": { "type": "number", "format": "double", "default": 0.0 },
+              "ProfileUrl": { "type": "string", "default": "" }
+            }
+          },
+          "ScoreSummary": {
+            "type": "object",
+            "required": ["FirstPeriod", "SecondPeriod", "ThirdPeriod"],
+            "properties": {
+              "FirstPeriod": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/BoxGoal" }
+              },
+              "SecondPeriod": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/BoxGoal" }
+              },
+              "ThirdPeriod": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/BoxGoal" }
+              }
+            }
+          },
+          "BoxGoal": {
+            "type": "object",
+            "required": [
+              "FirstAssist",
+              "SecondAssist",
+              "Period",
+              "Scorer",
+              "ScorerNumber",
+              "ScorerID",
+              "TeamID",
+              "ScorerURL"
+            ],
+            "properties": {
+              "FirstAssist": { "type": "string" },
+              "SecondAssist": { "type": "string" },
+              "Period": { "type": "integer" },
+              "Scorer": { "type": "string" },
+              "ScorerNumber": { "type": "integer" },
+              "ScorerID": { "type": "string" },
+              "TeamID": { "type": "string" },
+              "ScorerURL": { "type": "string" }
+            }
+          },
+          "Team": {
+            "type": "object",
+            "required": [
+              "Name",
+              "Coach",
+              "Code",
+              "Desc",
+              "ID",
+              "ShortDesc",
+              "Players",
+              "BoxPlayers",
+              "Games",
+              "PrimaryRGB",
+              "SecondaryRGB"
+            ],
+            "properties": {
+              "ID": { "type": "string" },
+              "Name": { "type": "string" },
+              "Coach": { "type": "string" },
+              "Code": { "type": "string" },
+              "Desc": { "type": "string" },
+              "ShortDesc": { "type": "string" },
+              "PrimaryRGB": { "type": "string" },
+              "SecondaryRGB": { "type": "string" },
+              "Players": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/RosterPlayer" }
+              },
+              "BoxPlayers": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/BoxPlayer" }
+              },
+              "Games": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/GameListing" }
+              }
+            }
+          },
+          "ProfilePlayer": {
+            "type": "object",
+            "required": ["Player", "ProfileUrl", "Stats", "Schedule"],
+            "properties": {
+              "Player": {
+                "$ref": "#/components/schemas/RosterPlayer"
+              },
+              "ProfileUrl": { "type": "string", "default": "" },
+              "Stats": {
+                "type": "array",
+                "default": [],
+                "items": { "$ref": "#/components/schemas/ProfileStatLine" }
+              },
+              "Schedule": {
+                "type": "array",
+                "default": [],
+                "items": { "$ref": "#/components/schemas/GameListing" }
+              }
+            }
+          },
+          "RosterPlayer": {
+            "type": "object",
+            "required": ["Number"],
+            "properties": {
+              "ID": { "type": "string", "nullable": true },
+              "FirstName": { "type": "string", "nullable": true },
+              "LastName": { "type": "string", "nullable": true },
+              "Number": { "type": "integer", "default": 0 },
+              "Height": { "type": "string", "nullable": true },
+              "Weight": { "type": "string", "nullable": true },
+              "Shot": { "type": "string", "nullable": true },
+              "Position": { "type": "string", "nullable": true },
+              "Dob": { "type": "string", "nullable": true },
+              "BirthYear": { "type": "string", "nullable": true },
+              "LastTeam": { "type": "string", "nullable": true },
+              "Hometown": { "type": "string", "nullable": true },
+              "SchoolYear": { "type": "string", "nullable": true },
+              "Team": { "type": "string", "nullable": true },
+              "TeamID": { "type": "string", "nullable": true },
+              "TeamCode": { "type": "string", "nullable": true },
+              "ProfileUrl": { "type": "string", "nullable": true }
+            }
+          },
+          "ProfileStatLine": {
+            "type": "object",
+            "required": ["Opponent", "Goals", "Assists", "Points", "PIM", "Shots", "Saves", "GAA", "GP", "SavePCT"],
+            "properties": {
+              "Opponent": { "type": "string", "default": "" },
+              "Goals": { "type": "integer", "default": 0 },
+              "Assists": { "type": "integer", "default": 0 },
+              "Points": { "type": "integer", "default": 0 },
+              "PIM": { "type": "number", "format": "double", "default": 0.0 },
+              "Shots": { "type": "integer", "default": 0 },
+              "Saves": { "type": "integer", "default": 0 },
+              "GAA": { "type": "number", "format": "double", "default": 0.0 },
+              "GP": { "type": "number", "format": "double", "default": 0.0 },
+              "SavePCT": { "type": "number", "format": "double", "default": 0.0 }
+            }
+          },
+          "Leaders": {
+            "type": "object",
+            "required": ["Goals", "Assists", "Points", "PIM", "GAA", "SavePct"],
+            "properties": {
+              "Goals": {
+                "type": "array",
+                "default": [],
+                "items": { "$ref": "#/components/schemas/LeaderPlayer" }
+              },
+              "Assists": {
+                "type": "array",
+                "default": [],
+                "items": { "$ref": "#/components/schemas/LeaderPlayer" }
+              },
+              "Points": {
+                "type": "array",
+                "default": [],
+                "items": { "$ref": "#/components/schemas/LeaderPlayer" }
+              },
+              "PIM": {
+                "type": "array",
+                "default": [],
+                "items": { "$ref": "#/components/schemas/LeaderPlayer" }
+              },
+              "GAA": {
+                "type": "array",
+                "default": [],
+                "items": { "$ref": "#/components/schemas/LeaderPlayer" }
+              },
+              "SavePct": {
+                "type": "array",
+                "default": [],
+                "items": { "$ref": "#/components/schemas/LeaderPlayer" }
+              }
+            }
+          },
+          "LeaderPlayer": {
+            "type": "object",
+            "required": ["PlayerID", "FirstName", "LastName", "Number", "Position", "Team"],
+            "properties": {
+              "PlayerID": { "type": "string" },
+              "FirstName": { "type": "string" },
+              "LastName": { "type": "string" },
+              "Number": { "type": "string" },
+              "Position": { "type": "string" },
+              "Team": { "type": "string" },
+              "Goals": { "type": "integer", "nullable": true },
+              "Points": { "type": "integer", "nullable": true },
+              "Assists": { "type": "integer", "nullable": true },
+              "Pim": { "type": "number", "format": "double", "nullable": true },
+              "GamesPlayed": { "type": "number", "format": "double", "nullable": true },
+              "Gaa": { "type": "number", "format": "double", "nullable": true },
+              "SavePct": { "type": "number", "format": "double", "nullable": true },
+              "Shots": { "type": "integer", "nullable": true },
+              "Saves": { "type": "integer", "nullable": true },
+              "ImageUrl": { "type": "string", "nullable": true }
+            }
+          },
+          "Story": {
+            "type": "object",
+            "required": [
+              "StoryID",
+              "Title",
+              "Subtitle",
+              "Caption",
+              "Content",
+              "ImgURL",
+              "ThumbnailURL",
+              "StoryBy",
+              "Url",
+              "TextPlacement",
+              "TextShade"
+            ],
+            "properties": {
+              "StoryID": { "type": "string" },
+              "Title": { "type": "string" },
+              "Subtitle": { "type": "string" },
+              "Caption": { "type": "string" },
+              "Content": { "type": "string" },
+              "ImgURL": { "type": "string" },
+              "ThumbnailURL": { "type": "string" },
+              "StoryBy": { "type": "string" },
+              "Url": { "type": "string" },
+              "TextPlacement": { "type": "string" },
+              "TextShade": { "type": "string" }
+            }
+          },
+          "Ad": {
+            "type": "object",
+            "required": ["Idx", "ImgUrl", "Label", "Message", "Screen", "Type", "Url"],
+            "properties": {
+              "Idx": { "type": "string" },
+              "ImgUrl": { "type": "string" },
+              "Label": { "type": "string" },
+              "Message": { "type": "string" },
+              "Screen": { "type": "string" },
+              "Type": { "type": "string" },
+              "Url": { "type": "string" }
+            }
+          }
+        }
+      }
+    };
+
+    Redoc.init(spec, {
+      theme: {
+        colors: {
+          primary: {
+            main: '#0a66c2'
+          }
+        }
+      }
+    }, document.getElementById('redoc-container'));
+  </script>
+</body>
+</html>

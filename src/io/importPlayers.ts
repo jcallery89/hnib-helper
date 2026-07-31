@@ -265,6 +265,12 @@ export function parseShoots(s: string): "L" | "R" | undefined {
   return undefined;
 }
 
+// Accept "175", "175 lbs". Out-of-range values are treated as missing.
+export function parseWeight(s: string): number | undefined {
+  const n = Number((s ?? "").replace(/[^\d]/g, ""));
+  return Number.isFinite(n) && n >= 60 && n <= 400 ? n : undefined;
+}
+
 // Accept 70, 5'10", 5-10, 510.
 export function parseHeight(s: string): number | undefined {
   const t = (s ?? "").trim();

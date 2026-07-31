@@ -1,6 +1,6 @@
 import type { Player, PlayerStatLine } from "../engine/types.ts";
 import type { EventLeaders, LeaderEntry, PlayerGameLine } from "./dataset.ts";
-import { parseHeight, parsePosition, parseShoots } from "./importPlayers.ts";
+import { parseHeight, parsePosition, parseShoots, parseWeight } from "./importPlayers.ts";
 
 // Shapes from the Tourno API (/team/{id} and /leaders/{eventId}). Loosely
 // typed and read defensively so minor field drift never crashes a sync.
@@ -11,6 +11,7 @@ interface ApiRosterPlayer {
   LastName?: string | null;
   Number?: number;
   Height?: string | null;
+  Weight?: string | null;
   Shot?: string | null;
   Position?: string | null;
   BirthYear?: string | null;
@@ -80,8 +81,10 @@ export function parseTeamRoster(json: string, teamId: string, eventId: string): 
       lastName,
       position: parsePosition(rp.Position ?? ""),
       birthYear: parseYear(rp.BirthYear) ?? parseYear(rp.Dob),
+      classYear: parseYear(rp.SchoolYear),
       shoots: parseShoots(rp.Shot ?? ""),
       heightInches: parseHeight(rp.Height ?? ""),
+      weightLbs: parseWeight(rp.Weight ?? ""),
       hometown: rp.Hometown?.trim() || undefined,
     };
     players.push(player);

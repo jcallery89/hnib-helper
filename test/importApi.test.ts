@@ -38,6 +38,21 @@ describe("importApiData", () => {
     expect(byId.get("g1")!.slotStart).toBe("2025-06-27T09:45:00"); // Z stripped
   });
 
+  it("combines a date-only Date with the 12-hour Time field, per the API docs", () => {
+    const schedule = JSON.stringify({
+      Games: [
+        { GameID: "g1", HomeTeamName: "Teal", HomeTeamCode: "TEAL", AwayTeamName: "Gold", AwayTeamCode: "GOLD", HomeTeamScore: null, AwayTeamScore: null, Status: "SCHEDULED", Date: "2026-07-31", Time: "04:40 PM", Description: "Game 1" },
+        { GameID: "g2", HomeTeamName: "Teal", HomeTeamCode: "TEAL", AwayTeamName: "Gold", AwayTeamCode: "GOLD", HomeTeamScore: null, AwayTeamScore: null, Status: "SCHEDULED", Date: "2026-08-01", Time: "9:05 AM", Description: "Game 2" },
+        { GameID: "g3", HomeTeamName: "Teal", HomeTeamCode: "TEAL", AwayTeamName: "Gold", AwayTeamCode: "GOLD", HomeTeamScore: null, AwayTeamScore: null, Status: "SCHEDULED", Date: "2026-08-01", Time: "16:40:00", Description: "Game 3" },
+      ],
+    });
+    const { dataset } = importApiData(schedule, null);
+    const byId = new Map(dataset.games.map((g) => [g.id, g]));
+    expect(byId.get("g1")!.slotStart).toBe("2026-07-31T16:40:00");
+    expect(byId.get("g2")!.slotStart).toBe("2026-08-01T09:05:00");
+    expect(byId.get("g3")!.slotStart).toBe("2026-08-01T16:40:00");
+  });
+
   it("assigns divisions when the teams JSON is provided", () => {
     const { dataset, summary } = importApiData(SCHEDULE, TEAMS);
     expect(summary.divisionsAssigned).toBe(true);

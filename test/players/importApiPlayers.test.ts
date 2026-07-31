@@ -6,7 +6,7 @@ const TEAM = JSON.stringify({
   ID: "api-team-1",
   Name: "Middlesex",
   Players: [
-    { ID: "u-jack", FirstName: "Jack", LastName: "Sullivan", Number: 9, Height: "5'6\"", Shot: "Left", Position: "Forward", BirthYear: "2011", Hometown: "Andover, MA" },
+    { ID: "u-jack", FirstName: "Jack", LastName: "Sullivan", Number: 9, Height: "5'6\"", Weight: "140 lbs", Shot: "Left", Position: "Forward", BirthYear: "2011", Hometown: "Andover, MA" },
     { ID: "u-brady", FirstName: "Brady", LastName: "Olsen", Number: 1, Height: "5'4\"", Shot: "L", Position: "Goalie", SchoolYear: "2030" },
     { ID: null, FirstName: "No", LastName: "Stats", Number: 22, Position: "D" },
   ],
@@ -30,11 +30,16 @@ describe("parseTeamRoster", () => {
       birthYear: 2011,
       shoots: "L",
       heightInches: 66,
+      weightLbs: 140,
       hometown: "Andover, MA",
     });
     // Player without an API id gets a stable derived id.
     expect(players.find((p) => p.jersey === 22)!.id).toBe("p-t-mid-22");
     expect(warnings).toEqual([]);
+  });
+
+  it("reads the grad year from SchoolYear", () => {
+    expect(players.find((p) => p.id === "u-brady")!.classYear).toBe(2030);
   });
 
   it("joins box stats by API id and derives goalie goals against", () => {
