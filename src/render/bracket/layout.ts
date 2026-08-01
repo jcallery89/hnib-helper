@@ -63,8 +63,14 @@ export function computeLayout(
   // the bracket reads as boxes-with-breathing-room rather than dots in a void
   // (the old 0.052 row factor left cramped rows separated by huge gaps). The
   // pair that feeds one semifinal stays tighter than the gap between pairs.
+  // Row height is ALSO capped by the column width: tall exports (1080x1920)
+  // grow the band but not the columns, and an uncapped row makes bubbles and
+  // type outgrow the box they live in.
   const band = contentBottom - contentTop;
-  const rowH = Math.max(28, Math.round(band * (six ? 0.1 : 0.085)));
+  const rowH = Math.max(
+    28,
+    Math.min(Math.round(band * (six ? 0.1 : 0.085)), Math.round(colW * 0.42)),
+  );
   const cellH = rowH * 2;
 
   const cells: CellBox[] = [];

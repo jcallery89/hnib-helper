@@ -322,12 +322,17 @@ function teamRow(
   const rawColor = teamId ? opts.colorById?.(teamId) : undefined;
   const bubbleFill = rawColor && /^#[0-9a-fA-F]{6}$/.test(rawColor) ? rawColor : null;
 
-  // Long names (Sophomore All Stars, CT/Mid-Atlantic) compress to fit between
-  // the seed bubble and the score instead of running under it. Barlow
-  // Condensed averages about 0.45em per glyph.
-  const scoreReserve = Math.round(opts.nameSize * 1.6);
+  // Long names (Sophomore All Stars, CT/Mid-Atlantic) first drop the font a
+  // step to fit between the seed bubble and the score, and only then compress
+  // glyph spacing - never both from full size, which crushed names into
+  // unreadable slivers on tall exports. Barlow Condensed runs ~0.45em/glyph.
+  const scoreReserve = Math.round(opts.nameSize * 1.2);
   const maxNameW = cell.x + cell.w - 12 - scoreReserve - nameX;
-  const nameSqueezed = name.length * opts.nameSize * 0.45 > maxNameW;
+  const fittedNameSize = Math.max(
+    Math.round(opts.nameSize * 0.62),
+    Math.min(opts.nameSize, Math.floor(maxNameW / Math.max(1, name.length * 0.45))),
+  );
+  const nameSqueezed = name.length * fittedNameSize * 0.45 > maxNameW;
 
   return (
     <g>
@@ -362,7 +367,7 @@ function teamRow(
         y={baseline}
         fill={isWinner ? COLORS.gold : COLORS.navy}
         font-family={FONTS.body}
-        font-size={opts.nameSize}
+        font-size={fittedNameSize}
         font-weight={isWinner ? 700 : 400}
         textLength={nameSqueezed ? maxNameW : undefined}
         lengthAdjust={nameSqueezed ? "spacingAndGlyphs" : undefined}
@@ -390,6 +395,16 @@ function renderChampion(
   nameById: (id: string) => string,
   nameSize: number,
 ) {
+  const label = championId ? nameById(championId).toUpperCase() : "TBD";
+  // Fit a long champion name inside the box: shrink the Teko size first
+  // (~0.62em per cap glyph), then compress glyph spacing as the last resort.
+  const full = Math.round(nameSize * 1.05);
+  const maxW = box.w - 16;
+  const fitted = Math.max(
+    Math.round(full * 0.6),
+    Math.min(full, Math.floor(maxW / Math.max(1, label.length * 0.62))),
+  );
+  const squeezed = label.length * fitted * 0.62 > maxW;
   return (
     <g>
       <rect
@@ -407,12 +422,14 @@ function renderChampion(
         y={box.y + box.h * 0.62}
         fill={championId ? COLORS.navy : COLORS.textDim}
         font-family={FONTS.head}
-        font-size={nameSize * 1.05}
+        font-size={fitted}
         font-weight={600}
         letter-spacing="0.02em"
         text-anchor="middle"
+        textLength={squeezed ? maxW : undefined}
+        lengthAdjust={squeezed ? "spacingAndGlyphs" : undefined}
       >
-        {championId ? nameById(championId).toUpperCase() : "TBD"}
+        {label}
       </text>
     </g>
   );
