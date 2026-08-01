@@ -5,10 +5,15 @@ Coaches see live player stats in the ballot dropdowns. The pieces:
 - `hnib-ballot-sync.php` - server-side sync. Pulls every roster and stat line
   from the Tourno API (hnib.app) and refreshes the `gf_boysmajor_rosters`
   MySQL table. Runs on the WordPress server, so browser CORS does not apply.
-- `boys-major-ballot-form.json` - importable Gravity Forms form. Every player
-  dropdown is wired to GP Populate Anything (GPPA, already installed - the
-  Sophomore ballot uses it) reading that table, so choices refresh on every
-  page load. Regenerate with `node wp/generate-form.mjs` if edits are needed.
+- `boys-major-ballot-form.json` - importable Gravity Forms form. Nomination
+  style, same 3/2/1 structure as the Sophomore ballot: the coach picks their
+  Team, and the player dropdowns (#1-#3 Forward, #1-#2 Defenseman, #1
+  Goalie) then show only that team's roster, best-first with stats in every
+  label. Wired with GP Populate Anything (GPPA, already installed - the
+  Sophomore ballot uses it) reading the table above, so choices refresh on
+  every page load. Player dropdowns are empty until a team is chosen - that
+  is the chaining working, not a bug. Regenerate with
+  `node wp/generate-form.mjs` if edits are needed.
 
 Because GPPA stores the choice VALUE in entries - here a stable
 `Last, First (Team #9)` key, not the stat label - stats can keep updating
@@ -30,13 +35,16 @@ after ballots are submitted without corrupting anything.
    `curl -s "https://YOUR-SITE/hnib-ballot-sync.php?key=YOUR-KEY" >/dev/null`
    every 15 minutes. Remove the cron after the event.
 5. WP admin -> Forms -> Import/Export -> Import Forms -> upload
-   `boys-major-ballot-form.json`. Open the new form in the editor, click one
-   player dropdown, and confirm the GPPA panel shows the table and a live
-   preview of choices.
+   `boys-major-ballot-form.json`. If an earlier version of this form was
+   already imported and has no real entries, trash it first - importing
+   always creates a NEW form (new id), it never updates an existing one.
+   Open the new form in the editor, click one player dropdown, and confirm
+   the GPPA panel shows the table with a team_name filter pointing at the
+   Team field.
 6. Embed on an unlinked page with an Enfold Text Block:
    `[gravityform id="NN" title="false" description="false" ajax="true"]`
-   (NN = the new form's id). Preview: forwards sorted by points, goalies by
-   SV%, stats in every label.
+   (NN = the new form's id). Preview: pick a team, watch the dropdowns
+   narrow to that roster, forwards sorted by points, goalie by SV%.
 7. Test-submit once and check the entry stores values like
    `Sullivan, Jack (Middlesex #9)`.
 

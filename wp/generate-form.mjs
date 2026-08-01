@@ -147,11 +147,24 @@ function gppaSelect(label, placeholder, gppa) {
   };
 }
 
-const positionFilter = (pos) => [[{ property: "position", operator: "is", value: pos, uuid: uuid() }]];
+// Nomination ballot, same 3/2/1 structure as the Sophomore form: the coach
+// picks their team, and every player dropdown is chained to that choice with
+// a GPPA field filter (team_name is gf_field:N) plus the position filter.
+const teamField = gppaSelect("Team", "Team", {
+  required: true,
+  orderBy: "team_name",
+  orderDir: "asc",
+  templates: { value: "team_name", label: "team_name" },
+});
+teamField.description = "Select the team you coached. The player lists below show that team's roster.";
 
-const playerSelect = (label, pos, orderBy, orderDir) =>
+const playerSelect = (label, pos, orderBy, orderDir, required) =>
   gppaSelect(label, label, {
-    filters: positionFilter(pos),
+    required,
+    filters: [[
+      { property: "team_name", operator: "is", value: `gf_field:${teamField.id}`, uuid: uuid() },
+      { property: "position", operator: "is", value: pos, uuid: uuid() },
+    ]],
     orderBy,
     orderDir,
     templates: { value: "player_key", label: "display" },
@@ -163,24 +176,19 @@ const fields = [
     required: true,
     description: "Please provide your cell # so we can reach out if we need any clarification.",
   }),
-  gppaSelect("Team You Coached", "Team You Coached", {
-    required: true,
-    orderBy: "team_name",
-    orderDir: "asc",
-    templates: { value: "team_name", label: "team_name" },
-  }),
+  teamField,
   sectionField(
     "Forwards",
-    "Rank up to 16 forwards. Rank 1 = best. Rank only players you have an opinion on; blanks are fine. " +
-      "Stats in each list update automatically as games are played.",
+    "Nominate your team's top 3 forwards, best first. Stats in each list update automatically as games are played.",
   ),
-  ...Array.from({ length: 16 }, (_, i) => playerSelect(`Forward Rank ${i + 1}`, "F", "points", "desc")),
-  sectionField("Defense", "Rank up to 10 defensemen. Rank 1 = best. Ranks 9 and 10 are optional."),
-  ...Array.from({ length: 10 }, (_, i) =>
-    playerSelect(`Defense Rank ${i + 1}${i >= 8 ? " (optional)" : ""}`, "D", "points", "desc"),
-  ),
-  sectionField("Goaltenders", "Rank up to 3 goaltenders. Rank 1 = best."),
-  ...Array.from({ length: 3 }, (_, i) => playerSelect(`Goalie Rank ${i + 1}`, "G", "svpct", "desc")),
+  playerSelect("#1 Forward", "F", "points", "desc", true),
+  playerSelect("#2 Forward", "F", "points", "desc", false),
+  playerSelect("#3 Forward", "F", "points", "desc", false),
+  sectionField("Defense", "Nominate your team's top 2 defensemen, best first."),
+  playerSelect("#1 Defenseman", "D", "points", "desc", true),
+  playerSelect("#2 Defenseman", "D", "points", "desc", false),
+  sectionField("Goaltender", "Nominate your team's top goaltender."),
+  playerSelect("#1 Goalie", "G", "svpct", "desc", true),
   textareaField("Important Notes", {
     description:
       "Injuries, position changes, or players you would take with an asterisk. " +
