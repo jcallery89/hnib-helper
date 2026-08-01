@@ -217,17 +217,23 @@ function renderCell(cell: CellBox, game: BracketGame, opts: CellOpts) {
   const tag =
     game.decidedBy === "ot" ? "OT" : game.decidedBy === "shootout" ? "SO" : "";
   const caption = opts.slot ? formatSlot(opts.slot) : "";
+  // Captions must stay inside their own column: a wide one would run under
+  // the next round's opaque cell. Compress when the estimate exceeds the box.
+  const capSize = Math.round(rowH * 0.3);
+  const capSqueezed = caption.length * capSize * 0.48 > cell.w;
   return (
     <g key={cell.id}>
       {caption && (
         <text
           x={cell.x + 2}
-          y={cell.y - Math.round(rowH * 0.22)}
+          y={cell.y - Math.round(rowH * 0.2)}
           fill={COLORS.royal}
           font-family={FONTS.body}
-          font-size={Math.round(rowH * 0.34)}
+          font-size={capSize}
           font-weight={600}
           letter-spacing="0.04em"
+          textLength={capSqueezed ? cell.w - 4 : undefined}
+          lengthAdjust={capSqueezed ? "spacingAndGlyphs" : undefined}
         >
           {caption}
         </text>
@@ -291,6 +297,13 @@ function teamRow(
   const rawColor = teamId ? opts.colorById?.(teamId) : undefined;
   const bubbleFill = rawColor && /^#[0-9a-fA-F]{6}$/.test(rawColor) ? rawColor : null;
 
+  // Long names (Sophomore All Stars, CT/Mid-Atlantic) compress to fit between
+  // the seed bubble and the score instead of running under it. Barlow
+  // Condensed averages about 0.45em per glyph.
+  const scoreReserve = Math.round(opts.nameSize * 1.6);
+  const maxNameW = cell.x + cell.w - 12 - scoreReserve - nameX;
+  const nameSqueezed = name.length * opts.nameSize * 0.45 > maxNameW;
+
   return (
     <g>
       {isWinner && (
@@ -326,6 +339,8 @@ function teamRow(
         font-family={FONTS.body}
         font-size={opts.nameSize}
         font-weight={isWinner ? 700 : 400}
+        textLength={nameSqueezed ? maxNameW : undefined}
+        lengthAdjust={nameSqueezed ? "spacingAndGlyphs" : undefined}
       >
         {name}
       </text>

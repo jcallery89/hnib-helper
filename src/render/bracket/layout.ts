@@ -50,25 +50,32 @@ export function computeLayout(width: number, height: number, fieldSize = 8): Bra
   const colW = Math.round((usableW - colGap * 3) / 4);
   const colX = [0, 1, 2, 3].map((i) => margin + i * (colW + colGap));
 
-  const rowH = Math.max(28, Math.round((contentBottom - contentTop) * 0.052));
+  // The cells own most of the vertical band; gaps stay smaller than a cell so
+  // the bracket reads as boxes-with-breathing-room rather than dots in a void
+  // (the old 0.052 row factor left cramped rows separated by huge gaps). The
+  // pair that feeds one semifinal stays tighter than the gap between pairs.
+  const band = contentBottom - contentTop;
+  const rowH = Math.max(28, Math.round(band * (six ? 0.1 : 0.085)));
   const cellH = rowH * 2;
-
-  // Center band the QF cells can occupy without their boxes running past the
-  // content edges.
-  const centerTop = contentTop + cellH / 2;
-  const centerBot = contentBottom - cellH / 2;
-  const span = centerBot - centerTop;
 
   const cells: CellBox[] = [];
   const connectors: Connector[] = [];
 
-  // First-round (play-in / quarterfinal) cells. In an 8-team field the two QFs
-  // that feed the same semifinal are grouped tighter than the gap between pairs
-  // (the classic bracket shape: intra-pair gap 1 unit, inter-pair gap 2 units).
-  // A 6-team field has just the two play-ins, spread evenly.
   const qfIds = six ? ["qf1", "qf2"] : ["qf1", "qf2", "qf3", "qf4"];
-  const qfNorm = six ? [0.25, 0.75] : [0, 1, 3, 4].map((p) => p / 4);
-  const qfCenters = qfNorm.map((nrm) => centerTop + nrm * span);
+  let qfCenters: number[];
+  if (six) {
+    qfCenters = [0.27, 0.73].map((nrm) => contentTop + nrm * band);
+  } else {
+    const intraGap = Math.round(band * 0.08); // between QFs of one pair
+    const interGap = Math.round(band * 0.15); // between the two pairs
+    const total = cellH * 4 + intraGap * 2 + interGap;
+    const top = contentTop + Math.max(0, Math.round((band - total) / 2));
+    const c1 = top + cellH / 2;
+    const c2 = c1 + cellH + intraGap;
+    const c3 = c2 + cellH + interGap;
+    const c4 = c3 + cellH + intraGap;
+    qfCenters = [c1, c2, c3, c4];
+  }
   qfIds.forEach((id, i) => {
     cells.push({ id, x: colX[0], y: qfCenters[i] - cellH / 2, w: colW, h: cellH });
   });
@@ -83,7 +90,8 @@ export function computeLayout(width: number, height: number, fieldSize = 8): Bra
   const finalCenter = (sf1Center + sf2Center) / 2;
   cells.push({ id: "final", x: colX[2], y: finalCenter - cellH / 2, w: colW, h: cellH });
 
-  const champion: CellBox = { id: "champion", x: colX[3], y: finalCenter - rowH / 2, w: colW, h: rowH };
+  const championH = Math.round(rowH * 1.3);
+  const champion: CellBox = { id: "champion", x: colX[3], y: finalCenter - championH / 2, w: colW, h: championH };
 
   const byId = new Map(cells.map((c) => [c.id, c]));
   connectors.push(connect(byId.get("qf1")!, byId.get("sf1")!));
