@@ -35,13 +35,22 @@ export interface BracketLayout {
   rowH: number;
 }
 
-export function computeLayout(width: number, height: number, fieldSize = 8): BracketLayout {
+export function computeLayout(
+  width: number,
+  height: number,
+  fieldSize = 8,
+  insets: { top?: number; bottom?: number } = {},
+): BracketLayout {
   const six = fieldSize === 6;
+  // Brand header/footer strips (when present) reserve their own bands; the
+  // whole composition shifts inside them instead of drawing underneath.
+  const insetTop = insets.top ?? 0;
+  const insetBottom = insets.bottom ?? 0;
   const margin = Math.round(width * 0.045);
-  const headerY = Math.round(height * 0.04);
-  const labelY = Math.round(height * 0.13);
-  const contentTop = Math.round(height * 0.17);
-  const footerY = height - Math.round(height * 0.04);
+  const headerY = insetTop + Math.round(height * 0.035);
+  const labelY = insetTop + Math.round(height * 0.12);
+  const contentTop = insetTop + Math.round(height * 0.155);
+  const footerY = height - insetBottom - Math.round(height * 0.032);
   const contentBottom = footerY - Math.round(height * 0.03);
 
   // Four columns: QF, SF, FINAL, CHAMPION.

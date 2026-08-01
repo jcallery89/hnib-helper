@@ -19,7 +19,14 @@ interface Props {
 }
 
 export function BracketSvg({ width, height, title, bracket, nameById, colorById, scheduleByCell, brand, fieldSize, embedFonts }: Props) {
-  const layout = computeLayout(width, height, fieldSize);
+  // Brand strips are authored at 1080x60; scale with export width (same
+  // treatment as the player and share cards).
+  const stripH = brand?.cardHeader ? Math.round((width * 60) / 1080) : 0;
+  const footerStripH = brand?.cardFooter ? Math.round((width * 60) / 1080) : 0;
+  const layout = computeLayout(width, height, fieldSize, {
+    top: stripH ? stripH + 3 : 0,
+    bottom: footerStripH,
+  });
   const gameById = new Map(bracket.map((g) => [g.id, g]));
   const championId = gameById.get("final")?.winnerTeamId ?? null;
 
@@ -62,14 +69,15 @@ export function BracketSvg({ width, height, title, bracket, nameById, colorById,
         <image
           href={brand.watermarkNavy}
           x={width - wmW + Math.round(width * 0.06)}
-          y={height - wmH - Math.round(height * 0.05)}
+          y={height - footerStripH - wmH - Math.round(height * 0.035)}
           width={wmW}
           height={wmH}
           preserveAspectRatio="xMaxYMax meet"
         />
       )}
 
-      {/* Signature gradient bar */}
+      {/* Brand header strip with the signature gradient bar under it (the
+          bare bar alone when the strip asset is unavailable). */}
       <defs>
         <linearGradient id="sigbar" x1="0" y1="0" x2="1" y2="0">
           <stop offset="0%" stopColor="#1a2856" />
@@ -78,7 +86,24 @@ export function BracketSvg({ width, height, title, bracket, nameById, colorById,
           <stop offset="100%" stopColor="#dae8f3" />
         </linearGradient>
       </defs>
-      <rect x={0} y={0} width={width} height={3} fill="url(#sigbar)" />
+      {brand?.cardHeader ? (
+        <>
+          <image href={brand.cardHeader} x={0} y={0} width={width} height={stripH} preserveAspectRatio="none" />
+          <rect x={0} y={stripH} width={width} height={3} fill="url(#sigbar)" />
+        </>
+      ) : (
+        <rect x={0} y={0} width={width} height={3} fill="url(#sigbar)" />
+      )}
+      {brand?.cardFooter && (
+        <image
+          href={brand.cardFooter}
+          x={0}
+          y={height - footerStripH}
+          width={width}
+          height={footerStripH}
+          preserveAspectRatio="none"
+        />
+      )}
 
       {brand?.logoNavy && (
         <image
