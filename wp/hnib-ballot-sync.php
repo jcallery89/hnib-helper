@@ -230,7 +230,7 @@ if (count($rows) === 0) {
 
 $table = HNIB_TABLE;
 $charset = $wpdb->get_charset_collate();
-$wpdb->query("CREATE TABLE IF NOT EXISTS `$table` (
+$createSql = "CREATE TABLE IF NOT EXISTS `$table` (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     player_id VARCHAR(64) NOT NULL DEFAULT '',
     player_key VARCHAR(160) NOT NULL,
@@ -249,18 +249,56 @@ $wpdb->query("CREATE TABLE IF NOT EXISTS `$table` (
     PRIMARY KEY (id),
     KEY position_idx (position),
     KEY team_idx (team_name)
-) $charset");
+) $charset";
+$wpdb->query($createSql);
+
+// If a table with this name already exists from an older sync script, its
+// columns may not match ours (CREATE IF NOT EXISTS keeps the old shape and
+// every insert then fails). This table is a throwaway cache rebuilt on each
+// run, so on any schema drift just drop it and recreate.
+$needed = array('player_id', 'player_key', 'player_name', 'team_name', 'jersey',
+    'position', 'gp', 'goals', 'assists', 'points', 'gaa', 'svpct', 'display', 'updated_at');
+$cols = $wpdb->get_col("SHOW COLUMNS FROM `$table`", 0);
+$rebuilt = false;
+if (!is_array($cols) || count(array_diff($needed, $cols)) > 0) {
+    $wpdb->query("DROP TABLE IF EXISTS `$table`");
+    $wpdb->query($createSql);
+    $rebuilt = true;
+    $cols = $wpdb->get_col("SHOW COLUMNS FROM `$table`", 0);
+    if (!is_array($cols) || count(array_diff($needed, $cols)) > 0) {
+        http_response_code(500);
+        echo json_encode(array(
+            'error' => 'Could not create the roster table.',
+            'db_error' => $wpdb->last_error,
+        ));
+        exit;
+    }
+}
 
 $now = current_time('mysql');
 $wpdb->query('START TRANSACTION');
 $wpdb->query("DELETE FROM `$table`");
 $inserted = 0;
+$dbError = '';
 foreach ($rows as $r) {
     $r['updated_at'] = $now;
     $ok = $wpdb->insert($table, $r, array(
         '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d', '%d', '%d', '%f', '%f', '%s', '%s',
     ));
     if ($ok) $inserted++;
+    elseif ($dbError === '') $dbError = $wpdb->last_error;
+}
+if ($inserted < count($rows)) {
+    $wpdb->query('ROLLBACK');
+    http_response_code(500);
+    echo json_encode(array(
+        'error' => 'Inserts failed; table left as it was.',
+        'parsed_players' => count($rows),
+        'inserted' => $inserted,
+        'db_error' => $dbError,
+        'table_rebuilt' => $rebuilt,
+    ));
+    exit;
 }
 $wpdb->query('COMMIT');
 
@@ -269,5 +307,6 @@ echo json_encode(array(
     'teams' => count($teams),
     'players' => $inserted,
     'skipped_teams' => $skipped,
+    'table_rebuilt' => $rebuilt,
     'updated_at' => $now,
 ));
