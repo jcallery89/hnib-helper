@@ -27,59 +27,44 @@ function dataset(): Dataset {
       { playerId: "p2", gameId: null, gp: 4, goals: 1, assists: 1 },
       { playerId: "p3", gameId: null, gp: 3, goals: 0, assists: 0, saves: 40, shots: 44, savePct: 0.909, gaa: 1.33 },
     ],
-    // Only p1 is flagged; the default pool is every rostered player anyway.
-    allStarIds: ["p1"],
     ballot: {
-      targets: { F: 16, D: 10, G: 3 },
-      coaches: [
-        { id: "c1", coachName: "Pat Doyle", team: "Teal", ranks: { p1: 1, p2: 2 } },
-        { id: "c2", coachName: "Lee Ryan", ranks: { p1: 2 } },
-      ],
-      finalRanks: { p1: 1 },
-      selections: { p1: "roster", p2: "alternate" },
+      nominatedIds: ["p1", "p3"],
+      selections: { p1: "roster" },
+      playerNotes: { p1: "confirmed available" },
     },
   };
 }
 
 describe("BallotView", () => {
-  it("puts every rostered player on the ballot by default, with coach columns, consensus, and the final roster", () => {
+  it("lists every rostered player by position with nomination marks and counts", () => {
     const html = renderToString(h(BallotView, { dataset: dataset(), update: () => {} }));
-    expect(html).toContain("Coaches Ballot - E (3 eligible)");
-    expect(html).toContain("Forwards (1) - rank about 16");
-    expect(html).toContain("Defense (1) - rank about 10");
-    expect(html).toContain("Goaltenders (1) - rank about 3");
-    expect(html).toContain("Sullivan");
-    // Unflagged players are still on the ballot in the default event-wide pool,
-    // and the blank-position goalie is classified by stats, not dropped.
-    expect(html).toContain("Carrier");
-    expect(html).toContain("Olsen");
-    // Coach columns and their entered ranks.
-    expect(html).toContain("P. Doyle");
-    expect(html).toContain("L. Ryan");
-    // Avg rank for p1 across ranks 1 and 2.
-    expect(html).toContain(">1.5<");
-    // Final roster card with the alternate marked.
-    expect(html).toContain("Final at-large roster");
-    expect(html).toContain("(alt)");
+    expect(html).toContain("Nominations (2)");
+    // All three sections render, blank-position goalie classified by stats.
+    expect(html).toContain("Forwards (1 nominated of 1)");
+    expect(html).toContain("Defense (0 nominated of 1)");
+    expect(html).toContain("Goaltenders (1 nominated of 1)");
+    expect(html).toContain("Sullivan, Jack");
+    expect(html).toContain("Carrier, Sam");
+    expect(html).toContain("Olsen, Brady");
+    // Roster/Alternate tallies and the saved note.
+    expect(html).toContain("Roster 1, Alternates 0");
+    expect(html).toContain("confirmed available");
+    // Contact join section present with its privacy note.
+    expect(html).toContain("Notification export");
+    expect(html).toContain("never saved in the app");
   });
 
-  it("explains an empty pool when restricted to All-Star flags with none set", () => {
-    const d = dataset();
-    d.allStarIds = [];
-    d.ballot!.poolMode = "flagged";
-    const html = renderToString(h(BallotView, { dataset: d, update: () => {} }));
-    expect(html).toContain("ballot pool is empty");
-    expect(html).toContain("Stats tab");
+  it("checks nominated players and leaves others unchecked", () => {
+    const html = renderToString(h(BallotView, { dataset: dataset(), update: () => {} }));
+    expect(html).toContain('aria-label="Nominated: Jack Sullivan" checked');
+    expect(html).toContain('aria-label="Nominated: Sam Carrier"');
+    expect(html).not.toContain('aria-label="Nominated: Sam Carrier" checked');
   });
 
-  it("surfaces duplicate ranks from one coach in one section", () => {
+  it("explains the empty state before rosters are synced", () => {
     const d = dataset();
-    d.players!.push({ id: "p4", eventId: "e", teamId: "t-opp", jersey: 7, firstName: "Ty", lastName: "Tapper", position: "F" });
-    d.playerStats!.push({ playerId: "p4", gameId: null, gp: 4, goals: 2, assists: 0 });
-    d.allStarIds!.push("p4");
-    d.ballot!.coaches[0].ranks.p4 = 1; // same rank as p1, both forwards
+    d.players = [];
     const html = renderToString(h(BallotView, { dataset: d, update: () => {} }));
-    expect(html).toContain("Duplicate ranks to resolve");
-    expect(html).toContain("Pat Doyle gave Forwards rank 1 to");
+    expect(html).toContain("No players yet");
   });
 });

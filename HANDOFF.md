@@ -101,15 +101,17 @@ Auto-sync (3 min)** when the event was loaded from hnib.app.
 - **Stats** - ALL players in sortable tables (skaters: GP/G/A/PTS; goalies:
   GP/GAA/SV%), team filter, **All-Star flagging** (star toggle) with an
   All-Star Pool and CSV export.
-- **Ballot** - coaches ballot built for the Boys Major Showcase: by default
-  every rostered player in the event is ballot-eligible (a pool switch can
-  narrow it to the All-Star flags from Stats). Sections by position
-  pre-sorted by production, configurable targets, one rank column per coach
-  with Avg Rank + Votes (spreadsheet model), duplicate-rank warnings,
-  directors' Final rank and Roster/Alternate calls, final roster summary.
-  Exports: blank ballot CSV, results CSV, and per-position Gravity Forms
-  choice lists ("Last, First - Team (GP-G-A-P)"). Engine logic in
-  `src/engine/ballot/`; state in `Dataset.ballot`, preserved across re-sync.
+- **Ballot** - nomination tracker for the Boys Major Showcase coaches ballot:
+  every rostered player listed by position (production-sorted), a Nominated
+  checkbox per player (worked from the Gravity Forms entries export),
+  directors' Roster/Alternate calls and per-player notes on the nominated
+  group, team filter and nominated-only view. Exports: nominated players
+  CSV, and a notification CSV with parent/player contact columns produced by
+  a one-shot join against a pasted registration export
+  (`src/io/contactJoin.ts` - contact details are never written to the
+  Dataset, preserving the no-PII guarantee). Engine logic in
+  `src/engine/ballot/`; state in `Dataset.ballot` (`nominatedIds`,
+  `selections`, `playerNotes`), preserved across re-sync.
   For the LIVE-STATS Gravity Forms ballot on hnibonline.com (GP Populate
   Anything reading a MySQL table refreshed from the API by a server-side
   cron), see `wp/` - sync PHP, importable form JSON, and the setup runbook.

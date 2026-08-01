@@ -132,10 +132,9 @@ describe("fullSync", () => {
     first.dataset.playerWriteups = { "u-jack": "A standout." };
     first.dataset.playerGameLogs = { "u-jack": [{ opponent: "Northeast", goals: 2, assists: 1, points: 3, pim: 0, shots: 6, saves: 0 }] };
     first.dataset.ballot = {
-      targets: { F: 16, D: 10, G: 3 },
-      coaches: [{ id: "c1", coachName: "Pat Doyle", ranks: { "u-jack": 1 } }],
-      finalRanks: { "u-jack": 1 },
+      nominatedIds: ["u-jack"],
       selections: { "u-jack": "roster" },
+      playerNotes: { "u-jack": "confirmed available" },
     };
 
     const second = await fullSync("ev-12345678", first.dataset);
@@ -143,8 +142,8 @@ describe("fullSync", () => {
     expect(second.dataset.allStarIds).toEqual(["u-jack"]);
     expect(second.dataset.playerWriteups?.["u-jack"]).toBe("A standout.");
     expect(second.dataset.playerGameLogs?.["u-jack"]).toHaveLength(1);
-    expect(second.dataset.ballot?.coaches[0].ranks["u-jack"]).toBe(1);
-    expect(second.dataset.ballot?.selections["u-jack"]).toBe("roster");
+    expect(second.dataset.ballot?.nominatedIds).toEqual(["u-jack"]);
+    expect(second.dataset.ballot?.selections?.["u-jack"]).toBe("roster");
   });
 
   it("keeps a team's previous roster when its fetch fails", async () => {

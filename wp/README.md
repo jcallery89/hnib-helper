@@ -55,10 +55,19 @@ current numbers. To force a refresh, hit the sync URL manually.
 
 ## After ballots close
 
-Forms -> Import/Export -> Export Entries (coach fields + all rank dropdowns).
-Enter each coach's ranks in the HNIB tool's Ballot tab, which computes Avg
-Rank / Votes, flags duplicate picks, and holds the directors' final calls.
-The stored `Last, First (Team #9)` values match players unambiguously.
+Forms -> Import/Export -> Export Entries (coach fields + all nominee
+dropdowns). The stored `Last, First (Team #9)` values match players
+unambiguously. Then in the HNIB tool's Ballot tab:
+
+1. Tick **Nominated** for each player named in the entries (grouped by
+   position, sorted by production, so they are easy to find).
+2. Directors mark **Roster / Alternate** on the nominated group; add
+   per-player notes as needed.
+3. **Export nominated (CSV)** for the working list, and use the
+   **Notification export** section (paste the registration export) to
+   download the nominated players with parent and player contact columns.
+   Contact details are used for that download only and are never saved in
+   the app.
 
 ## Notes
 

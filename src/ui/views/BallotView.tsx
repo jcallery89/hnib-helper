@@ -2,19 +2,15 @@ import { useMemo, useState } from "preact/hooks";
 import type { Dataset } from "../../io/dataset.ts";
 import type { Player, PlayerSummary } from "../../engine/types.ts";
 import {
-  type BallotPoolMode,
   type BallotPosition,
   type BallotSelection,
-  type BallotState,
-  aggregateBallots,
   ballotPosition,
-  choiceLabel,
-  compareBallotLines,
   compareProduction,
   emptyBallot,
-  findDuplicateRanks,
   positionLabel,
 } from "../../engine/ballot/ballot.ts";
+import { joinContacts } from "../../io/contactJoin.ts";
+import { listRegistrationEvents } from "../../io/importRegistration.ts";
 import { playerSummaries } from "../state/store.ts";
 import { downloadFile } from "../../io/session.ts";
 
@@ -25,34 +21,27 @@ interface Props {
 
 const POSITIONS: BallotPosition[] = ["F", "D", "G"];
 
-type OrderBy = "production" | "consensus";
-
 export function BallotView({ dataset, update }: Props) {
-  const [newCoachName, setNewCoachName] = useState("");
-  const [newCoachTeam, setNewCoachTeam] = useState("");
-  const [orderBy, setOrderBy] = useState<OrderBy>("production");
+  const [teamFilter, setTeamFilter] = useState("all");
+  const [nominatedOnly, setNominatedOnly] = useState(false);
+  const [registrationCsv, setRegistrationCsv] = useState("");
+  const [registrationEvent, setRegistrationEvent] = useState("");
+  const [joinStatus, setJoinStatus] = useState<string[]>([]);
 
   const ballot = dataset.ballot ?? emptyBallot();
+  const nominated = useMemo(() => new Set(ballot.nominatedIds ?? []), [ballot.nominatedIds]);
   const teamName = useMemo(() => new Map(dataset.teams.map((t) => [t.id, t.name])), [dataset.teams]);
   const summaries = useMemo(
     () => playerSummaries(dataset),
     [dataset.players, dataset.playerStats, dataset.games],
   );
 
-  // Default pool is the whole event: for the Boys Major Showcase every
-  // rostered player is ballot-eligible, straight from the synced API rosters.
-  // "flagged" narrows to the All-Star flags from the Stats tab instead.
-  const poolMode: BallotPoolMode = ballot.poolMode ?? "event";
-  const pool = useMemo(() => {
-    const players = dataset.players ?? [];
-    if (poolMode === "event") return players;
-    const flagged = new Set(dataset.allStarIds ?? []);
-    return players.filter((p) => flagged.has(p.id));
-  }, [dataset.players, dataset.allStarIds, poolMode]);
-
+  // Every rostered player is on the ballot; coaches nominated from their own
+  // teams, so the list is grouped by position and pre-sorted by production to
+  // read like the form did.
   const groups = useMemo(() => {
     const g: Record<BallotPosition, Player[]> = { F: [], D: [], G: [] };
-    for (const p of pool) g[ballotPosition(p, summaries.get(p.id))].push(p);
+    for (const p of dataset.players ?? []) g[ballotPosition(p, summaries.get(p.id))].push(p);
     for (const pos of POSITIONS) {
       g[pos].sort(
         (a, b) =>
@@ -61,158 +50,150 @@ export function BallotView({ dataset, update }: Props) {
       );
     }
     return g;
-  }, [pool, summaries]);
+  }, [dataset.players, summaries]);
 
-  const lines = useMemo(
-    () => aggregateBallots(ballot.coaches, pool.map((p) => p.id)),
-    [ballot.coaches, pool],
+  const nominatedPlayers = useMemo(
+    () => (dataset.players ?? []).filter((p) => nominated.has(p.id)),
+    [dataset.players, nominated],
   );
 
-  const duplicates = useMemo(
-    () =>
-      findDuplicateRanks(ballot.coaches, {
-        F: groups.F.map((p) => p.id),
-        D: groups.D.map((p) => p.id),
-        G: groups.G.map((p) => p.id),
-      }),
-    [ballot.coaches, groups],
+  const registrationEvents = useMemo(
+    () => (registrationCsv.trim() ? listRegistrationEvents(registrationCsv) : []),
+    [registrationCsv],
   );
 
-  function edit(mutate: (b: BallotState) => void) {
+  function toggleNominated(id: string) {
     update((d) => {
       if (!d.ballot) d.ballot = emptyBallot();
-      mutate(d.ballot);
+      const set = new Set(d.ballot.nominatedIds ?? []);
+      if (set.has(id)) set.delete(id);
+      else set.add(id);
+      d.ballot.nominatedIds = [...set];
     });
   }
 
-  function addCoach() {
-    const name = newCoachName.trim();
-    if (!name) return;
-    const team = newCoachTeam.trim();
-    edit((b) => {
-      const next = 1 + b.coaches.reduce((m, c) => Math.max(m, Number(c.id.replace(/^c/, "")) || 0), 0);
-      b.coaches.push({ id: `c${next}`, coachName: name, ...(team ? { team } : {}), ranks: {} });
-    });
-    setNewCoachName("");
-    setNewCoachTeam("");
-  }
-
-  function removeCoach(id: string) {
-    edit((b) => {
-      b.coaches = b.coaches.filter((c) => c.id !== id);
+  function setSelection(id: string, value: BallotSelection | "") {
+    update((d) => {
+      if (!d.ballot) d.ballot = emptyBallot();
+      const sel = { ...(d.ballot.selections ?? {}) };
+      if (value === "") delete sel[id];
+      else sel[id] = value;
+      d.ballot.selections = sel;
     });
   }
 
-  function setCoachComments(id: string, value: string) {
-    edit((b) => {
-      const coach = b.coaches.find((c) => c.id === id);
-      if (!coach) return;
-      if (value.trim()) coach.comments = value;
-      else delete coach.comments;
+  function setNote(id: string, value: string) {
+    update((d) => {
+      if (!d.ballot) d.ballot = emptyBallot();
+      const notes = { ...(d.ballot.playerNotes ?? {}) };
+      if (value.trim() === "") delete notes[id];
+      else notes[id] = value;
+      d.ballot.playerNotes = notes;
     });
   }
 
-  function setRank(coachId: string, playerId: string, raw: string) {
-    const n = Number.parseInt(raw, 10);
-    edit((b) => {
-      const coach = b.coaches.find((c) => c.id === coachId);
-      if (!coach) return;
-      if (Number.isFinite(n) && n > 0) coach.ranks[playerId] = n;
-      else delete coach.ranks[playerId];
-    });
+  function statText(s: PlayerSummary | undefined, pos: BallotPosition): string {
+    if (pos === "G") {
+      const gaa = s?.gaa !== undefined ? s.gaa.toFixed(2) : "-";
+      const sv = s?.savePct !== undefined ? s.savePct.toFixed(3).replace(/^0/, "") : "-";
+      return `GP ${s?.gp ?? 0}, ${gaa} GAA, ${sv} SV%`;
+    }
+    return `GP ${s?.gp ?? 0}, ${s?.goals ?? 0}g ${s?.assists ?? 0}a ${s?.points ?? 0}pts`;
   }
 
-  function setFinalRank(playerId: string, raw: string) {
-    const n = Number.parseInt(raw, 10);
-    edit((b) => {
-      if (Number.isFinite(n) && n > 0) b.finalRanks[playerId] = n;
-      else delete b.finalRanks[playerId];
-    });
-  }
-
-  function setSelection(playerId: string, value: string) {
-    edit((b) => {
-      if (value === "roster" || value === "alternate") b.selections[playerId] = value;
-      else delete b.selections[playerId];
-    });
-  }
-
-  function setTarget(pos: BallotPosition, raw: string) {
-    const n = Number.parseInt(raw, 10);
-    if (!Number.isFinite(n) || n <= 0) return;
-    edit((b) => {
-      b.targets[pos] = n;
-    });
-  }
-
-  function setPoolMode(value: string) {
-    edit((b) => {
-      b.poolMode = value === "flagged" ? "flagged" : "event";
-    });
-  }
-
-  function orderedGroup(pos: BallotPosition): Player[] {
-    if (orderBy === "production") return groups[pos];
-    return [...groups[pos]].sort((a, b) => {
-      const la = lines.get(a.id);
-      const lb = lines.get(b.id);
-      if (la && lb) {
-        const c = compareBallotLines(la, lb);
-        if (c !== 0) return c;
-      }
-      return compareProduction(summaries.get(a.id), summaries.get(b.id), pos);
-    });
-  }
-
-  function exportChoices(pos: BallotPosition) {
-    const linesOut = groups[pos].map((p) =>
-      choiceLabel(p, teamName.get(p.teamId) ?? p.teamId, summaries.get(p.id), pos),
-    );
-    downloadFile(
-      `${dataset.event.year}-${positionLabel(pos).toLowerCase()}-choices.txt`,
-      linesOut.join("\n"),
-      "text/plain",
-    );
-  }
-
-  function exportBlankBallot() {
-    const header = ["position", "team", "jersey", "last", "first", "birthYear", "gp", "g", "a", "pts", "gaa", "svpct", "rank"];
-    const rows: string[] = [];
+  function nominatedCsvRows(): string[][] {
+    const rows: string[][] = [];
     for (const pos of POSITIONS) {
       for (const p of groups[pos]) {
+        if (!nominated.has(p.id)) continue;
         const s = summaries.get(p.id);
-        rows.push(statCells(p, pos, teamName.get(p.teamId) ?? p.teamId, s).concat("").map(csvCell).join(","));
+        rows.push([
+          teamName.get(p.teamId) ?? p.teamId,
+          p.jersey !== null ? String(p.jersey) : "",
+          p.lastName,
+          p.firstName,
+          pos,
+          p.birthYear !== undefined ? String(p.birthYear) : "",
+          p.hometown ?? "",
+          p.school ?? "",
+          String(s?.gp ?? 0),
+          pos === "G" ? (s?.gaa !== undefined ? s.gaa.toFixed(2) : "") : String(s?.goals ?? 0),
+          pos === "G" ? (s?.savePct !== undefined ? s.savePct.toFixed(3) : "") : String(s?.assists ?? 0),
+          pos === "G" ? "" : String(s?.points ?? 0),
+          ballot.selections?.[p.id] ?? "",
+          ballot.playerNotes?.[p.id] ?? "",
+        ]);
       }
     }
-    downloadFile(`${dataset.event.year}-all-star-ballot-blank.csv`, [header.join(","), ...rows].join("\n"), "text/csv");
+    return rows;
   }
 
-  function exportResults() {
+  function exportNominated() {
     const header = [
-      "position", "team", "jersey", "last", "first", "birthYear", "gp", "g", "a", "pts", "gaa", "svpct",
-      ...ballot.coaches.map((c) => `rank_${c.coachName}`),
-      "avgRank", "votes", "finalRank", "selection",
+      "team", "jersey", "last", "first", "position", "birthYear", "hometown", "school",
+      "gp", "g_or_gaa", "a_or_svpct", "pts", "selection", "note",
     ];
-    const rows: string[] = [];
+    const lines = nominatedCsvRows().map((r) => r.map(csvCell).join(","));
+    downloadFile(
+      `${dataset.event.year}-nominated-players.csv`,
+      [header.join(","), ...lines].join("\n"),
+      "text/csv",
+    );
+  }
+
+  function exportNotificationList() {
+    const result = joinContacts(
+      registrationCsv,
+      nominatedPlayers,
+      dataset.teams,
+      registrationEvents.length > 1 ? registrationEvent : undefined,
+    );
+    const status: string[] = [];
+    if (result.warnings.length > 0) status.push(...result.warnings);
+    if (result.unmatched.length > 0) {
+      status.push(`No registration row found for: ${result.unmatched.join("; ")}. They are in the file with blank contact columns.`);
+    }
+    const contactById = new Map(result.rows.map((r) => [r.playerId, r]));
+    const header = [
+      "team", "jersey", "last", "first", "position", "selection",
+      "parent_name", "parent_cell", "parent_email", "player_cell", "player_email", "note",
+    ];
+    const lines: string[] = [];
     for (const pos of POSITIONS) {
-      for (const p of orderedGroup(pos)) {
-        const s = summaries.get(p.id);
-        const line = lines.get(p.id);
-        rows.push(
-          statCells(p, pos, teamName.get(p.teamId) ?? p.teamId, s)
-            .concat(
-              ballot.coaches.map((c) => c.ranks[p.id] ?? ""),
-              line?.avgRank ?? "",
-              line?.votes ?? 0,
-              ballot.finalRanks[p.id] ?? "",
-              ballot.selections[p.id] ?? "",
-            )
-            .map(csvCell)
-            .join(","),
+      for (const p of groups[pos]) {
+        if (!nominated.has(p.id)) continue;
+        const c = contactById.get(p.id);
+        lines.push(
+          [
+            teamName.get(p.teamId) ?? p.teamId,
+            p.jersey !== null ? String(p.jersey) : "",
+            p.lastName,
+            p.firstName,
+            pos,
+            ballot.selections?.[p.id] ?? "",
+            c?.parentName ?? "",
+            c?.parentCell ?? "",
+            c?.parentEmail ?? "",
+            c?.playerCell ?? "",
+            c?.playerEmail ?? "",
+            ballot.playerNotes?.[p.id] ?? "",
+          ].map(csvCell).join(","),
         );
       }
     }
-    downloadFile(`${dataset.event.year}-all-star-ballot-results.csv`, [header.join(","), ...rows].join("\n"), "text/csv");
+    if (lines.length > 0 && result.rows.length > 0) {
+      downloadFile(
+        `${dataset.event.year}-nomination-notifications.csv`,
+        [header.join(","), ...lines].join("\n"),
+        "text/csv",
+      );
+      status.unshift(`Downloaded contacts for ${result.rows.length} of ${nominatedPlayers.length} nominated players.`);
+    } else if (lines.length === 0) {
+      status.unshift("No players are marked as nominated yet.");
+    } else {
+      status.unshift("No nominated players matched the paste. Check that it is the registration export for this event.");
+    }
+    setJoinStatus(status);
   }
 
   if ((dataset.players ?? []).length === 0) {
@@ -220,295 +201,184 @@ export function BallotView({ dataset, update }: Props) {
       <section>
         <div class="card">
           <p class="section-title">Coaches Ballot</p>
-          <p class="note">
-            No players yet. Sync the event on Setup with its hnib.app id and every rostered player appears
-            here with their stats, ready to rank.
-          </p>
+          <p class="note">No players yet. Sync the event from Setup to load the rosters.</p>
         </div>
       </section>
     );
   }
 
-  const selected = pool.filter((p) => ballot.selections[p.id]);
+  const rosterCount = Object.values(ballot.selections ?? {}).filter((s) => s === "roster").length;
+  const alternateCount = Object.values(ballot.selections ?? {}).filter((s) => s === "alternate").length;
 
   return (
     <section>
       <div class="card premium">
-        <p class="section-title">Coaches Ballot - {dataset.event.name} ({pool.length} eligible)</p>
+        <p class="section-title">Nominations ({nominated.size})</p>
         <p class="note">
-          Every rostered player in this event is ballot-eligible. Rank 1 = best. Coaches rank only players
-          they have an opinion on; blanks are fine. Avg Rank is the average across the coaches who ranked the
-          player (lower = stronger consensus) and Votes is how many coaches ranked them. Directors set the
-          Final column and the roster calls.
+          Work from the Gravity Forms entries export: tick Nominated for each player a coach named.
+          Directors then mark Roster or Alternate on the nominated group. Counts:{" "}
+          {POSITIONS.map((pos) => `${positionLabel(pos)} ${groups[pos].filter((p) => nominated.has(p.id)).length}`).join(", ")}
+          {" - "}Roster {rosterCount}, Alternates {alternateCount}.
         </p>
-        <div class="toolbar" style={{ marginTop: 8 }}>
-          <label class="row" style={{ gap: 4 }}>
-            Pool:
-            <select value={poolMode} onChange={(e) => setPoolMode((e.target as HTMLSelectElement).value)}>
-              <option value="event">Every player in this event</option>
-              <option value="flagged">All-Star flagged only (Stats tab)</option>
-            </select>
-          </label>
-          <span>Targets:</span>
-          {POSITIONS.map((pos) => (
-            <label class="row" key={pos} style={{ gap: 4 }}>
-              {positionLabel(pos)}
-              <input
-                type="number"
-                min={1}
-                style={{ width: 56 }}
-                value={ballot.targets[pos]}
-                onInput={(e) => setTarget(pos, (e.target as HTMLInputElement).value)}
-              />
-            </label>
-          ))}
-          <label class="row" style={{ gap: 4 }}>
-            Order by:
-            <select value={orderBy} onChange={(e) => setOrderBy((e.target as HTMLSelectElement).value as OrderBy)}>
-              <option value="production">Production</option>
-              <option value="consensus">Consensus (Avg Rank)</option>
-            </select>
-          </label>
-          <button class="btn secondary" onClick={exportBlankBallot}>Blank ballot (CSV)</button>
-          <button class="btn secondary" onClick={exportResults}>Results (CSV)</button>
-        </div>
-      </div>
-
-      {pool.length === 0 && (
-        <div class="card">
-          <p class="note">
-            The ballot pool is empty because it is set to All-Star flagged players and none are flagged.
-            Star players on the Stats tab, or switch the pool to every player in this event.
-          </p>
-        </div>
-      )}
-
-      <div class="card">
-        <p class="section-title">Coaches ({ballot.coaches.length})</p>
         <div class="toolbar">
-          <input
-            placeholder="Coach name"
-            value={newCoachName}
-            onInput={(e) => setNewCoachName((e.target as HTMLInputElement).value)}
-          />
-          <input
-            placeholder="Team coached (optional)"
-            value={newCoachTeam}
-            onInput={(e) => setNewCoachTeam((e.target as HTMLInputElement).value)}
-          />
-          <button class="btn primary" onClick={addCoach}>Add coach</button>
-        </div>
-        {ballot.coaches.length === 0 ? (
-          <p class="note">
-            Add a column per coach, then enter each ballot as it comes in. Handwritten ballots are valid
-            input; transcribe them here and the consensus updates live.
-          </p>
-        ) : (
-          <table class="grid">
-            <thead>
-              <tr>
-                <th>Coach</th>
-                <th>Team</th>
-                <th>Ranked</th>
-                <th>Comments</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {ballot.coaches.map((c) => (
-                <tr key={c.id}>
-                  <td>{c.coachName}</td>
-                  <td>{c.team ?? ""}</td>
-                  <td class="num">{Object.keys(c.ranks).length}</td>
-                  <td>
-                    <input
-                      style={{ width: "100%" }}
-                      placeholder="Injuries, position changes, asterisk players"
-                      value={c.comments ?? ""}
-                      onInput={(e) => setCoachComments(c.id, (e.target as HTMLInputElement).value)}
-                    />
-                  </td>
-                  <td>
-                    <button class="btn" onClick={() => removeCoach(c.id)}>Remove</button>
-                  </td>
-                </tr>
+          <label class="row" style={{ gap: 6 }}>
+            Team
+            <select value={teamFilter} onChange={(e) => setTeamFilter((e.target as HTMLSelectElement).value)}>
+              <option value="all">All teams</option>
+              {dataset.teams.map((t) => (
+                <option value={t.id} key={t.id}>{t.name}</option>
               ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {duplicates.length > 0 && (
-        <div class="card">
-          <p class="section-title">Duplicate ranks to resolve</p>
-          {duplicates.map((d) => {
-            const coach = ballot.coaches.find((c) => c.id === d.coachId);
-            const names = d.playerIds
-              .map((id) => pool.find((p) => p.id === id))
-              .filter((p): p is Player => p !== undefined)
-              .map((p) => `${p.firstName} ${p.lastName}`)
-              .join(" and ");
-            return (
-              <p class="warn" key={`${d.coachId}-${d.position}-${d.rank}`}>
-                {coach?.coachName ?? d.coachId} gave {positionLabel(d.position)} rank {d.rank} to {names}.
-              </p>
-            );
-          })}
+            </select>
+          </label>
+          <label class="row" style={{ gap: 6 }}>
+            <input
+              type="checkbox"
+              checked={nominatedOnly}
+              onChange={(e) => setNominatedOnly((e.target as HTMLInputElement).checked)}
+            />
+            Nominated only
+          </label>
+          <button class="btn secondary" onClick={exportNominated} disabled={nominated.size === 0}>
+            Export nominated (CSV)
+          </button>
         </div>
-      )}
+      </div>
 
       {POSITIONS.map((pos) => {
-        const group = orderedGroup(pos);
-        if (group.length === 0) return null;
+        const list = groups[pos].filter(
+          (p) =>
+            (teamFilter === "all" || p.teamId === teamFilter) &&
+            (!nominatedOnly || nominated.has(p.id)),
+        );
+        if (list.length === 0) return null;
         return (
           <div class="card" key={pos}>
-            <div class="row" style={{ justifyContent: "space-between" }}>
-              <p class="section-title">
-                {positionLabel(pos)} ({group.length}) - rank about {ballot.targets[pos]}
-              </p>
-              <button class="btn secondary" onClick={() => exportChoices(pos)}>
-                Gravity Forms choices (.txt)
-              </button>
-            </div>
-            <table class="grid">
-              <thead>
-                <tr>
-                  <th>Player</th>
-                  <th>Team</th>
-                  <th class="num">GP</th>
-                  {pos === "G" ? (
-                    <>
-                      <th class="num">GAA</th>
-                      <th class="num">SV%</th>
-                    </>
-                  ) : (
-                    <>
-                      <th class="num">G</th>
-                      <th class="num">A</th>
-                      <th class="num">PTS</th>
-                    </>
-                  )}
-                  {ballot.coaches.map((c) => (
-                    <th class="num" key={c.id} title={c.team ? `${c.coachName} (${c.team})` : c.coachName}>
-                      {shortName(c.coachName)}
-                    </th>
-                  ))}
-                  <th class="num">Avg</th>
-                  <th class="num">Votes</th>
-                  <th class="num">Final</th>
-                  <th>Roster</th>
-                </tr>
-              </thead>
-              <tbody>
-                {group.map((p) => {
-                  const s = summaries.get(p.id);
-                  const line = lines.get(p.id);
-                  return (
-                    <tr key={p.id}>
-                      <td>#{p.jersey ?? "?"} {p.firstName} {p.lastName}</td>
-                      <td>{teamName.get(p.teamId) ?? p.teamId}</td>
-                      <td class="num">{s?.gp ?? 0}</td>
-                      {pos === "G" ? (
-                        <>
-                          <td class="num">{s?.gaa !== undefined ? s.gaa.toFixed(2) : "-"}</td>
-                          <td class="num">{s?.savePct !== undefined ? s.savePct.toFixed(3).replace(/^0/, "") : "-"}</td>
-                        </>
-                      ) : (
-                        <>
-                          <td class="num">{s?.goals ?? 0}</td>
-                          <td class="num">{s?.assists ?? 0}</td>
-                          <td class="num">{s?.points ?? 0}</td>
-                        </>
-                      )}
-                      {ballot.coaches.map((c) => (
-                        <td class="num" key={c.id}>
+            <p class="section-title">
+              {positionLabel(pos)} ({list.filter((p) => nominated.has(p.id)).length} nominated of {list.length})
+            </p>
+            <div style={{ overflowX: "auto" }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Nominated</th>
+                    <th>Player</th>
+                    <th>Team</th>
+                    <th>#</th>
+                    <th>Birth Yr</th>
+                    <th>Stats</th>
+                    <th>Final call</th>
+                    <th>Note</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {list.map((p) => {
+                    const isNominated = nominated.has(p.id);
+                    return (
+                      <tr key={p.id} class={isNominated ? "highlight" : ""}>
+                        <td>
                           <input
-                            type="number"
-                            min={1}
-                            style={{ width: 48 }}
-                            value={c.ranks[p.id] ?? ""}
-                            onInput={(e) => setRank(c.id, p.id, (e.target as HTMLInputElement).value)}
+                            type="checkbox"
+                            aria-label={`Nominated: ${p.firstName} ${p.lastName}`}
+                            checked={isNominated}
+                            onChange={() => toggleNominated(p.id)}
                           />
                         </td>
-                      ))}
-                      <td class="num">{line?.avgRank ?? "-"}</td>
-                      <td class="num">{line?.votes ?? 0}</td>
-                      <td class="num">
-                        <input
-                          type="number"
-                          min={1}
-                          style={{ width: 48 }}
-                          value={ballot.finalRanks[p.id] ?? ""}
-                          onInput={(e) => setFinalRank(p.id, (e.target as HTMLInputElement).value)}
-                        />
-                      </td>
-                      <td>
-                        <select
-                          value={ballot.selections[p.id] ?? ""}
-                          onChange={(e) => setSelection(p.id, (e.target as HTMLSelectElement).value)}
-                        >
-                          <option value="">-</option>
-                          <option value="roster">Roster</option>
-                          <option value="alternate">Alternate</option>
-                        </select>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        <td>{p.lastName}, {p.firstName}</td>
+                        <td>{teamName.get(p.teamId) ?? p.teamId}</td>
+                        <td>{p.jersey ?? ""}</td>
+                        <td>{p.birthYear ?? ""}</td>
+                        <td class="note">{statText(summaries.get(p.id), pos)}</td>
+                        <td>
+                          {isNominated ? (
+                            <select
+                              value={ballot.selections?.[p.id] ?? ""}
+                              onChange={(e) =>
+                                setSelection(p.id, (e.target as HTMLSelectElement).value as BallotSelection | "")
+                              }
+                            >
+                              <option value="">-</option>
+                              <option value="roster">Roster</option>
+                              <option value="alternate">Alternate</option>
+                            </select>
+                          ) : null}
+                        </td>
+                        <td>
+                          {isNominated ? (
+                            <input
+                              type="text"
+                              value={ballot.playerNotes?.[p.id] ?? ""}
+                              placeholder="note"
+                              onChange={(e) => setNote(p.id, (e.target as HTMLInputElement).value)}
+                            />
+                          ) : null}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         );
       })}
 
-      {selected.length > 0 && (
-        <div class="card premium">
-          <p class="section-title">Final at-large roster</p>
-          {POSITIONS.map((pos) => {
-            const picks = groups[pos]
-              .filter((p) => ballot.selections[p.id])
-              .sort((a, b) => (ballot.finalRanks[a.id] ?? 999) - (ballot.finalRanks[b.id] ?? 999));
-            if (picks.length === 0) return null;
-            const roster = picks.filter((p) => ballot.selections[p.id] === "roster");
-            const alternates = picks.filter((p) => ballot.selections[p.id] === "alternate");
-            return (
-              <p key={pos}>
-                <strong>
-                  {positionLabel(pos)} ({roster.length}
-                  {alternates.length > 0 ? ` + ${alternates.length} alt` : ""}):
-                </strong>{" "}
-                {picks
-                  .map((p) => {
-                    const sel: BallotSelection | undefined = ballot.selections[p.id];
-                    const alt = sel === "alternate" ? " (alt)" : "";
-                    return `${p.firstName} ${p.lastName} (${teamName.get(p.teamId) ?? p.teamId} #${p.jersey ?? "?"})${alt}`;
-                  })
-                  .join(", ")}
-              </p>
-            );
-          })}
+      <div class="card">
+        <p class="section-title">Notification export (contacts)</p>
+        <p class="note">
+          Paste the HNIB registration export below to download the nominated players with parent
+          and player contact columns for notification. Contact details are used for this download
+          only and are never saved in the app.
+        </p>
+        <textarea
+          rows={5}
+          style={{ width: "100%" }}
+          placeholder="Paste the registration export (CSV or straight from the spreadsheet)"
+          value={registrationCsv}
+          onInput={(e) => setRegistrationCsv((e.target as HTMLTextAreaElement).value)}
+        />
+        {registrationEvents.length > 1 && (
+          <label class="row" style={{ gap: 6, marginTop: 8 }}>
+            Event in the file
+            <select
+              value={registrationEvent}
+              onChange={(e) => setRegistrationEvent((e.target as HTMLSelectElement).value)}
+            >
+              <option value="">Pick the event</option>
+              {registrationEvents.map((ev) => (
+                <option value={ev} key={ev}>{ev}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        <div class="toolbar" style={{ marginTop: 8 }}>
+          <button
+            class="btn"
+            onClick={exportNotificationList}
+            disabled={registrationCsv.trim() === "" || (registrationEvents.length > 1 && registrationEvent === "")}
+          >
+            Download notification list
+          </button>
+          <button
+            class="btn secondary"
+            onClick={() => {
+              setRegistrationCsv("");
+              setRegistrationEvent("");
+              setJoinStatus([]);
+            }}
+            disabled={registrationCsv === ""}
+          >
+            Clear paste
+          </button>
         </div>
-      )}
+        {joinStatus.map((s, i) => (
+          <p class="note" key={i}>{s}</p>
+        ))}
+      </div>
     </section>
   );
 }
 
-function statCells(p: Player, pos: BallotPosition, team: string, s: PlayerSummary | undefined): Array<string | number> {
-  return [
-    pos, team, p.jersey ?? "", p.lastName, p.firstName, p.birthYear ?? "",
-    s?.gp ?? 0, s?.goals ?? 0, s?.assists ?? 0, s?.points ?? 0,
-    s?.gaa !== undefined ? s.gaa.toFixed(2) : "",
-    s?.savePct !== undefined ? s.savePct.toFixed(3) : "",
-  ];
-}
-
-function shortName(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0];
-  return `${parts[0][0]}. ${parts[parts.length - 1]}`;
-}
-
 function csvCell(v: string | number): string {
-  const s = String(v);
+  const s = String(v ?? "");
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
