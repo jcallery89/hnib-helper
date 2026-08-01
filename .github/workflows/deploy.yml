@@ -48,15 +48,32 @@ jobs:
         if: ${{ env.FTP_SERVER == '' }}
         run: echo "FTP secrets not set yet - built successfully, skipping upload. Add FTP_SERVER / FTP_USERNAME / FTP_PASSWORD in repo Settings -> Secrets to enable auto-deploy."
 
+      # SiteGround's FTP endpoint occasionally times out on connect; give the
+      # first attempt a longer timeout and retry once before failing the run.
       - name: Deploy dist/ to SiteGround over FTPS
+        id: deploy1
         if: ${{ env.FTP_SERVER != '' }}
+        continue-on-error: true
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftps
+          timeout: 60000
           local-dir: ./dist/
           # If the FTP account does NOT open directly in the tournament folder,
           # set this to the path, e.g. "public_html/tournament/".
+          server-dir: "./"
+
+      - name: Retry deploy after a transient connection failure
+        if: ${{ env.FTP_SERVER != '' && steps.deploy1.outcome == 'failure' }}
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          timeout: 60000
+          local-dir: ./dist/
           server-dir: "./"
