@@ -8,6 +8,7 @@ import { playerSummaries } from "../state/store.ts";
 import { importPlayerStatsCsv, importRosterCsv } from "../../io/importPlayers.ts";
 import { isRegistrationCsv, listRegistrationEvents, mergeRegistration, type RegistrationReport } from "../../io/importRegistration.ts";
 import { PlayerCard } from "../../render/player/PlayerCard.tsx";
+import { headshotFor } from "../../io/headshots.ts";
 import { EXPORT_SIZES } from "../../render/bracket/theme.ts";
 import { exportNodePng } from "../../render/exportImage.ts";
 import { useBrandAssets } from "../state/useBrand.ts";
@@ -45,6 +46,11 @@ export function PlayersView({ dataset, update }: Props) {
   const selected =
     teamPlayers.find((p) => p.id === selectedPlayerId) ?? skaters[0]?.player ?? teamPlayers[0] ?? null;
   const team = teams.find((t) => t.id === teamId);
+
+  // Fill photoUrl from the same-origin headshot manifest when the roster did
+  // not provide one; PlayerCard falls back to initials when neither exists.
+  const cardPlayer: Player | null =
+    selected && !selected.photoUrl ? { ...selected, photoUrl: headshotFor(selected.id) } : selected;
 
   const selectedSummary = selected ? summaries.get(selected.id) : undefined;
   const generatedWriteup =
@@ -281,7 +287,7 @@ export function PlayersView({ dataset, update }: Props) {
             <PlayerCard
               width={size.width}
               height={size.height}
-              player={selected}
+              player={cardPlayer!}
               summary={summaries.get(selected.id)!}
               teamName={team?.name ?? ""}
               eventName={dataset.event.name}
@@ -296,7 +302,7 @@ export function PlayersView({ dataset, update }: Props) {
               <PlayerCard
                 width={size.width}
                 height={size.height}
-                player={selected}
+                player={cardPlayer!}
                 summary={summaries.get(selected.id)!}
                 teamName={team?.name ?? ""}
                 eventName={dataset.event.name}
@@ -304,6 +310,7 @@ export function PlayersView({ dataset, update }: Props) {
                 brand={brand}
                 gameLog={dataset.playerGameLogs?.[selected.id]}
                 writeup={writeup}
+                embedFonts
               />
             </div>
           </div>

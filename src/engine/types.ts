@@ -2,7 +2,10 @@
 // No DOM, no Preact, no I/O - so this module is portable (e.g. to Google Apps Script).
 
 export type EventFormat = "festival" | "showcase";
-export type SeedingRule = "jrhigh_top2_per_division" | "soph_division_winners";
+export type SeedingRule =
+  | "jrhigh_top2_per_division" // winners + runner-up tier + wildcards (Sophomore: 3 div, 8 teams)
+  | "jrhigh_winners_next_two" // division winners, then the next two per division pooled (Jr. High: 2 div, 6 teams)
+  | "soph_division_winners"; // division winners only + wildcards (legacy)
 
 export interface PointSystem {
   win: number;
@@ -18,6 +21,8 @@ export interface HnibEvent {
   format: EventFormat;
   hasPlayoffBracket: boolean;
   seedingRule: SeedingRule;
+  /** Number of teams that make the playoff field. Default 8; Jr. High is 6. */
+  fieldSize?: number;
   pointSystem: PointSystem;
 }
 

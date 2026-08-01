@@ -54,4 +54,15 @@ export interface Dataset {
   allStarIds?: string[];
   /** All-Star coaches ballot: coach rankings, consensus, and final roster calls. */
   ballot?: BallotState;
+  /** Manual team color overrides keyed by team id; survive re-syncs. */
+  teamColors?: Record<string, string>;
+  /** Scheduled time + rink for each bracket game, keyed by bracket game id. */
+  playoffSchedule?: Record<string, PlayoffSlot>;
+}
+
+/** A scheduled playoff slot, mapped onto a bracket game id (qf1..final). */
+export interface PlayoffSlot {
+  slotStart: string | null; // ISO local-naive datetime
+  rink: string | null;
+  gameNumber?: number;
 }

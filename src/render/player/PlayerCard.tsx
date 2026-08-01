@@ -1,6 +1,7 @@
 import type { Player, PlayerSummary } from "../../engine/types.ts";
 import { COLORS, FONTS } from "../bracket/theme.ts";
 import { LOGO_ASPECT, type BrandAssets } from "../brand.ts";
+import { FONT_FACE_CSS } from "../fontEmbed.ts";
 
 // Structurally identical to io/dataset's PlayerGameLine; declared locally so
 // the render layer stays free of io imports.
@@ -27,6 +28,8 @@ interface Props {
   gameLog?: CardGameLine[];
   /** Scouting report paragraph rendered like a news panel, space permitting. */
   writeup?: string;
+  /** Inline the @font-face so a rasterized export keeps Teko/Barlow. */
+  embedFonts?: boolean;
 }
 
 const MAX_GAMES = 12;
@@ -42,6 +45,7 @@ export function PlayerCard({
   brand,
   gameLog,
   writeup,
+  embedFonts,
 }: Props) {
   const pad = Math.round(width * 0.07);
   const accent = accentColor || COLORS.royal;
@@ -125,6 +129,7 @@ export function PlayerCard({
 
   return (
     <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} xmlns="http://www.w3.org/2000/svg" style={{ display: "block" }}>
+      {embedFonts && <style>{FONT_FACE_CSS}</style>}
       <rect x={0} y={0} width={width} height={height} fill={COLORS.card} />
       {brand?.watermarkNavy && (
         <image

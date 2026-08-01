@@ -1,7 +1,9 @@
 import type { BracketGame } from "../../engine/types.ts";
+import type { PlayoffSlot } from "../../io/dataset.ts";
 import { computeLayout, type CellBox } from "./layout.ts";
 import { COLORS, FONTS } from "./theme.ts";
 import { LOGO_ASPECT, type BrandAssets } from "../brand.ts";
+import { FONT_FACE_CSS } from "../fontEmbed.ts";
 
 interface Props {
   width: number;
@@ -9,24 +11,38 @@ interface Props {
   title: string;
   bracket: BracketGame[];
   nameById: (id: string) => string;
+  colorById?: (id: string) => string | undefined;
+  scheduleByCell?: (id: string) => PlayoffSlot | undefined;
   brand?: BrandAssets;
+  fieldSize?: number;
+  embedFonts?: boolean;
 }
 
-export function BracketSvg({ width, height, title, bracket, nameById, brand }: Props) {
-  const layout = computeLayout(width, height);
+export function BracketSvg({ width, height, title, bracket, nameById, colorById, scheduleByCell, brand, fieldSize, embedFonts }: Props) {
+  const layout = computeLayout(width, height, fieldSize);
   const gameById = new Map(bracket.map((g) => [g.id, g]));
   const championId = gameById.get("final")?.winnerTeamId ?? null;
 
   const titleSize = Math.round(height * 0.038);
   const labelSize = Math.round(height * 0.014);
-  const seedSize = Math.round(layout.rowH * 0.42);
-  const nameSize = Math.round(layout.rowH * 0.5);
+  const seedSize = Math.round(layout.rowH * 0.4);
+  const nameSize = Math.round(layout.rowH * 0.47);
 
   const margin = Math.round(width * 0.045);
   // Navy shield logo top-left; the title shifts right to sit beside it.
   const logoH = brand?.logoNavy ? Math.round(titleSize * 1.5) : 0;
   const logoW = Math.round(logoH * LOGO_ASPECT);
   const titleX = brand?.logoNavy ? margin + logoW + Math.round(width * 0.015) : margin;
+  // Shrink the title so it never runs past the right margin. Teko caps run about
+  // 0.62em wide; cap the shrink so a very long name stays readable, then hard-cap
+  // the glyph run to the available width so it can never overflow regardless of
+  // the font that ends up rendering.
+  const titleMaxW = width - titleX - margin;
+  const fittedTitleSize = Math.max(
+    Math.round(height * 0.022),
+    Math.min(titleSize, Math.floor(titleMaxW / Math.max(1, title.length * 0.62))),
+  );
+  const titleShrunk = fittedTitleSize < titleSize;
 
   // Subtle navy watermark anchored bottom-right.
   const wmW = Math.round(width * 0.5);
@@ -40,6 +56,7 @@ export function BracketSvg({ width, height, title, bracket, nameById, brand }: P
       xmlns="http://www.w3.org/2000/svg"
       style={{ display: "block" }}
     >
+      {embedFonts && <style>{FONT_FACE_CSS}</style>}
       <rect x={0} y={0} width={width} height={height} fill={COLORS.card} />
       {brand?.watermarkNavy && (
         <image
@@ -78,9 +95,11 @@ export function BracketSvg({ width, height, title, bracket, nameById, brand }: P
         y={layout.headerY + titleSize}
         fill={COLORS.navy}
         font-family={FONTS.head}
-        font-size={titleSize}
+        font-size={fittedTitleSize}
         font-weight={600}
         letter-spacing="0.02em"
+        textLength={titleShrunk ? titleMaxW : undefined}
+        lengthAdjust={titleShrunk ? "spacingAndGlyphs" : undefined}
       >
         {title.toUpperCase()}
       </text>
@@ -122,6 +141,8 @@ export function BracketSvg({ width, height, title, bracket, nameById, brand }: P
         if (!game) return null;
         return renderCell(cell, game, {
           nameById,
+          colorById,
+          slot: scheduleByCell?.(cell.id),
           seedSize,
           nameSize,
           rowH: layout.rowH,
@@ -159,17 +180,58 @@ export function BracketSvg({ width, height, title, bracket, nameById, brand }: P
 
 interface CellOpts {
   nameById: (id: string) => string;
+  colorById?: (id: string) => string | undefined;
+  slot?: PlayoffSlot;
   seedSize: number;
   nameSize: number;
   rowH: number;
+}
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+// "2026-06-29T09:00:00" + rink -> "Mon 9:00 AM · Lamacchia" (TZ-safe parse).
+function formatSlot(slot: PlayoffSlot): string {
+  let when = "";
+  const m = /(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(slot.slotStart ?? "");
+  if (m) {
+    const [, y, mo, d, hh, mm] = m;
+    const dow = WEEKDAYS[new Date(Date.UTC(+y, +mo - 1, +d)).getUTCDay()];
+    let h = +hh;
+    const ampm = h >= 12 ? "PM" : "AM";
+    h = h % 12 || 12;
+    when = `${dow} ${h}:${mm} ${ampm}`;
+  }
+  return [when, slot.rink].filter(Boolean).join(" · ");
+}
+
+// Pick navy or white text for legibility on a given bubble fill.
+function contrastInk(hex: string): string {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+  if (!m) return COLORS.white;
+  const lum = 0.299 * parseInt(m[1], 16) + 0.587 * parseInt(m[2], 16) + 0.114 * parseInt(m[3], 16);
+  return lum > 150 ? COLORS.navy : COLORS.white;
 }
 
 function renderCell(cell: CellBox, game: BracketGame, opts: CellOpts) {
   const { rowH } = opts;
   const tag =
     game.decidedBy === "ot" ? "OT" : game.decidedBy === "shootout" ? "SO" : "";
+  const caption = opts.slot ? formatSlot(opts.slot) : "";
   return (
     <g key={cell.id}>
+      {caption && (
+        <text
+          x={cell.x + 2}
+          y={cell.y - Math.round(rowH * 0.22)}
+          fill={COLORS.royal}
+          font-family={FONTS.body}
+          font-size={Math.round(rowH * 0.34)}
+          font-weight={600}
+          letter-spacing="0.04em"
+        >
+          {caption}
+        </text>
+      )}
       <rect
         x={cell.x}
         y={cell.y}
@@ -218,26 +280,49 @@ function teamRow(
 ) {
   const isWinner = teamId !== null && teamId === winnerTeamId;
   const name = teamId ? opts.nameById(teamId) : "-";
+  const cy = rowY + opts.rowH / 2;
+  const baseline = cy + opts.nameSize * 0.34;
+  const r = Math.round(opts.rowH * 0.28);
+  const bubbleX = cell.x + 10 + r;
+  const nameX = cell.x + 10 + r * 2 + 8;
+
+  // Seed bubble: filled with the team's jersey color when the team is known,
+  // a light outline when only the seed slot is (an undecided feeder).
+  const rawColor = teamId ? opts.colorById?.(teamId) : undefined;
+  const bubbleFill = rawColor && /^#[0-9a-fA-F]{6}$/.test(rawColor) ? rawColor : null;
+
   return (
     <g>
       {isWinner && (
         <rect x={cell.x} y={rowY + 4} width={3} height={opts.rowH - 8} fill={COLORS.gold} />
       )}
+      {seed != null && (
+        <>
+          <circle
+            cx={bubbleX}
+            cy={cy}
+            r={r}
+            fill={bubbleFill ?? COLORS.card}
+            stroke={isWinner ? COLORS.gold : COLORS.line}
+            stroke-width={isWinner ? 2 : 1}
+          />
+          <text
+            x={bubbleX}
+            y={cy + opts.seedSize * 0.34}
+            fill={bubbleFill ? contrastInk(bubbleFill) : COLORS.textDim}
+            font-family={FONTS.body}
+            font-size={opts.seedSize}
+            font-weight={700}
+            text-anchor="middle"
+          >
+            {seed}
+          </text>
+        </>
+      )}
       <text
-        x={cell.x + 12}
-        y={rowY + opts.rowH * 0.66}
-        fill={isWinner ? COLORS.gold : COLORS.royal}
-        font-family={FONTS.body}
-        font-size={opts.seedSize}
-        font-weight={700}
-        letter-spacing="0.08em"
-      >
-        {seed ?? ""}
-      </text>
-      <text
-        x={cell.x + 12 + opts.seedSize + 8}
-        y={rowY + opts.rowH * 0.66}
-        fill={COLORS.navy}
+        x={nameX}
+        y={baseline}
+        fill={isWinner ? COLORS.gold : COLORS.navy}
         font-family={FONTS.body}
         font-size={opts.nameSize}
         font-weight={isWinner ? 700 : 400}
@@ -246,7 +331,7 @@ function teamRow(
       </text>
       <text
         x={cell.x + cell.w - 12}
-        y={rowY + opts.rowH * 0.66}
+        y={baseline}
         fill={COLORS.navy}
         font-family={FONTS.body}
         font-size={opts.nameSize}

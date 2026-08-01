@@ -37,6 +37,15 @@ export function playoffSeedingRules(
     if (fieldSize > d) {
       lines.push(`The remaining seeds (${ordinalRange(d + 1, fieldSize)}) go to the best of the remaining teams, by the same rules.`);
     }
+  } else if (event.seedingRule === "jrhigh_winners_next_two") {
+    // Winners first; then the next N per division pooled into one ranked tier.
+    lines.push(`The winners of each division are ranked ${ordinalRange(1, d)}, by the tie-breaking rules below.`);
+    const perDiv = d > 0 ? Math.max(0, Math.floor((fieldSize - d) / d)) : 0;
+    if (perDiv > 0) {
+      lines.push(
+        `The next ${perDiv} team${perDiv === 1 ? "" : "s"} from each division are pooled and ranked ${ordinalRange(d + 1, fieldSize)} by the tie-breaking rules.`,
+      );
+    }
   } else {
     // Top two per division: winners take the first tier, runners-up the next.
     lines.push(`The winners of each division are ranked ${ordinalRange(1, d)}, by the tie-breaking rules below.`);

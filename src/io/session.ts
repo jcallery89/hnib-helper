@@ -1,4 +1,5 @@
 import type { Dataset } from "./dataset.ts";
+import { defaultBallotSyncConfig, type BallotSyncConfig } from "./ballotSync.ts";
 
 // Multi-event browser storage. Each event is saved under its own key, with a
 // lightweight index for the switcher and a pointer to the active event. All
@@ -7,6 +8,7 @@ const PREFIX = "hnib-tournament-expert";
 const INDEX_KEY = `${PREFIX}/events`;
 const ACTIVE_KEY = `${PREFIX}/active`;
 const LEGACY_KEY = `${PREFIX}/dataset`; // single-event storage from before
+const BALLOT_KEY = `${PREFIX}/ballot-sync`; // global ballot auto-sync settings
 const dataKey = (id: string) => `${PREFIX}/event/${id}`;
 
 export interface EventIndexEntry {
@@ -101,6 +103,28 @@ export function clearAllSessions(): void {
     localStorage.removeItem(LEGACY_KEY);
   } catch {
     /* noop */
+  }
+}
+
+/**
+ * Ballot auto-sync settings are global (one WordPress endpoint serves every
+ * event; the target table is derived per event), so they live under their own
+ * key rather than inside any one Dataset.
+ */
+export function loadBallotConfig(): BallotSyncConfig {
+  try {
+    const raw = localStorage.getItem(BALLOT_KEY);
+    return raw ? { ...defaultBallotSyncConfig, ...(JSON.parse(raw) as Partial<BallotSyncConfig>) } : { ...defaultBallotSyncConfig };
+  } catch {
+    return { ...defaultBallotSyncConfig };
+  }
+}
+
+export function saveBallotConfig(cfg: BallotSyncConfig): void {
+  try {
+    localStorage.setItem(BALLOT_KEY, JSON.stringify(cfg));
+  } catch {
+    /* storage unavailable */
   }
 }
 

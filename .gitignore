@@ -2,3 +2,8 @@ node_modules
 dist
 *.local
 .DS_Store
+# Throwaway deploy bundles generated to hand off to the user
+hnib-tournament-build.zip
+
+# Youth player photos + generated manifest - public repo, never commit (docs/HEADSHOTS.md)
+public/headshots/

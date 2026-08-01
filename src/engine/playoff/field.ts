@@ -22,16 +22,26 @@ export interface PlayoffField {
 }
 
 export interface FieldOptions extends ContextOptions {
-  fieldSize?: number; // default 8
+  fieldSize?: number; // overrides event.fieldSize
+}
+
+/** The playoff field size for an event: explicit override, else event, else 8. */
+export function fieldSizeFor(event: HnibEvent, override?: number): number {
+  return override ?? event.fieldSize ?? 8;
 }
 
 /**
  * Build the seeded playoff field for an event.
  *
- * Seeding: the division winners take the top tier of seeds, the runners-up the
- * next tier, each tier ranked among itself by the HNIB tie-breaking procedure
- * (so 2 divisions -> seeds 1-2 then 3-4; 3 divisions -> 1-3 then 4-6). Wildcards
- * are the best of the rest across all divisions, by the same procedure.
+ * Seeding by rule:
+ * - jrhigh_top2_per_division (Sophomore): division winners, then runners-up, then
+ *   wildcards fill the rest (3 divisions -> 1-3, 4-6, then 7-8).
+ * - jrhigh_winners_next_two (Jr. High): division winners take the top seeds, then
+ *   the next two teams from each division are POOLED and ranked for the remaining
+ *   seeds (2 divisions, 6 teams -> 1-2 winners, 3-6 the four next-up teams). No
+ *   wildcards - each division is capped.
+ * - soph_division_winners (legacy): winners only, then wildcards.
+ * Every tier is ranked by the HNIB tie-breaking procedure.
  */
 export function buildPlayoffField(
   event: HnibEvent,
@@ -40,7 +50,7 @@ export function buildPlayoffField(
   games: Game[],
   opts: FieldOptions = {},
 ): PlayoffField {
-  const fieldSize = opts.fieldSize ?? 8;
+  const fieldSize = fieldSizeFor(event, opts.fieldSize);
   const warnings: string[] = [];
 
   const overall = computeStandings(teams, games, event.pointSystem);
@@ -66,11 +76,26 @@ export function buildPlayoffField(
     divisionStandings.set(div.id, rankStandings(subset, tiebreakProcedure, ctx));
   }
 
-  // 2. Auto-qualifier tiers by event rule.
-  const autoTiers: string[][] =
-    event.seedingRule === "soph_division_winners"
-      ? [collectByRank(divisionStandings, [1])]
-      : [collectByRank(divisionStandings, [1]), collectByRank(divisionStandings, [2])];
+  // 2. Auto-qualifier tiers by event rule, plus whether wildcards fill the rest.
+  const d = divisions.length;
+  let autoTiers: string[][];
+  let allowWildcards: boolean;
+  if (event.seedingRule === "soph_division_winners") {
+    autoTiers = [collectByRank(divisionStandings, [1])];
+    allowWildcards = true;
+  } else if (event.seedingRule === "jrhigh_winners_next_two") {
+    // Winners first; then the next N per division (the rest of the field) pooled
+    // into one ranked tier. No wildcards, so a division's lower teams cannot
+    // bump another division's qualifiers.
+    const perDiv = d > 0 ? Math.max(0, Math.floor((fieldSize - d) / d)) : 0;
+    const nextRanks: number[] = [];
+    for (let r = 2; r <= 1 + perDiv; r++) nextRanks.push(r);
+    autoTiers = [collectByRank(divisionStandings, [1]), collectByRank(divisionStandings, nextRanks)];
+    allowWildcards = false;
+  } else {
+    autoTiers = [collectByRank(divisionStandings, [1]), collectByRank(divisionStandings, [2])];
+    allowWildcards = true;
+  }
 
   const seeds: PlayoffSeed[] = [];
   const taken = new Set<string>();
@@ -89,17 +114,19 @@ export function buildPlayoffField(
     }
   }
 
-  // 3. Wildcards: best of the rest across all divisions.
-  const rest = overall.filter((s) => !taken.has(s.teamId));
-  const rankedRest = rankStandings(rest, tiebreakProcedure, ctx);
-  for (const s of rankedRest) {
-    if (nextSeed > fieldSize) break;
-    seeds.push({
-      seed: nextSeed++,
-      teamId: s.teamId,
-      source: "wildcard",
-      notes: s.tieBreakNotes,
-    });
+  // 3. Wildcards: best of the rest across all divisions (rules that allow them).
+  if (allowWildcards) {
+    const rest = overall.filter((s) => !taken.has(s.teamId));
+    const rankedRest = rankStandings(rest, tiebreakProcedure, ctx);
+    for (const s of rankedRest) {
+      if (nextSeed > fieldSize) break;
+      seeds.push({
+        seed: nextSeed++,
+        teamId: s.teamId,
+        source: "wildcard",
+        notes: s.tieBreakNotes,
+      });
+    }
   }
 
   if (seeds.length < fieldSize) {

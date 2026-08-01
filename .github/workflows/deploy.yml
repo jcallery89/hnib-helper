@@ -1,0 +1,62 @@
+name: Build and deploy to SiteGround
+
+# Auto-deploys the built site to SiteGround over FTPS whenever the working
+# branch updates, so no manual File Manager upload is needed. Can also be run
+# by hand from the Actions tab (workflow_dispatch).
+#
+# ONE-TIME SETUP (GitHub -> repo Settings -> Secrets and variables -> Actions):
+#   FTP_SERVER    - SiteGround FTP hostname (Site Tools -> Site -> FTP Accounts)
+#   FTP_USERNAME  - the FTP account username
+#   FTP_PASSWORD  - the FTP account password
+# Create the FTP account with its directory set to the tournament folder
+# (e.g. public_html/tournament). Then SERVER_DIR below can stay "./".
+
+# Only the canonical branch deploys. Older session branches were merged into
+# it on 2026-08-01; deploying from one of them would put a stale build (with
+# whole tabs missing) on the live site.
+on:
+  push:
+    branches:
+      - claude/all-star-ballot-system-pzj8x1
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Expose the FTP host as an env var so the deploy step can check whether the
+    # secrets have been set up yet (secrets cannot be read directly in an `if`).
+    env:
+      FTP_SERVER: ${{ secrets.FTP_SERVER }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Skip deploy until FTP secrets are set
+        if: ${{ env.FTP_SERVER == '' }}
+        run: echo "FTP secrets not set yet - built successfully, skipping upload. Add FTP_SERVER / FTP_USERNAME / FTP_PASSWORD in repo Settings -> Secrets to enable auto-deploy."
+
+      - name: Deploy dist/ to SiteGround over FTPS
+        if: ${{ env.FTP_SERVER != '' }}
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: ./dist/
+          # If the FTP account does NOT open directly in the tournament folder,
+          # set this to the path, e.g. "public_html/tournament/".
+          server-dir: "./"

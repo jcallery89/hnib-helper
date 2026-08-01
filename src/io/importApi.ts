@@ -1,6 +1,7 @@
 import type { Dataset } from "./dataset.ts";
 import type { Division, Game, GameRound, Team } from "../engine/types.ts";
 import { DEFAULT_POINT_SYSTEM } from "../engine/pointSystem.ts";
+import { extractPlayoffSlots } from "./importPlayoffApi.ts";
 
 export interface ApiImportSummary {
   teamCount: number;
@@ -123,6 +124,13 @@ export function importApiData(
     divisions = [{ id: "unassigned", eventId, name: "Unassigned", teamIds: teams.map((t) => t.id) }];
   }
 
+  // Default the playoff format by division count (operator can override in Setup;
+  // re-syncs preserve their choice). Two divisions reads as Jr. High (6-team,
+  // pooled next-two); anything else as Sophomore (8-team, winners + runners-up +
+  // wildcards).
+  const realDivisions = divisions.filter((d) => d.id !== "unassigned" && d.teamIds.length > 0).length;
+  const jrHigh = realDivisions === 2;
+
   const dataset: Dataset = {
     event: {
       id: eventId,
@@ -131,7 +139,8 @@ export function importApiData(
       venues: uniqueLocations(games),
       format: "festival",
       hasPlayoffBracket: true,
-      seedingRule: "jrhigh_top2_per_division",
+      seedingRule: jrHigh ? "jrhigh_winners_next_two" : "jrhigh_top2_per_division",
+      fieldSize: jrHigh ? 6 : 8,
       pointSystem: { ...DEFAULT_POINT_SYSTEM },
     },
     divisions,
@@ -140,6 +149,10 @@ export function importApiData(
   };
 
   if (teams.length === 0) warnings.push("No teams were found in the schedule JSON.");
+
+  // Pull playoff game times from the same feed so the bracket shows them.
+  const slots = extractPlayoffSlots(scheduleJson, dataset.event.fieldSize ?? 8).byCell;
+  if (Object.keys(slots).length) dataset.playoffSchedule = slots;
 
   return {
     dataset,

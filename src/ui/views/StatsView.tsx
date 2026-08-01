@@ -4,6 +4,7 @@ import type { Player, PlayerSummary } from "../../engine/types.ts";
 import { ballotPosition } from "../../engine/ballot/ballot.ts";
 import { playerSummaries } from "../state/store.ts";
 import { downloadFile } from "../../io/session.ts";
+import { buildBallotRoster, ballotRosterCsv, ballotRosterSql, defaultBallotTable } from "../../io/ballotExport.ts";
 
 interface Props {
   dataset: Dataset;
@@ -63,6 +64,16 @@ export function StatsView({ dataset, update }: Props) {
     downloadFile(`${dataset.event.year}-all-star-pool.csv`, [header.join(","), ...lines].join("\n"), "text/csv");
   }
 
+  function exportBallotRoster(kind: "csv" | "sql") {
+    const rows = buildBallotRoster(dataset, summaries);
+    const table = defaultBallotTable(dataset.event);
+    if (kind === "csv") {
+      downloadFile(`${dataset.event.year}-ballot-roster.csv`, ballotRosterCsv(rows), "text/csv");
+    } else {
+      downloadFile(`${dataset.event.year}-ballot-roster.sql`, ballotRosterSql(rows, table), "text/plain");
+    }
+  }
+
   if ((dataset.players ?? []).length === 0) {
     return (
       <section>
@@ -106,6 +117,21 @@ export function StatsView({ dataset, update }: Props) {
             </div>
           </>
         )}
+      </div>
+
+      <div class="card">
+        <p class="section-title">All-Star Ballot (Gravity Forms)</p>
+        <p class="note">
+          Refresh the roster table behind the Gravity Forms All-Star ballot. Exports every player
+          on this event - team, jersey, position, and current stats - shaped for the ballot's
+          Populate Anything source. The SQL pastes straight into phpMyAdmin; the CSV suits a
+          CSV-to-table import. Re-run any time stats change. See docs/ALL-STAR-BALLOT.md for the
+          one-time form setup.
+        </p>
+        <div class="toolbar">
+          <button class="btn secondary" onClick={() => exportBallotRoster("sql")}>Ballot roster (SQL)</button>
+          <button class="btn secondary" onClick={() => exportBallotRoster("csv")}>Ballot roster (CSV)</button>
+        </div>
       </div>
 
       <div class="card">
