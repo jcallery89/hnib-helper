@@ -1,0 +1,52 @@
+name: Missing headshots report
+
+# Builds a by-team listing of players whose headshot is absent from the live
+# site's manifest, and publishes it as a short-lived workflow artifact.
+# Contents are roster-public fields only (team, jersey, name, player ID) -
+# no birth dates and no photos - and retention is 1 day.
+
+on:
+  workflow_dispatch:
+    inputs:
+      current_event:
+        description: Event ID to report on
+        required: false
+        default: 3171c084-927e-4336-bba8-41939699c738
+      prior_event:
+        description: Prior event ID used to flag possible matches
+        required: false
+        default: eb6bad98-2b24-4d9d-a191-6d9cae2ae837
+      manifest_url:
+        description: URL of the live site's headshots manifest
+        required: false
+        default: https://jamiecallery.com/tournament/headshots/manifest.js
+  push:
+    paths:
+      - ".github/workflows/missing-report.yml"
+      - "scripts/missing_report.py"
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    env:
+      CURRENT_EVENT: ${{ inputs.current_event || '3171c084-927e-4336-bba8-41939699c738' }}
+      PRIOR_EVENT: ${{ inputs.prior_event || 'eb6bad98-2b24-4d9d-a191-6d9cae2ae837' }}
+      MANIFEST_URL: ${{ inputs.manifest_url || 'https://jamiecallery.com/tournament/headshots/manifest.js' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build report
+        run: python scripts/missing_report.py "$CURRENT_EVENT" "$PRIOR_EVENT" --manifest-url "$MANIFEST_URL" --out missing-report
+
+      - name: Publish as short-lived artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: missing-headshots-by-team
+          path: missing-report/
+          retention-days: 1
