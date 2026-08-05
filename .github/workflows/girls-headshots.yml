@@ -61,13 +61,18 @@ jobs:
           sudo apt-get update -qq && sudo apt-get install -y -qq lftp
           rm -f out-headshots/recovery-summary.json
           echo "uploading $(ls out-headshots/*.jpg 2>/dev/null | wc -l) photos"
-          lftp -u "$FTP_USERNAME,$FTP_PASSWORD" -e "
-            set ftp:ssl-force true;
-            set ftp:ssl-protect-data true;
-            set cmd:fail-exit true;
-            mirror -R --no-perms out-headshots headshots;
-            cls -1 headshots > server-listing.txt;
-            bye" "$FTP_SERVER"
+          # TLS settings must be in place BEFORE open, so the server is opened
+          # inside the script, not on the command line.
+          cat > job.lftp <<EOF
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set cmd:fail-exit true
+          open -u "$FTP_USERNAME","$FTP_PASSWORD" "$FTP_SERVER"
+          mirror -R --no-perms out-headshots headshots
+          cls -1 headshots > server-listing.txt
+          bye
+          EOF
+          lftp -f job.lftp
 
       - name: Rebuild manifest.js from the server's full folder
         if: ${{ env.FTP_SERVER != '' }}
@@ -87,9 +92,12 @@ jobs:
               f.write("window.HNIB_HEADSHOTS=" + json.dumps(manifest) + ";")
           print(len(ids), "manifest entries (full server folder)")
           EOF
-          lftp -u "$FTP_USERNAME,$FTP_PASSWORD" -e "
-            set ftp:ssl-force true;
-            set ftp:ssl-protect-data true;
-            set cmd:fail-exit true;
-            put -O headshots manifest.js;
-            bye" "$FTP_SERVER"
+          cat > manifest.lftp <<EOF
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set cmd:fail-exit true
+          open -u "$FTP_USERNAME","$FTP_PASSWORD" "$FTP_SERVER"
+          put -O headshots manifest.js
+          bye
+          EOF
+          lftp -f manifest.lftp
