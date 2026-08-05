@@ -63,9 +63,13 @@ jobs:
           echo "uploading $(ls out-headshots/*.jpg 2>/dev/null | wc -l) photos"
           # TLS settings must be in place BEFORE open, so the server is opened
           # inside the script, not on the command line.
+          # SiteGround's FTP cert is issued for the shared server name, not the
+          # account's FTP hostname, so hostname verification cannot pass; the
+          # deploy action accepts the same cert (loose mode). Transfer stays TLS.
           cat > job.lftp <<EOF
           set ftp:ssl-force true
           set ftp:ssl-protect-data true
+          set ssl:verify-certificate no
           set cmd:fail-exit true
           open -u "$FTP_USERNAME","$FTP_PASSWORD" "$FTP_SERVER"
           mirror -R --no-perms out-headshots headshots
@@ -95,6 +99,7 @@ jobs:
           cat > manifest.lftp <<EOF
           set ftp:ssl-force true
           set ftp:ssl-protect-data true
+          set ssl:verify-certificate no
           set cmd:fail-exit true
           open -u "$FTP_USERNAME","$FTP_PASSWORD" "$FTP_SERVER"
           put -O headshots manifest.js
