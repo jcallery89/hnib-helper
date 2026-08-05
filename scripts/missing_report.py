@@ -30,10 +30,17 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import recover_headshots as rh
 
 
-def manifest_ids(url):
-    req = urllib.request.Request(url, headers=rh.UA)
-    with urllib.request.urlopen(req, timeout=25) as r:
-        text = r.read().decode("utf-8", "replace")
+def manifest_ids(source):
+    """Photo IDs from manifest.js - a local file path (preferred; fetch it
+    over FTPS, the site's bot protection intermittently blocks plain HTTP
+    from CI) or an http(s) URL."""
+    if re.match(r"^https?://", source):
+        req = urllib.request.Request(source, headers=rh.UA)
+        with urllib.request.urlopen(req, timeout=25) as r:
+            text = r.read().decode("utf-8", "replace")
+    else:
+        with open(source, encoding="utf-8") as f:
+            text = f.read()
     m = re.search(r"window\.HNIB_HEADSHOTS\s*=\s*(\{.*\})\s*;?\s*$", text, re.S)
     if not m:
         raise SystemExit("manifest.js did not parse")
@@ -65,11 +72,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("current_event")
     ap.add_argument("prior_event")
-    ap.add_argument("--manifest-url", required=True)
+    ap.add_argument("--manifest", required=True, help="manifest.js path or URL")
     ap.add_argument("--out", default="missing-report")
     args = ap.parse_args()
 
-    have = manifest_ids(args.manifest_url)
+    have = manifest_ids(args.manifest)
     print(f"site manifest: {len(have)} photos")
     teams = team_rosters(args.current_event)
     prior_by_name = {}
