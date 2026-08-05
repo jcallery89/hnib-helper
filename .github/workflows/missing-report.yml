@@ -1,9 +1,11 @@
 name: Missing headshots report
 
-# Builds a by-team listing of players whose headshot is absent from the live
-# site's manifest, and publishes it as a short-lived workflow artifact.
-# Contents are roster-public fields only (team, jersey, name, player ID) -
-# no birth dates and no photos - and retention is 1 day.
+# Builds a by-team package of players whose headshot is absent from the live
+# site's manifest: a listing plus each player's name-matched prior-event
+# candidate photo (from the public Tourno bucket) for identity verification.
+# Published as a workflow artifact with 1-day retention; contents beyond the
+# bucket photos are roster-public fields (team, jersey, name, player ID) -
+# no birth dates.
 
 on:
   workflow_dispatch:
