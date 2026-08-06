@@ -61,6 +61,11 @@ jobs:
       - name: Build report
         run: python scripts/missing_report.py "$CURRENT_EVENT" "$PRIOR_EVENT" --manifest manifest.js --out missing-report
 
+      # Same roster-public fields the event app lists (name, jersey, team) -
+      # no birth dates, no IDs, no photos.
+      - name: Print check-in listing
+        run: cat missing-report/by-team/*.txt
+
       - name: Publish as short-lived artifact
         uses: actions/upload-artifact@v4
         with:
