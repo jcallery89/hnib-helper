@@ -28,7 +28,7 @@ $HNIB_EVENTS = array(
     ),
     array(
         'label' => 'Girls Major Showcase 2026',
-        'event_id' => 'FILL-ME-girls-major-event-id',
+        'event_id' => '3171c084-927e-4336-bba8-41939699c738',
         'table' => 'gf_girlsmajor_rosters',
     ),
 );

@@ -30,10 +30,9 @@ after ballots are submitted without corrupting anything.
 ## Setup (one time, about 20 minutes)
 
 1. Open `hnib-ballot-sync.php` and set `HNIB_SYNC_KEY` to a long random
-   secret (the script refuses to run with the default). Fill in each
-   event's id in the `$HNIB_EVENTS` list at the top (the Boys Major 2026 id
-   ships filled in; replace the girls FILL-ME with the Girls Major event id
-   from hnib.app).
+   secret (the script refuses to run with the default). Both 2026 event ids
+   (Boys and Girls Major) ship filled in; adjust the `$HNIB_EVENTS` list at
+   the top for future events.
 2. Upload the file to the WordPress ROOT folder - the one containing
    `wp-load.php` (on SiteGround usually `public_html/`). Note this is the
    WordPress site, not the `/tournament` tool folder.

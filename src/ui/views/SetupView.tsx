@@ -21,6 +21,7 @@ interface Props {
 // Event ids confirmed by JC. The first entry is prefilled as the default.
 const KNOWN_EVENTS = [
   { name: "Boys Major Showcase 2026", id: "ebc5c5b9-9a1e-44f7-a6b8-466aefac97ee" },
+  { name: "Girls Major Showcase 2026", id: "3171c084-927e-4336-bba8-41939699c738" },
   { name: "Jr. High Festival 2025", id: "63655fc1-1db9-46a5-a948-44f63d297810" },
 ];
 const DEFAULT_EVENT_ID = KNOWN_EVENTS[0].id;
