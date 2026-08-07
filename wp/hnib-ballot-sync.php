@@ -230,14 +230,7 @@ function hnib_sync_event($eventId, $table) {
         }
     }
 
-    if (count($rows) === 0) {
-        return array(
-            'error' => 'No players parsed; existing table left untouched.',
-            'skipped_teams' => $skipped,
-        );
-    }
-
-    // ---- Refresh the table (only reached with a full row set in hand) ------
+    // ---- Refresh the table ------------------------------------------------
 
     $charset = $wpdb->get_charset_collate();
     $createSql = "CREATE TABLE IF NOT EXISTS `$table` (
@@ -284,6 +277,30 @@ function hnib_sync_event($eventId, $table) {
     }
 
     $now = current_time('mysql');
+
+    if (count($rows) === 0) {
+        if (count($skipped) > 0) {
+            // Team fetches failed - could be transient, keep what the table has.
+            return array(
+                'error' => 'No players parsed; team fetches failed, existing rows left untouched.',
+                'skipped_teams' => $skipped,
+            );
+        }
+        // Authoritative: every team fetched fine and none has a roster yet.
+        // Clear the table so a stale prior-year table cannot keep serving the
+        // ballot; rows fill in as soon as rosters are posted.
+        $wpdb->query("DELETE FROM `$table`");
+        return array(
+            'ok' => true,
+            'teams' => count($teams),
+            'players' => 0,
+            'skipped_teams' => array(),
+            'note' => 'Event has no rostered players yet; table cleared.',
+            'table_rebuilt' => $rebuilt,
+            'updated_at' => $now,
+        );
+    }
+
     $wpdb->query('START TRANSACTION');
     $wpdb->query("DELETE FROM `$table`");
     $inserted = 0;
