@@ -1,19 +1,27 @@
-# Dynamic Gravity Forms ballot - Boys Major Showcase
+# Dynamic Gravity Forms ballots - Boys and Girls Major Showcases
 
 Coaches see live player stats in the ballot dropdowns. The pieces:
 
 - `hnib-ballot-sync.php` - server-side sync. Pulls every roster and stat line
-  from the Tourno API (hnib.app) and refreshes the `gf_boysmajor_rosters`
-  MySQL table. Runs on the WordPress server, so browser CORS does not apply.
-- `boys-major-ballot-form.json` - importable Gravity Forms form. Nomination
-  style, same 3/2/1 structure as the Sophomore ballot: the coach picks their
-  Team, and the player dropdowns (#1-#3 Forward, #1-#2 Defenseman, #1
-  Goalie) then show only that team's roster, best-first with stats in every
-  label. Wired with GP Populate Anything (GPPA, already installed - the
-  Sophomore ballot uses it) reading the table above, so choices refresh on
-  every page load. Player dropdowns are empty until a team is chosen - that
-  is the chaining working, not a bug. Regenerate with
+  from the Tourno API (hnib.app) for EVERY event listed at the top of the
+  file and refreshes each event's MySQL table (`gf_boysmajor_rosters`,
+  `gf_girlsmajor_rosters`). One run covers both showcases, so the same cron
+  serves both ballots. Runs on the WordPress server, so browser CORS does
+  not apply. An event whose id is still FILL-ME is skipped, and the JSON
+  response reports each event separately.
+- `boys-major-ballot-form.json` / `girls-major-ballot-form.json` -
+  importable Gravity Forms forms, one per showcase. Nomination style, same
+  3/2/1 structure as the Sophomore ballot: the coach picks their Team, and
+  the player dropdowns (#1-#3 Forward, #1-#2 Defenseman, #1 Goalie) then
+  show only that team's roster, best-first with stats in every label. Wired
+  with GP Populate Anything (GPPA, already installed - the Sophomore ballot
+  uses it) reading that event's table, so choices refresh on every page
+  load. Player dropdowns are empty until a team is chosen - that is the
+  chaining working, not a bug. Regenerate both with
   `node wp/generate-form.mjs` if edits are needed.
+  The Girls Major final selection is three teams' worth (36 F, 18 D, 6 G);
+  that call happens at the directors' stage in the tool's Ballot tab, so
+  the coach-facing form stays 3/2/1.
 
 Because GPPA stores the choice VALUE in entries - here a stable
 `Last, First (Team #9)` key, not the stat label - stats can keep updating
@@ -22,8 +30,10 @@ after ballots are submitted without corrupting anything.
 ## Setup (one time, about 20 minutes)
 
 1. Open `hnib-ballot-sync.php` and set `HNIB_SYNC_KEY` to a long random
-   secret (the script refuses to run with the default). `HNIB_EVENT_ID` is
-   already the 2026 Boys Major Showcase.
+   secret (the script refuses to run with the default). Fill in each
+   event's id in the `$HNIB_EVENTS` list at the top (the Boys Major 2026 id
+   ships filled in; replace the girls FILL-ME with the Girls Major event id
+   from hnib.app).
 2. Upload the file to the WordPress ROOT folder - the one containing
    `wp-load.php` (on SiteGround usually `public_html/`). Note this is the
    WordPress site, not the `/tournament` tool folder.

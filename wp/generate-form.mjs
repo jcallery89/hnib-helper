@@ -1,7 +1,7 @@
-// Generates wp/boys-major-ballot-form.json - a ready-to-import Gravity Forms
-// form for the Boys Major Showcase coaches ballot, with every player dropdown
-// wired to GP Populate Anything reading the gf_boysmajor_rosters table that
-// wp/hnib-ballot-sync.php keeps current.
+// Generates the ready-to-import Gravity Forms coaches ballots (Boys and
+// Girls Major Showcases), with every player dropdown wired to GP Populate
+// Anything reading the roster table that wp/hnib-ballot-sync.php keeps
+// current for that event.
 //
 // Field property sets are modeled on the working Sophomore All-Star Ballot
 // export (GF 2.10.4) so the import lands cleanly. Regenerate with:
@@ -11,8 +11,13 @@ import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-const TABLE = "gf_boysmajor_rosters";
+const EVENTS = [
+  { title: "Boys Major Showcase Coaches Ballot 2026", table: "gf_boysmajor_rosters", file: "boys-major-ballot-form.json" },
+  { title: "Girls Major Showcase Coaches Ballot 2026", table: "gf_girlsmajor_rosters", file: "girls-major-ballot-form.json" },
+];
+
 const FORM_ID = 1; // remapped by Gravity Forms on import
+let TABLE = EVENTS[0].table; // set per event in the build loop below
 
 // Deterministic stand-ins for the editor-generated ids in the sample export.
 const layoutGroupId = (n) => n.toString(16).padStart(8, "0");
@@ -150,54 +155,56 @@ function gppaSelect(label, placeholder, gppa) {
 // Nomination ballot, same 3/2/1 structure as the Sophomore form: the coach
 // picks their team, and every player dropdown is chained to that choice with
 // a GPPA field filter (team_name is gf_field:N) plus the position filter.
-const teamField = gppaSelect("Team", "Team", {
-  required: true,
-  orderBy: "team_name",
-  orderDir: "asc",
-  templates: { value: "team_name", label: "team_name" },
-});
-teamField.description = "Select the team you coached. The player lists below show that team's roster.";
-
-const playerSelect = (label, pos, orderBy, orderDir, required) =>
-  gppaSelect(label, label, {
-    required,
-    filters: [[
-      { property: "team_name", operator: "is", value: `gf_field:${teamField.id}`, uuid: uuid() },
-      { property: "position", operator: "is", value: pos, uuid: uuid() },
-    ]],
-    orderBy,
-    orderDir,
-    templates: { value: "player_key", label: "display" },
-  });
-
-const fields = [
-  textField("Coach's Name", { required: true }),
-  textField("Cell #", {
+function buildFields() {
+  const teamField = gppaSelect("Team", "Team", {
     required: true,
-    description: "Please provide your cell # so we can reach out if we need any clarification.",
-  }),
-  teamField,
-  sectionField(
-    "Forwards",
-    "Nominate your team's top 3 forwards, best first. Stats in each list update automatically as games are played.",
-  ),
-  playerSelect("#1 Forward", "F", "points", "desc", true),
-  playerSelect("#2 Forward", "F", "points", "desc", false),
-  playerSelect("#3 Forward", "F", "points", "desc", false),
-  sectionField("Defense", "Nominate your team's top 2 defensemen, best first."),
-  playerSelect("#1 Defenseman", "D", "points", "desc", true),
-  playerSelect("#2 Defenseman", "D", "points", "desc", false),
-  sectionField("Goaltender", "Nominate your team's top goaltender."),
-  playerSelect("#1 Goalie", "G", "svpct", "desc", true),
-  textareaField("Important Notes", {
-    description:
-      "Injuries, position changes, or players you would take with an asterisk. " +
-      "Anything the directors should know before the final roster is set.",
-  }),
-];
+    orderBy: "team_name",
+    orderDir: "asc",
+    templates: { value: "team_name", label: "team_name" },
+  });
+  teamField.description = "Select the team you coached. The player lists below show that team's roster.";
 
-const form = {
-  title: "Boys Major Showcase Coaches Ballot 2026",
+  const playerSelect = (label, pos, orderBy, orderDir, required) =>
+    gppaSelect(label, label, {
+      required,
+      filters: [[
+        { property: "team_name", operator: "is", value: `gf_field:${teamField.id}`, uuid: uuid() },
+        { property: "position", operator: "is", value: pos, uuid: uuid() },
+      ]],
+      orderBy,
+      orderDir,
+      templates: { value: "player_key", label: "display" },
+    });
+
+  return [
+    textField("Coach's Name", { required: true }),
+    textField("Cell #", {
+      required: true,
+      description: "Please provide your cell # so we can reach out if we need any clarification.",
+    }),
+    teamField,
+    sectionField(
+      "Forwards",
+      "Nominate your team's top 3 forwards, best first. Stats in each list update automatically as games are played.",
+    ),
+    playerSelect("#1 Forward", "F", "points", "desc", true),
+    playerSelect("#2 Forward", "F", "points", "desc", false),
+    playerSelect("#3 Forward", "F", "points", "desc", false),
+    sectionField("Defense", "Nominate your team's top 2 defensemen, best first."),
+    playerSelect("#1 Defenseman", "D", "points", "desc", true),
+    playerSelect("#2 Defenseman", "D", "points", "desc", false),
+    sectionField("Goaltender", "Nominate your team's top goaltender."),
+    playerSelect("#1 Goalie", "G", "svpct", "desc", true),
+    textareaField("Important Notes", {
+      description:
+        "Injuries, position changes, or players you would take with an asterisk. " +
+        "Anything the directors should know before the final roster is set.",
+    }),
+  ];
+}
+
+const buildForm = (title, fields) => ({
+  title,
   description: "",
   labelPlacement: "top_label",
   descriptionPlacement: "below",
@@ -279,7 +286,7 @@ const form = {
       name: "Admin Notification",
       event: "form_submission",
       toType: "email",
-      subject: "Boys Major Showcase Coaches Ballot",
+      subject: title,
       message: "{all_fields}",
       service: "wordpress",
       toEmail: "{admin_email}",
@@ -296,9 +303,15 @@ const form = {
       enableAttachments: false,
     },
   ],
-};
+});
 
-const out = { 0: form, version: "3.0.0" };
-const path = join(dirname(fileURLToPath(import.meta.url)), "boys-major-ballot-form.json");
-writeFileSync(path, JSON.stringify(out));
-console.log(`Wrote ${path}: ${fields.length} fields, nextFieldId ${nextId}`);
+for (const ev of EVENTS) {
+  TABLE = ev.table;
+  nextId = 1;
+  groupCounter = 1;
+  const fields = buildFields();
+  const out = { 0: buildForm(ev.title, fields), version: "3.0.0" };
+  const path = join(dirname(fileURLToPath(import.meta.url)), ev.file);
+  writeFileSync(path, JSON.stringify(out));
+  console.log(`Wrote ${path}: ${fields.length} fields, nextFieldId ${nextId}`);
+}
