@@ -13,6 +13,21 @@ export const TIEBREAK_RULES: string[] = [
   "Director discretion.",
 ];
 
+// The Girls Major Showcase order: Head-to-Head comes before Most Wins.
+export const TIEBREAK_RULES_GIRLS_MAJOR: string[] = [
+  "Points earned during round-robin games.",
+  "Head to Head competition during round-robin games (only if two teams are tied; if three or more teams are tied, this step is skipped).",
+  "Most Wins during round-robin games.",
+  "Fewest Goals Allowed during the round-robin games.",
+  "Most Goals For during the round-robin games.",
+  "Coin toss.",
+];
+
+/** The published tie-breaking list for an event, by its tiebreakRule. */
+export function tiebreakRulesFor(event: Pick<HnibEvent, "tiebreakRule">): string[] {
+  return event.tiebreakRule === "girls_major" ? TIEBREAK_RULES_GIRLS_MAJOR : TIEBREAK_RULES;
+}
+
 export interface PlayoffSeedingRules {
   heading: string;
   seedingLines: string[];
@@ -58,7 +73,7 @@ export function playoffSeedingRules(
     }
   }
 
-  return { heading: "Playoff Seeding", seedingLines: lines, tiebreakRules: TIEBREAK_RULES };
+  return { heading: "Playoff Seeding", seedingLines: lines, tiebreakRules: tiebreakRulesFor(event) };
 }
 
 function ordinal(n: number): string {

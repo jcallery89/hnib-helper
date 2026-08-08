@@ -23,6 +23,8 @@ export interface HnibEvent {
   seedingRule: SeedingRule;
   /** Number of teams that make the playoff field. Default 8; Jr. High is 6. */
   fieldSize?: number;
+  /** Tie-breaking order. Default "standard"; the Girls Major runs H2H first. */
+  tiebreakRule?: TiebreakRule;
   pointSystem: PointSystem;
 }
 
@@ -44,6 +46,13 @@ export interface Team {
   /** Tourno API team id, when the team came from an hnib.app sync. */
   apiId?: string;
 }
+
+/**
+ * Which tie-breaking order an event uses. "standard" is the shared Jr. High /
+ * Sophomore procedure (Most Wins before Head-to-Head); "girls_major" runs
+ * Head-to-Head first. Both keep H2H to exactly-two-team groups.
+ */
+export type TiebreakRule = "standard" | "girls_major";
 
 export type GameRound = "rr" | "prelim" | "qf" | "sf" | "final";
 export type GameStatus = "scheduled" | "final";

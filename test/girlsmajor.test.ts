@@ -51,6 +51,39 @@ describe("Girls Major 12-team seeding", () => {
   });
 });
 
+describe("Girls Major tiebreak order (H2H before wins)", () => {
+  // A and B tied on 4 points: A went 2-2 (2 wins), B went 1-1-2 (1 win, 2 ties)
+  // and BEAT A head-to-head. Standard order ranks A first (Most Wins); the
+  // Girls Major order ranks B first (Head-to-Head).
+  const two: Team[] = [
+    { id: "A", eventId: "gm", divisionId: "dx", name: "A" },
+    { id: "B", eventId: "gm", divisionId: "dx", name: "B" },
+    { id: "C", eventId: "gm", divisionId: "dx", name: "C" },
+    { id: "D", eventId: "gm", divisionId: "dx", name: "D" },
+  ];
+  const dx: Division[] = [{ id: "dx", eventId: "gm", name: "DX", teamIds: ["A", "B", "C", "D"] }];
+  const g = (h: string, a: string, hs: number, as: number): Game =>
+    ({ id: `t${gid++}`, divisionId: "dx", round: "rr", rink: null, slotStart: null, homeTeamId: h, awayTeamId: a, homeScore: hs, awayScore: as, status: "final", decidedBy: "regulation" });
+  const gamesTwo: Game[] = [
+    g("B", "A", 2, 1), // B beats A head-to-head
+    g("A", "C", 5, 0), // A: W
+    g("A", "D", 5, 0), // A: W -> A finishes 2W 2L, 4 pts
+    g("C", "A", 3, 0), // A: L
+    g("B", "C", 1, 1), // B: T
+    g("B", "D", 1, 1), // B: T
+    g("D", "B", 2, 0), // B: L -> B finishes 1W 2T 1L, 4 pts (C and D land on 3)
+  ];
+
+  it("ranks the head-to-head winner first under girls_major, the wins leader under standard", () => {
+    const base = { ...event, fieldSize: 4 };
+    const std = buildPlayoffField({ ...base, tiebreakRule: "standard" }, dx, two, gamesTwo);
+    const gm = buildPlayoffField({ ...base, tiebreakRule: "girls_major" }, dx, two, gamesTwo);
+    const top = (f: typeof std) => f.divisionStandings.get("dx")!.slice(0, 2).map((s) => s.teamId);
+    expect(top(std)).toEqual(["A", "B"]); // Most Wins first: A (2) over B (1)
+    expect(top(gm)).toEqual(["B", "A"]); // Head-to-Head first: B beat A
+  });
+});
+
 describe("12-team bracket", () => {
   const seeds: PlayoffSeed[] = Array.from({ length: 12 }, (_, i) => ({ seed: i + 1, teamId: `s${i + 1}`, source: "auto", notes: [] }));
 

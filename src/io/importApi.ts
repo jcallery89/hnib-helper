@@ -142,6 +142,7 @@ export function importApiData(
       hasPlayoffBracket: true,
       seedingRule: jrHigh ? "jrhigh_winners_next_two" : "jrhigh_top2_per_division",
       fieldSize: jrHigh ? 6 : girlsMajor ? 12 : 8,
+      tiebreakRule: girlsMajor ? "girls_major" : "standard",
       pointSystem: { ...DEFAULT_POINT_SYSTEM },
     },
     divisions,

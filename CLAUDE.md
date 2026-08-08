@@ -23,8 +23,11 @@ build/deploy and the design rationale in `.claude/plans/` if present.
     elim: seeds 1-4 bye; Round 1 is 8v9 / 5v12 / 7v10 / 6v11 feeding QFs
     1 v W(8v9), 4 v W(5v12), 2 v W(7v10), 3 v W(6v11).
     (`seedingRule: "jrhigh_top2_per_division"`, fieldSize 12)
-  - All events share the ONE tiebreak procedure below. Pooled tiers and wildcard
-    fills are all ranked by it.
+  - Jr. High and Sophomore share the ONE tiebreak procedure below. The Girls
+    Major uses its own order (`tiebreakRule: "girls_major"`): Head-to-Head
+    FIRST (still only when exactly two teams are tied), then Most Wins, fewest
+    Goals Allowed, most Goals For, coin toss. Pooled tiers and wildcard fills
+    are ranked by the event's procedure.
 
 ## Domain rules the engine encodes
 
