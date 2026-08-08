@@ -1,6 +1,7 @@
 import { useMemo, useState } from "preact/hooks";
 import type { Dataset } from "../../io/dataset.ts";
 import type { Analysis } from "../state/store.ts";
+import { scheduleCountWarnings } from "../../engine/standings.ts";
 import { buildPlayoffField, fieldSizeFor } from "../../engine/playoff/field.ts";
 import {
   forecastScenarios,
@@ -77,6 +78,15 @@ export function ScenariosView({ dataset, analysis }: Props) {
 
   const elimById = new Set(whatIf.pic.statuses.filter((s) => s.state === "eliminated").map((s) => s.teamId));
 
+  // Data sanity: a scored-but-not-final game or a team missing a scheduled game
+  // silently skews every call below, so surface schedule problems here loudly.
+  const dataWarnings = [
+    ...scheduleCountWarnings(dataset.teams, dataset.games),
+    ...dataset.games
+      .filter((g) => g.round === "rr" && g.status !== "final" && (g.homeScore !== null || g.awayScore !== null))
+      .map((g) => `DATA WARNING: ${name(g.homeTeamId)} vs ${name(g.awayTeamId)} carries a score but is not marked final. Its score is ignored until it goes final.`),
+  ];
+
   // Current picture from real results only (no hypotheticals): who is already
   // mathematically out, who is locked in, who is still alive.
   const outNow = forecast.statuses.filter((s) => s.state === "eliminated").map((s) => name(s.teamId));
@@ -85,6 +95,15 @@ export function ScenariosView({ dataset, analysis }: Props) {
 
   return (
     <section>
+      {dataWarnings.length > 0 && (
+        <div class="card">
+          {dataWarnings.map((w) => (
+            <p key={w} class="note" style={{ color: "var(--warn, #f0a500)", fontWeight: 600 }}>
+              {w}
+            </p>
+          ))}
+        </div>
+      )}
       <div class="card">
         <p class="section-title">Out of the Race</p>
         {!forecast.decided ? (
