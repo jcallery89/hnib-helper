@@ -12,6 +12,9 @@ export type BallotPosition = "F" | "D" | "G";
 
 export type BallotSelection = "roster" | "alternate";
 
+/** Invite lifecycle: sent, accepted, or declined. Absent = not invited yet. */
+export type InviteStatus = "invited" | "yes" | "no";
+
 export interface BallotState {
   /** Players nominated by a coach (or added by the directors). */
   nominatedIds?: string[];
@@ -19,6 +22,43 @@ export interface BallotState {
   selections?: Record<string, BallotSelection>;
   /** Per-player working notes (injury, position change, asterisk). */
   playerNotes?: Record<string, string>;
+  /** Invite/RSVP status per player id, for the selection waves. */
+  invites?: Record<string, InviteStatus>;
+  /** Final roster size per position (e.g. Girls Major: 36 F / 18 D / 6 G). */
+  targets?: { F: number; D: number; G: number };
+}
+
+/**
+ * Per-position invite arithmetic for the over-invite guard: confirmed and
+ * outstanding invites count against the target; declines free the spot.
+ */
+export interface InviteCount {
+  confirmed: number;
+  pending: number;
+  declined: number;
+  target: number | null;
+  /** confirmed + pending beyond the target; 0 when under or no target. */
+  over: number;
+}
+
+export function countInvites(
+  ballot: BallotState,
+  playerIdsInPosition: string[],
+  position: BallotPosition,
+): InviteCount {
+  const invites = ballot.invites ?? {};
+  let confirmed = 0;
+  let pending = 0;
+  let declined = 0;
+  for (const id of playerIdsInPosition) {
+    const s = invites[id];
+    if (s === "yes") confirmed++;
+    else if (s === "invited") pending++;
+    else if (s === "no") declined++;
+  }
+  const target = ballot.targets ? ballot.targets[position] : null;
+  const over = target !== null && target > 0 ? Math.max(0, confirmed + pending - target) : 0;
+  return { confirmed, pending, declined, target: target !== null && target > 0 ? target : null, over };
 }
 
 // Datasets saved before the nomination model may carry extra legacy keys
