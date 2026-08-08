@@ -51,7 +51,11 @@ export function extractPlayoffSlots(
 
     if (/semi/.test(d)) {
       if (num) set(`sf${num}`, slot);
-    } else if (/play-?in|prelim|quarter/.test(d)) {
+    } else if (/play-?in|prelim/.test(d)) {
+      // In a 12-team field the play-ins are Round 1 (pr cells) below the bye
+      // quarterfinals; in 6/8-team fields they ARE the first-round qf cells.
+      if (num) set(fieldSize === 12 ? `pr${num}` : `qf${num}`, slot);
+    } else if (/quarter/.test(d)) {
       if (num) set(`qf${num}`, slot);
     } else if (/final|championship/.test(d)) {
       set("final", slot);
@@ -72,7 +76,9 @@ export function extractPlayoffSlots(
   // Keep only the cells this field size actually has.
   const valid = fieldSize === 6
     ? new Set(["qf1", "qf2", "sf1", "sf2", "final"])
-    : new Set(["qf1", "qf2", "qf3", "qf4", "sf1", "sf2", "final"]);
+    : fieldSize === 12
+      ? new Set(["pr1", "pr2", "pr3", "pr4", "qf1", "qf2", "qf3", "qf4", "sf1", "sf2", "final"])
+      : new Set(["qf1", "qf2", "qf3", "qf4", "sf1", "sf2", "final"]);
   for (const k of Object.keys(byCell)) if (!valid.has(k)) delete byCell[k];
 
   return { byCell, warnings };

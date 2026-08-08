@@ -1,5 +1,5 @@
 import type { PlayoffSlot } from "./dataset.ts";
-import { qfPairings } from "../engine/playoff/bracket.ts";
+import { byePairings, qfPairings } from "../engine/playoff/bracket.ts";
 
 export interface PlayoffScheduleResult {
   /** Mapped slots keyed by bracket game id (qf1..final). */
@@ -34,7 +34,7 @@ export function parsePlayoffSchedule(
   text: string,
   opts: { fieldSize: number; eventKeyword: string; year: number },
 ): PlayoffScheduleResult {
-  const fieldSize: 6 | 8 = opts.fieldSize === 6 ? 6 : 8;
+  const fieldSize: 6 | 8 | 12 = opts.fieldSize === 6 ? 6 : opts.fieldSize === 12 ? 12 : 8;
   const warnings: string[] = [];
   const kw = opts.eventKeyword.toLowerCase();
   const rows = parseRows(text, opts.year).filter(
@@ -60,26 +60,36 @@ export function parsePlayoffSchedule(
     numToCell.set(r.num, cell.id);
   }
 
-  // 2) Semifinals: 8-team "W 45 vs W 46" (the semi those two QFs feed), or
-  //    6-team "Jr High 1st vs W 47" (the bye seed picks the semi).
-  for (const r of rows) {
-    if (isChampionship(r)) continue;
-    const hWin = winnerRef(r.home);
-    const aWin = winnerRef(r.away);
-    const hSeed = seedRef(r.home);
-    const aSeed = seedRef(r.away);
-    let cellId: string | undefined;
-    if (hWin != null && aWin != null) {
-      const f1 = pairs.find((p) => p.id === numToCell.get(hWin))?.feeds;
-      const f2 = pairs.find((p) => p.id === numToCell.get(aWin))?.feeds;
-      cellId = f1 && f1 === f2 ? f1 : undefined;
-    } else if ((hSeed != null && aWin != null) || (aSeed != null && hWin != null)) {
-      const bye = hSeed ?? aSeed;
-      cellId = bye === 1 ? "sf1" : bye === 2 ? "sf2" : undefined;
-    }
-    if (cellId && !byCell[cellId]) {
-      byCell[cellId] = slotOf(r);
-      numToCell.set(r.num, cellId);
+  // 2) Later rounds. "W 45 vs W 46" maps to the game those two feed; a bye seed
+  //    plus a winner ref ("Jr High 1st vs W 47", or a Girls Major "1st vs W 63")
+  //    maps to that seed's bye game. Two passes so a 12-team field resolves its
+  //    quarterfinals before the semifinals that reference them, whatever the row
+  //    order.
+  const byes = byePairings(fieldSize);
+  const feedsByCell = new Map<string, string>();
+  for (const p of pairs) feedsByCell.set(p.id, p.feeds);
+  for (const b of byes) feedsByCell.set(b.id, b.feeds);
+
+  for (let pass = 0; pass < 2; pass++) {
+    for (const r of rows) {
+      if (isChampionship(r)) continue;
+      const hWin = winnerRef(r.home);
+      const aWin = winnerRef(r.away);
+      const hSeed = seedRef(r.home);
+      const aSeed = seedRef(r.away);
+      let cellId: string | undefined;
+      if (hWin != null && aWin != null) {
+        const f1 = feedsByCell.get(numToCell.get(hWin) ?? "");
+        const f2 = feedsByCell.get(numToCell.get(aWin) ?? "");
+        cellId = f1 && f1 === f2 ? f1 : undefined;
+      } else if ((hSeed != null && aWin != null) || (aSeed != null && hWin != null)) {
+        const bye = hSeed ?? aSeed;
+        cellId = byes.find((b) => b.bye === bye)?.id;
+      }
+      if (cellId && !byCell[cellId]) {
+        byCell[cellId] = slotOf(r);
+        numToCell.set(r.num, cellId);
+      }
     }
   }
 

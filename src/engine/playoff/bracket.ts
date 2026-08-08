@@ -24,16 +24,47 @@ const QF_PAIRS_6: Array<{ id: string; high: number; low: number; feeds: string }
   { id: "qf2", high: 3, low: 6, feeds: "sf2" },
 ];
 
-/** Field size implied by a seeded field (6 or 8), unless overridden. */
-function bracketSize(seeds: PlayoffSeed[], fieldSize?: number): 6 | 8 {
-  if (fieldSize === 6 || fieldSize === 8) return fieldSize;
+// 12-team single elimination (Girls Major). Seeds 1-4 earn byes to the
+// quarterfinals; Round 1 is 8v9, 5v12, 7v10, 6v11. Each winner meets a bye seed
+// (1 v 8/9, 4 v 5/12, 2 v 7/10, 3 v 6/11), keeping seeds 1 and 2 in opposite
+// halves until the final.
+const PRELIM_PAIRS_12: Array<{ id: string; high: number; low: number; feeds: string }> = [
+  { id: "pr1", high: 8, low: 9, feeds: "qf1" },
+  { id: "pr2", high: 5, low: 12, feeds: "qf2" },
+  { id: "pr3", high: 7, low: 10, feeds: "qf3" },
+  { id: "pr4", high: 6, low: 11, feeds: "qf4" },
+];
+
+// Which bye seed hosts each 12-team quarterfinal.
+const QF_BYES_12: Array<{ id: string; bye: number; feeds: string }> = [
+  { id: "qf1", bye: 1, feeds: "sf1" },
+  { id: "qf2", bye: 4, feeds: "sf1" },
+  { id: "qf3", bye: 2, feeds: "sf2" },
+  { id: "qf4", bye: 3, feeds: "sf2" },
+];
+
+/** Field size implied by a seeded field (6, 8, or 12), unless overridden. */
+function bracketSize(seeds: PlayoffSeed[], fieldSize?: number): 6 | 8 | 12 {
+  if (fieldSize === 6 || fieldSize === 8 || fieldSize === 12) return fieldSize;
   const maxSeed = seeds.reduce((m, s) => Math.max(m, s.seed), 0);
-  return maxSeed <= 6 ? 6 : 8;
+  return maxSeed <= 6 ? 6 : maxSeed <= 8 ? 8 : 12;
 }
 
-/** First-round pairings (seeds + which semifinal they feed) for a field size. */
-export function qfPairings(fieldSize: 6 | 8): Array<{ id: string; high: number; low: number; feeds: string }> {
-  return fieldSize === 6 ? QF_PAIRS_6 : QF_PAIRS_8;
+/** First-round pairings (seeds + the game they feed) for a field size. */
+export function qfPairings(fieldSize: 6 | 8 | 12): Array<{ id: string; high: number; low: number; feeds: string }> {
+  return fieldSize === 6 ? QF_PAIRS_6 : fieldSize === 12 ? PRELIM_PAIRS_12 : QF_PAIRS_8;
+}
+
+/** Bye-seed games (the round after Round 1) for a field size, if any. */
+export function byePairings(fieldSize: 6 | 8 | 12): Array<{ id: string; bye: number; feeds: string }> {
+  if (fieldSize === 6) {
+    return [
+      { id: "sf1", bye: 1, feeds: "final" },
+      { id: "sf2", bye: 2, feeds: "final" },
+    ];
+  }
+  if (fieldSize === 12) return QF_BYES_12;
+  return [];
 }
 
 /**
@@ -49,6 +80,25 @@ export function buildBracket(
   const teamBySeed = new Map(seeds.map((s) => [s.seed, s.teamId]));
   const games: BracketGame[] = [];
   const size = bracketSize(seeds, fieldSize);
+
+  if (size === 12) {
+    // Round 1 among seeds 5-12, then bye seeds 1-4 host the quarterfinals.
+    for (const pair of PRELIM_PAIRS_12) {
+      games.push(makeGame(pair.id, "prelim", pair.high, pair.low, teamBySeed, pair.feeds, results));
+    }
+    const prById = new Map(games.map((g) => [g.id, g]));
+    for (const q of QF_BYES_12) {
+      const feeder = [...prById.values()].find((g) => g.feedsGameId === q.id);
+      games.push(makeByeGame(q.id, "qf", q.bye, teamBySeed, feeder, q.feeds, results));
+    }
+    const byId = new Map(games.map((g) => [g.id, g]));
+    const sf1 = makeFedGame("sf1", "sf", byId.get("qf1"), byId.get("qf2"), "final", results);
+    const sf2 = makeFedGame("sf2", "sf", byId.get("qf3"), byId.get("qf4"), "final", results);
+    games.push(sf1, sf2);
+    games.push(makeFedGame("final", "final", sf1, sf2, null, results));
+    return games;
+  }
+
   const qfPairs = size === 6 ? QF_PAIRS_6 : QF_PAIRS_8;
 
   for (const pair of qfPairs) {
@@ -60,8 +110,8 @@ export function buildBracket(
   let sf2: BracketGame;
   if (size === 6) {
     // Seeds 1 and 2 sit in the semis directly, opposite the play-in winners.
-    sf1 = makeByeSemi("sf1", 1, teamBySeed, byId.get("qf1"), "final", results);
-    sf2 = makeByeSemi("sf2", 2, teamBySeed, byId.get("qf2"), "final", results);
+    sf1 = makeByeGame("sf1", "sf", 1, teamBySeed, byId.get("qf1"), "final", results);
+    sf2 = makeByeGame("sf2", "sf", 2, teamBySeed, byId.get("qf2"), "final", results);
   } else {
     sf1 = makeFedGame("sf1", "sf", byId.get("qf1"), byId.get("qf2"), "final", results);
     sf2 = makeFedGame("sf2", "sf", byId.get("qf3"), byId.get("qf4"), "final", results);
@@ -72,10 +122,11 @@ export function buildBracket(
   return games;
 }
 
-// A semifinal where the high side is a bye seed (plays directly) and the low side
-// is the winner of a play-in game.
-function makeByeSemi(
+// A game where the high side is a bye seed (plays directly) and the low side is
+// the winner of a feeder game. Used by the 6-team semis and 12-team quarters.
+function makeByeGame(
   id: string,
+  round: BracketGame["round"],
   byeSeed: number,
   teamBySeed: Map<number, string>,
   feeder: BracketGame | undefined,
@@ -85,7 +136,7 @@ function makeByeSemi(
   return decorate(
     {
       id,
-      round: "sf",
+      round,
       highSeed: byeSeed,
       lowSeed: feeder?.winnerTeamId ? seedOfWinner(feeder) : null,
       highTeamId: teamBySeed.get(byeSeed) ?? null,

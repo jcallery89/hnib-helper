@@ -17,7 +17,7 @@ interface Props {
 
 const SEEDING_RULE_LABELS: Record<string, string> = {
   jrhigh_winners_next_two: "Jr. High (division winners + next two per division, pooled)",
-  jrhigh_top2_per_division: "Sophomore (winners + runners-up + wildcards)",
+  jrhigh_top2_per_division: "Sophomore / Girls Major (winners + runners-up + wildcards)",
   soph_division_winners: "Legacy (division winners + wildcards)",
 };
 

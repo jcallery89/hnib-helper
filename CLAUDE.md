@@ -18,7 +18,12 @@ build/deploy and the design rationale in `.claude/plans/` if present.
   - Sophomore: 3 divisions, **8-team** field. Division winners 1-3, runners-up
     4-6, then 2 wildcards (best of the rest) 7-8. 8-team single elim,
     1v8 / 4v5 / 2v7 / 3v6. (`seedingRule: "jrhigh_top2_per_division"`, fieldSize 8)
-  - Both events share the ONE tiebreak procedure below. Pooled tiers and wildcard
+  - Girls Major Showcase: 5 divisions, **12-team** field. Top 2 per division
+    (winners seeded 1-5, runners-up 6-10) then 2 wildcards 11-12. 12-team single
+    elim: seeds 1-4 bye; Round 1 is 8v9 / 5v12 / 7v10 / 6v11 feeding QFs
+    1 v W(8v9), 4 v W(5v12), 2 v W(7v10), 3 v W(6v11).
+    (`seedingRule: "jrhigh_top2_per_division"`, fieldSize 12)
+  - All events share the ONE tiebreak procedure below. Pooled tiers and wildcard
     fills are all ranked by it.
 
 ## Domain rules the engine encodes
@@ -65,5 +70,5 @@ coach-facing copy.
 
 ## Still open (defaults in use, confirm before locking)
 
-Crossover pairing strategy, exact 2026 venue/dates, and whether the invite-only
-Major Showcases want schedules/standings (no champion) from this tool.
+Crossover pairing strategy and exact 2026 venue/dates. (The Girls Major
+Showcase playoff question is settled - see the 12-team format above.)

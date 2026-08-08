@@ -126,10 +126,11 @@ export function importApiData(
 
   // Default the playoff format by division count (operator can override in Setup;
   // re-syncs preserve their choice). Two divisions reads as Jr. High (6-team,
-  // pooled next-two); anything else as Sophomore (8-team, winners + runners-up +
-  // wildcards).
+  // pooled next-two); five or more as Girls Major (12-team, winners + runners-up
+  // + 2 wildcards); anything else as Sophomore (8-team, same tiering).
   const realDivisions = divisions.filter((d) => d.id !== "unassigned" && d.teamIds.length > 0).length;
   const jrHigh = realDivisions === 2;
+  const girlsMajor = realDivisions >= 5;
 
   const dataset: Dataset = {
     event: {
@@ -140,7 +141,7 @@ export function importApiData(
       format: "festival",
       hasPlayoffBracket: true,
       seedingRule: jrHigh ? "jrhigh_winners_next_two" : "jrhigh_top2_per_division",
-      fieldSize: jrHigh ? 6 : 8,
+      fieldSize: jrHigh ? 6 : girlsMajor ? 12 : 8,
       pointSystem: { ...DEFAULT_POINT_SYSTEM },
     },
     divisions,

@@ -24,7 +24,9 @@ export function BracketSvg({ width, height, title, bracket, nameById, colorById,
   const championId = gameById.get("final")?.winnerTeamId ?? null;
 
   const titleSize = Math.round(height * 0.038);
-  const labelSize = Math.round(height * 0.014);
+  // Round labels shrink with the column count so a 5-column (12-team) layout
+  // never lets "QUARTERFINALS" spill into its neighbors.
+  const labelSize = Math.min(Math.round(height * 0.014), Math.floor(width / (layout.columns.length * 10)));
   const seedSize = Math.round(layout.rowH * 0.4);
   const nameSize = Math.round(layout.rowH * 0.47);
 
@@ -319,16 +321,26 @@ function teamRow(
           </text>
         </>
       )}
-      <text
-        x={nameX}
-        y={baseline}
-        fill={isWinner ? COLORS.gold : COLORS.navy}
-        font-family={FONTS.body}
-        font-size={opts.nameSize}
-        font-weight={isWinner ? 700 : 400}
-      >
-        {name}
-      </text>
+      {(() => {
+        // Cap the glyph run so long names never collide with the score, whatever
+        // font ends up rendering (12-team columns are narrow).
+        const maxNameW = cell.x + cell.w - 12 - opts.nameSize * 1.2 - nameX;
+        const cramped = name.length * opts.nameSize * 0.46 > maxNameW;
+        return (
+          <text
+            x={nameX}
+            y={baseline}
+            fill={isWinner ? COLORS.gold : COLORS.navy}
+            font-family={FONTS.body}
+            font-size={opts.nameSize}
+            font-weight={isWinner ? 700 : 400}
+            textLength={cramped ? Math.max(20, maxNameW) : undefined}
+            lengthAdjust={cramped ? "spacingAndGlyphs" : undefined}
+          >
+            {name}
+          </text>
+        );
+      })()}
       <text
         x={cell.x + cell.w - 12}
         y={baseline}
