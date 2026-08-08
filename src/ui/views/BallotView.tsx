@@ -12,6 +12,7 @@ import {
   positionLabel,
 } from "../../engine/ballot/ballot.ts";
 import { joinContacts } from "../../io/contactJoin.ts";
+import { parseBallotEntries } from "../../io/importBallotEntries.ts";
 import { listRegistrationEvents } from "../../io/importRegistration.ts";
 import { playerSummaries } from "../state/store.ts";
 import { downloadFile } from "../../io/session.ts";
@@ -29,6 +30,8 @@ export function BallotView({ dataset, update }: Props) {
   const [registrationCsv, setRegistrationCsv] = useState("");
   const [registrationEvent, setRegistrationEvent] = useState("");
   const [joinStatus, setJoinStatus] = useState<string[]>([]);
+  const [entriesCsv, setEntriesCsv] = useState("");
+  const [entriesStatus, setEntriesStatus] = useState<string[]>([]);
 
   const ballot = dataset.ballot ?? emptyBallot();
   const nominated = useMemo(() => new Set(ballot.nominatedIds ?? []), [ballot.nominatedIds]);
@@ -92,6 +95,32 @@ export function BallotView({ dataset, update }: Props) {
       else notes[id] = value;
       d.ballot.playerNotes = notes;
     });
+  }
+
+  function importEntries() {
+    const res = parseBallotEntries(entriesCsv, dataset.players ?? [], dataset.teams);
+    if (res.nominatedIds.length > 0) {
+      update((d) => {
+        if (!d.ballot) d.ballot = emptyBallot();
+        const set = new Set(d.ballot.nominatedIds ?? []);
+        for (const id of res.nominatedIds) set.add(id);
+        d.ballot.nominatedIds = [...set];
+      });
+    }
+    const status: string[] = [];
+    status.push(
+      `Marked ${res.matched} nominations from ${res.ballots} ballots. Already-marked players stay marked; nothing is ever unmarked by an import.`,
+    );
+    if (res.unmatched.length > 0) {
+      status.push(
+        `Could not match ${res.unmatched.length}: ${res.unmatched.map((u) => `${u.team}: ${u.cell}`).join("; ")}. Tick those by hand.`,
+      );
+    }
+    for (const n of res.notes) {
+      status.push(`Note from ${n.coach || n.team} (${n.team}): ${n.note}`);
+    }
+    status.push(...res.warnings);
+    setEntriesStatus(status);
   }
 
   function setInvite(id: string, value: InviteStatus | "") {
@@ -296,6 +325,40 @@ export function BallotView({ dataset, update }: Props) {
             Export nominated (CSV)
           </button>
         </div>
+      </div>
+
+      <div class="card">
+        <p class="section-title">Import ballots (Gravity Forms entries)</p>
+        <p class="note">
+          Paste the entries export from the ballot form (Forms, Import/Export, Export Entries).
+          Every pick is matched to the roster by team, jersey, and name and marked Nominated.
+          Coach notes are listed below for the directors; imports only add marks, never remove.
+        </p>
+        <textarea
+          rows={4}
+          style={{ width: "100%" }}
+          placeholder="Paste the ballot entries CSV"
+          value={entriesCsv}
+          onInput={(e) => setEntriesCsv((e.target as HTMLTextAreaElement).value)}
+        />
+        <div class="toolbar" style={{ marginTop: 8 }}>
+          <button class="btn" onClick={importEntries} disabled={entriesCsv.trim() === ""}>
+            Load nominations
+          </button>
+          <button
+            class="btn secondary"
+            onClick={() => {
+              setEntriesCsv("");
+              setEntriesStatus([]);
+            }}
+            disabled={entriesCsv === "" && entriesStatus.length === 0}
+          >
+            Clear
+          </button>
+        </div>
+        {entriesStatus.map((s, i) => (
+          <p class="note" key={i}>{s}</p>
+        ))}
       </div>
 
       {POSITIONS.map((pos) => {
