@@ -24,6 +24,12 @@ export interface BallotState {
   playerNotes?: Record<string, string>;
   /** Invite/RSVP status per player id, for the selection waves. */
   invites?: Record<string, InviteStatus>;
+  /**
+   * The slot the coach put the player in on the ballot (1 = their top pick
+   * at that position). This is the coach's judgment, distinct from the
+   * production sort of the list.
+   */
+  coachRanks?: Record<string, number>;
   /** Final roster size per position (e.g. Girls Major: 36 F / 18 D / 6 G). */
   targets?: { F: number; D: number; G: number };
 }

@@ -14,6 +14,8 @@ import { normalize } from "./importPlayers.ts";
 export interface BallotEntriesResult {
   /** Player ids to mark nominated (deduplicated). */
   nominatedIds: string[];
+  /** The ballot slot per player id (1 = the coach's top pick at the position). */
+  coachRanks: Record<string, number>;
   ballots: number;
   matched: number;
   /** Picks that could not be resolved to a rostered player. */
@@ -24,6 +26,8 @@ export interface BallotEntriesResult {
 }
 
 const PICK_COLS = ["#1 Forward", "#2 Forward", "#3 Forward", "#1 Defenseman", "#2 Defenseman", "#1 Goalie"];
+/** The ballot slot each pick column represents within its position. */
+const PICK_RANKS = [1, 2, 3, 1, 2, 1];
 
 export function parseBallotEntries(
   csv: string,
@@ -32,6 +36,7 @@ export function parseBallotEntries(
 ): BallotEntriesResult {
   const out: BallotEntriesResult = {
     nominatedIds: [],
+    coachRanks: {},
     ballots: 0,
     matched: 0,
     unmatched: [],
@@ -82,13 +87,15 @@ export function parseBallotEntries(
       if (!rowTeam && row.every((c) => (c ?? "").trim() === "")) continue;
       out.ballots++;
 
-      for (const i of pickCols) {
+      for (let k = 0; k < pickCols.length; k++) {
+        const i = pickCols[k];
         if (i < 0) continue;
         const cell = (row[i] ?? "").trim();
         if (cell === "") continue;
         const player = resolve(cell, rowTeam);
         if (player) {
           nominated.add(player.id);
+          out.coachRanks[player.id] = PICK_RANKS[k];
           out.matched++;
         } else {
           out.unmatched.push({ team: rowTeam, cell });
@@ -110,6 +117,9 @@ export function parseBallotEntries(
     // a known team name in the cell keeps random text from matching.
     for (const row of table) {
       let picksInRow = 0;
+      // Picks appear in ballot order within the row (F1 F2 F3 D1 D2 G1), so
+      // the running count per position recovers the coach's slot number.
+      const seen: Record<string, number> = { F: 0, D: 0, G: 0 };
       for (const cell of row) {
         const c = (cell ?? "").trim();
         if (c === "") continue;
@@ -118,7 +128,10 @@ export function parseBallotEntries(
         const player = resolve(c, "");
         picksInRow++;
         if (player) {
+          const pos = player.position === "G" ? "G" : player.position === "D" ? "D" : "F";
+          seen[pos]++;
           nominated.add(player.id);
+          out.coachRanks[player.id] = seen[pos];
           out.matched++;
         } else {
           out.unmatched.push({ team: pick.team, cell: c });

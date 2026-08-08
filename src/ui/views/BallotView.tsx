@@ -105,6 +105,7 @@ export function BallotView({ dataset, update }: Props) {
         const set = new Set(d.ballot.nominatedIds ?? []);
         for (const id of res.nominatedIds) set.add(id);
         d.ballot.nominatedIds = [...set];
+        d.ballot.coachRanks = { ...(d.ballot.coachRanks ?? {}), ...res.coachRanks };
       });
     }
     const status: string[] = [];
@@ -168,6 +169,7 @@ export function BallotView({ dataset, update }: Props) {
           pos === "G" ? (s?.gaa !== undefined ? s.gaa.toFixed(2) : "") : String(s?.goals ?? 0),
           pos === "G" ? (s?.savePct !== undefined ? s.savePct.toFixed(3) : "") : String(s?.assists ?? 0),
           pos === "G" ? "" : String(s?.points ?? 0),
+          ballot.coachRanks?.[p.id] !== undefined ? String(ballot.coachRanks[p.id]) : "",
           ballot.selections?.[p.id] ?? "",
           ballot.invites?.[p.id] ?? "",
           ballot.playerNotes?.[p.id] ?? "",
@@ -180,7 +182,7 @@ export function BallotView({ dataset, update }: Props) {
   function exportNominated() {
     const header = [
       "team", "jersey", "last", "first", "position", "birthYear", "hometown", "school",
-      "gp", "g_or_gaa", "a_or_svpct", "pts", "selection", "invite", "note",
+      "gp", "g_or_gaa", "a_or_svpct", "pts", "coach_rank", "selection", "invite", "note",
     ];
     const lines = nominatedCsvRows().map((r) => r.map(csvCell).join(","));
     downloadFile(
@@ -204,7 +206,7 @@ export function BallotView({ dataset, update }: Props) {
     }
     const contactById = new Map(result.rows.map((r) => [r.playerId, r]));
     const header = [
-      "team", "jersey", "last", "first", "position", "selection", "invite",
+      "team", "jersey", "last", "first", "position", "coach_rank", "selection", "invite",
       "parent_name", "parent_cell", "parent_email", "player_cell", "player_email", "note",
     ];
     const lines: string[] = [];
@@ -219,6 +221,7 @@ export function BallotView({ dataset, update }: Props) {
             p.lastName,
             p.firstName,
             pos,
+            ballot.coachRanks?.[p.id] !== undefined ? String(ballot.coachRanks[p.id]) : "",
             ballot.selections?.[p.id] ?? "",
             ballot.invites?.[p.id] ?? "",
             c?.parentName ?? "",
@@ -378,6 +381,7 @@ export function BallotView({ dataset, update }: Props) {
                 <thead>
                   <tr>
                     <th>Nominated</th>
+                    <th>Coach pick</th>
                     <th>Player</th>
                     <th>Team</th>
                     <th>#</th>
@@ -400,6 +404,13 @@ export function BallotView({ dataset, update }: Props) {
                             checked={isNominated}
                             onChange={() => toggleNominated(p.id)}
                           />
+                        </td>
+                        <td>
+                          {ballot.coachRanks?.[p.id] ? (
+                            <strong title="The slot the coach put this player in on the ballot">
+                              #{ballot.coachRanks[p.id]}
+                            </strong>
+                          ) : null}
                         </td>
                         <td>{p.lastName}, {p.firstName}</td>
                         <td>{teamName.get(p.teamId) ?? p.teamId}</td>

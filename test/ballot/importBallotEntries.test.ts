@@ -119,3 +119,22 @@ describe("parseBallotEntries - spreadsheet paste", () => {
     expect(res.warnings.join(" ")).toContain("does not look like the ballot entries export");
   });
 });
+
+describe("parseBallotEntries - coach ranks", () => {
+  it("records the ballot slot per player in header mode", () => {
+    const csv = [
+      `Coach's Name,Cell #,Team,#1 Forward,#2 Forward,#3 Forward,#1 Defenseman,#2 Defenseman,#1 Goalie,Important Notes`,
+      `Coach,555,Coastal,"#13 Mckenzie Lima-Tower - Coastal (GP 2, 2g 0a 2pts)",,,"#6 Claire Griffith - Coastal (GP 2, 0g 1a 1pts)",,"#1 Vivienne Melo - Coastal (GP 1, 3.00 GAA, .910 SV%)",`,
+    ].join("\n");
+    const res = parseBallotEntries(csv, players, teams);
+    expect(res.coachRanks).toEqual({ co13: 1, co6: 1, co1: 1 });
+  });
+
+  it("recovers slots from pick order per position in headerless mode", () => {
+    const tsv =
+      `Coach\t555\tCoastal\t#13 Mckenzie Lima-Tower - Coastal (GP 2, 2g 0a 2pts)\t#6 Claire Griffith - Coastal (GP 2, 0g 1a 1pts)\t#1 Vivienne Melo - Coastal (GP 1, 3.00 GAA, .910 SV%)`;
+    const res = parseBallotEntries(tsv, players, teams);
+    // Lima-Tower is the first F, Griffith the first D, Melo the first G.
+    expect(res.coachRanks).toEqual({ co13: 1, co6: 1, co1: 1 });
+  });
+});
