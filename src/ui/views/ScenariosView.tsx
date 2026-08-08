@@ -77,8 +77,59 @@ export function ScenariosView({ dataset, analysis }: Props) {
 
   const elimById = new Set(whatIf.pic.statuses.filter((s) => s.state === "eliminated").map((s) => s.teamId));
 
+  // Current picture from real results only (no hypotheticals): who is already
+  // mathematically out, who is locked in, who is still alive.
+  const outNow = forecast.statuses.filter((s) => s.state === "eliminated").map((s) => name(s.teamId));
+  const clinchedNow = forecast.statuses.filter((s) => s.state === "clinched").map((s) => name(s.teamId));
+  const aliveNow = forecast.statuses.filter((s) => s.state === "alive").map((s) => name(s.teamId));
+
   return (
     <section>
+      <div class="card">
+        <p class="section-title">Out of the Race</p>
+        {!forecast.decided ? (
+          <p class="note">
+            Too many games remain ({forecast.remainingGames}) to settle eliminations exactly.
+            Check back once the field is closer to the final round.
+          </p>
+        ) : outNow.length === 0 ? (
+          <p class="note">
+            No team is mathematically eliminated yet. Every team can still reach the {fieldSize}-team
+            field in at least one set of remaining results.
+          </p>
+        ) : (
+          <>
+            <p class="note">
+              Checked against every possible set of remaining results: these teams cannot reach the{" "}
+              {fieldSize}-team field no matter what happens.
+            </p>
+            <p style={{ fontSize: "1.05em" }}>
+              {outNow.map((n, i) => (
+                <span key={n}>
+                  {i > 0 && ", "}
+                  <strong style={{ color: "#d6453d" }}>{n}</strong>
+                </span>
+              ))}
+            </p>
+          </>
+        )}
+        {forecast.decided && (clinchedNow.length > 0 || aliveNow.length > 0) && (
+          <p class="note" style={{ marginTop: 8 }}>
+            {clinchedNow.length > 0 && (
+              <>
+                <strong style={{ color: "#1da95c" }}>Clinched:</strong> {clinchedNow.join(", ")}
+                {aliveNow.length > 0 && " - "}
+              </>
+            )}
+            {aliveNow.length > 0 && (
+              <>
+                <strong>Still fighting:</strong> {aliveNow.join(", ")}
+              </>
+            )}
+          </p>
+        )}
+      </div>
+
       <div class="card premium">
         <p class="section-title">Key Scenarios</p>
         <p class="note">
