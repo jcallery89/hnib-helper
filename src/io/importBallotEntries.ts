@@ -44,7 +44,7 @@ export function parseBallotEntries(
     warnings: [],
   };
   const table = parseCsvWithNewlines(csv);
-  if (table.length < 2) {
+  if (table.length === 0) {
     out.warnings.push("The paste has no ballot rows.");
     return out;
   }
