@@ -49,10 +49,7 @@ export function parseBallotEntries(
   const coachCol = col("Coach's Name");
   const notesCol = col("Important Notes");
   const pickCols = PICK_COLS.map((c) => col(c));
-  if (teamCol < 0 || pickCols.every((i) => i < 0)) {
-    out.warnings.push("This does not look like the ballot entries export (Team and player columns not found).");
-    return out;
-  }
+  const hasHeader = teamCol >= 0 && pickCols.some((i) => i >= 0);
 
   const teamIdByName = new Map(teams.map((t) => [normalize(t.name), t.id]));
   const byTeamJersey = new Map<string, Player>();
@@ -63,44 +60,78 @@ export function parseBallotEntries(
   }
 
   const nominated = new Set<string>();
-  for (let r = 1; r < table.length; r++) {
-    const row = table[r];
-    const rowTeam = (row[teamCol] ?? "").trim();
-    if (!rowTeam && row.every((c) => (c ?? "").trim() === "")) continue;
-    out.ballots++;
 
-    for (const i of pickCols) {
-      if (i < 0) continue;
-      const cell = (row[i] ?? "").trim();
-      if (cell === "") continue;
-      const pick = parsePick(cell);
-      const teamName = pick?.team || rowTeam;
-      const teamId = teamIdByName.get(normalize(teamName));
-      let player: Player | undefined;
-      if (pick && teamId) {
-        if (pick.jersey !== null) {
-          const byJersey = byTeamJersey.get(`${teamId}#${pick.jersey}`);
-          // Jersey hit still needs the name to agree - a re-numbered roster
-          // must not silently nominate the wrong player.
-          if (byJersey && namesAgree(byJersey, pick)) player = byJersey;
+  const resolve = (cell: string, rowTeam: string): Player | undefined => {
+    const pick = parsePick(cell);
+    const teamName = pick?.team || rowTeam;
+    const teamId = teamIdByName.get(normalize(teamName));
+    if (!pick || !teamId) return undefined;
+    if (pick.jersey !== null) {
+      const byJersey = byTeamJersey.get(`${teamId}#${pick.jersey}`);
+      // Jersey hit still needs the name to agree - a re-numbered roster
+      // must not silently nominate the wrong player.
+      if (byJersey && namesAgree(byJersey, pick)) return byJersey;
+    }
+    return byTeamName.get(`${teamId}|${normalize(pick.fullName)}`);
+  };
+
+  if (hasHeader) {
+    for (let r = 1; r < table.length; r++) {
+      const row = table[r];
+      const rowTeam = (row[teamCol] ?? "").trim();
+      if (!rowTeam && row.every((c) => (c ?? "").trim() === "")) continue;
+      out.ballots++;
+
+      for (const i of pickCols) {
+        if (i < 0) continue;
+        const cell = (row[i] ?? "").trim();
+        if (cell === "") continue;
+        const player = resolve(cell, rowTeam);
+        if (player) {
+          nominated.add(player.id);
+          out.matched++;
+        } else {
+          out.unmatched.push({ team: rowTeam, cell });
         }
-        if (!player) player = byTeamName.get(`${teamId}|${normalize(pick.fullName)}`);
       }
-      if (player) {
-        nominated.add(player.id);
-        out.matched++;
-      } else {
-        out.unmatched.push({ team: rowTeam, cell });
+
+      const note = notesCol >= 0 ? (row[notesCol] ?? "").trim() : "";
+      if (note) {
+        out.notes.push({
+          team: rowTeam,
+          coach: coachCol >= 0 ? (row[coachCol] ?? "").trim() : "",
+          note,
+        });
       }
     }
-
-    const note = notesCol >= 0 ? (row[notesCol] ?? "").trim() : "";
-    if (note) {
-      out.notes.push({
-        team: rowTeam,
-        coach: coachCol >= 0 ? (row[coachCol] ?? "").trim() : "",
-        note,
-      });
+  } else {
+    // No header row (a spreadsheet paste of just the data rows). Every pick
+    // names its own team, so sweep all cells and recognize picks by shape;
+    // a known team name in the cell keeps random text from matching.
+    for (const row of table) {
+      let picksInRow = 0;
+      for (const cell of row) {
+        const c = (cell ?? "").trim();
+        if (c === "") continue;
+        const pick = parsePick(c);
+        if (!pick || !pick.team || !teamIdByName.has(normalize(pick.team))) continue;
+        const player = resolve(c, "");
+        picksInRow++;
+        if (player) {
+          nominated.add(player.id);
+          out.matched++;
+        } else {
+          out.unmatched.push({ team: pick.team, cell: c });
+        }
+      }
+      if (picksInRow > 0) out.ballots++;
+    }
+    if (out.matched === 0 && out.unmatched.length === 0) {
+      out.warnings.push("This does not look like the ballot entries export (no header row and no recognizable picks).");
+    } else {
+      out.warnings.push(
+        "Header row was missing, so picks were recognized by their own team labels; coach notes could not be attributed and were not imported. Include the header row to capture notes.",
+      );
     }
   }
 
@@ -129,8 +160,14 @@ function parsePick(cell: string): { jersey: number | null; fullName: string; tea
   return null;
 }
 
-/** Comma CSV with quoted fields that may contain commas, escaped quotes, and newlines. */
+/**
+ * CSV/TSV with quoted fields that may contain the delimiter, escaped quotes,
+ * and newlines. A tab anywhere in the first line means a spreadsheet paste
+ * (tab-delimited, mostly unquoted); otherwise the raw comma export.
+ */
 export function parseCsvWithNewlines(text: string): string[][] {
+  const firstLine = text.slice(0, text.indexOf("\n") < 0 ? text.length : text.indexOf("\n"));
+  const delimiter = firstLine.includes("\t") ? "\t" : ",";
   const rows: string[][] = [];
   let row: string[] = [];
   let cur = "";
@@ -157,7 +194,7 @@ export function parseCsvWithNewlines(text: string): string[][] {
     } else if (c === '"' && fieldStart) {
       q = true;
       fieldStart = false;
-    } else if (c === ",") {
+    } else if (c === delimiter) {
       endField();
     } else if (c === "\n" || c === "\r") {
       if (c === "\r" && text[i + 1] === "\n") i++;

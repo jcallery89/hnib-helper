@@ -88,3 +88,34 @@ describe("parseBallotEntries", () => {
     expect(res.nominatedIds).toEqual(["co13"]);
   });
 });
+
+describe("parseBallotEntries - spreadsheet paste", () => {
+  it("handles a tab-separated paste with a header row", () => {
+    const tsv = [
+      `Coach's Name\tCell #\tTeam\t#1 Forward\t#2 Forward\t#3 Forward\t#1 Defenseman\t#2 Defenseman\t#1 Goalie\tImportant Notes`,
+      `Chuck Costello\t2157647386\tCoastal\t#13 Mckenzie Lima-Tower - Coastal (GP 2, 2g 0a 2pts)\t\t\t#6 Claire Griffith - Coastal (GP 2, 0g 1a 1pts)\t\t#1 Vivienne Melo - Coastal (GP 1, 3.00 GAA, .910 SV%)\t`,
+    ].join("\n");
+    const res = parseBallotEntries(tsv, players, teams);
+    expect(res.ballots).toBe(1);
+    expect(new Set(res.nominatedIds)).toEqual(new Set(["co13", "co6", "co1"]));
+  });
+
+  it("handles a headerless tab paste by recognizing picks by shape", () => {
+    // Straight out of Excel: no header, tabs, stat commas unquoted.
+    const tsv = [
+      `Craig Naclerio\t2038488801\tCoastal\t#13 Mckenzie Lima-Tower - Coastal (GP 2, 2g 0a 2pts)\t#6 Claire Griffith - Coastal (GP 2, 0g 1a 1pts)\t#1 Vivienne Melo - Coastal (GP 1, 3.00 GAA, .910 SV%)`,
+      `Matt Poulin\t2075764449\tCentral\t#17 Reese Weaver - Central (GP 2, 1g 0a 1pts)\t#15 Abby Tredo - Central (GP 2, 0g 0a 0pts)`,
+    ].join("\n");
+    const res = parseBallotEntries(tsv, players, teams);
+    expect(res.ballots).toBe(2);
+    expect(res.matched).toBe(5);
+    expect(new Set(res.nominatedIds)).toEqual(new Set(["co13", "co6", "co1", "ce17", "ce15"]));
+    expect(res.warnings.join(" ")).toContain("Header row was missing");
+  });
+
+  it("still refuses a paste with nothing recognizable", () => {
+    const res = parseBallotEntries("hello\tworld\nfoo\tbar", players, teams);
+    expect(res.matched).toBe(0);
+    expect(res.warnings.join(" ")).toContain("does not look like the ballot entries export");
+  });
+});
