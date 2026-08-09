@@ -292,11 +292,11 @@ function renderCell(cell: CellBox, game: BracketGame, opts: CellOpts) {
       {teamRow(cell, cell.y + rowH, game.lowSeed, game.lowTeamId, game.lowScore, game.winnerTeamId, opts)}
       {tag && (
         <text
-          x={cell.x + cell.w - 6}
-          y={cell.y + cell.h - 5}
+          x={cell.x + cell.w - 5}
+          y={cell.y + cell.h - 4}
           fill={COLORS.royal}
           font-family={FONTS.body}
-          font-size={opts.seedSize}
+          font-size={Math.max(10, Math.round(rowH * 0.28))}
           font-weight={700}
           text-anchor="end"
         >
@@ -320,10 +320,10 @@ function teamRow(
   const name = teamId ? opts.nameById(teamId) : "-";
   const cy = rowY + opts.rowH / 2;
   const baseline = cy + opts.nameSize * 0.34;
-  const r = Math.round(opts.rowH * 0.26);
-  const pad = Math.max(6, Math.round(opts.rowH * 0.12));
+  const r = Math.round(opts.rowH * 0.22);
+  const pad = Math.max(5, Math.round(opts.rowH * 0.1));
   const bubbleX = cell.x + pad + r;
-  const nameX = cell.x + pad + r * 2 + Math.max(5, Math.round(opts.rowH * 0.09));
+  const nameX = cell.x + pad + r * 2 + Math.max(4, Math.round(opts.rowH * 0.08));
 
   // Seed bubble: filled with the team's jersey color when the team is known,
   // a light outline when only the seed slot is (an undecided feeder).
@@ -334,15 +334,15 @@ function teamRow(
   // to fit between the seed bubble and the score, and only then compress
   // glyph spacing - never both from full size, which crushed names into
   // unreadable slivers on tall exports. Barlow Condensed runs ~0.45em/glyph.
-  // Score space is only reserved once there IS a score, which matters most in
-  // the narrow 5-column 12-team layout where the bracket ships scoreless.
-  const scoreReserve = Math.round(opts.nameSize * (score !== null ? 1.2 : 0.35));
-  const maxNameW = cell.x + cell.w - 12 - scoreReserve - nameX;
+  // Score space is only reserved once there IS a score (a hockey score is a
+  // digit or two), which matters most in the narrow 5-column 12-team layout.
+  const scoreReserve = Math.round(opts.nameSize * (score !== null ? (score >= 10 ? 1.1 : 0.75) : 0.3));
+  const maxNameW = cell.x + cell.w - 10 - scoreReserve - nameX;
   const fittedNameSize = Math.max(
     Math.round(opts.nameSize * 0.55),
-    Math.min(opts.nameSize, Math.floor(maxNameW / Math.max(1, name.length * 0.45))),
+    Math.min(opts.nameSize, Math.floor(maxNameW / Math.max(1, name.length * 0.47))),
   );
-  const nameSqueezed = name.length * fittedNameSize * 0.45 > maxNameW;
+  const nameSqueezed = name.length * fittedNameSize * 0.47 > maxNameW;
 
   return (
     <g>

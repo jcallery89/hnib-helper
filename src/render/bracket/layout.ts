@@ -47,7 +47,7 @@ export function computeLayout(
   // whole composition shifts inside them instead of drawing underneath.
   const insetTop = insets.top ?? 0;
   const insetBottom = insets.bottom ?? 0;
-  const margin = Math.round(width * (twelve ? 0.03 : 0.045));
+  const margin = Math.round(width * (twelve ? 0.025 : 0.045));
   const headerY = insetTop + Math.round(height * 0.035);
   const labelY = insetTop + Math.round(height * 0.12);
   const contentTop = insetTop + Math.round(height * 0.155);
@@ -59,7 +59,7 @@ export function computeLayout(
   // cedes width to the four game columns, where every pixel feeds team names.
   const colCount = twelve ? 5 : 4;
   const usableW = width - margin * 2;
-  const colGap = Math.round(usableW * (twelve ? 0.022 : 0.05));
+  const colGap = Math.round(usableW * (twelve ? 0.018 : 0.05));
   const champW = twelve
     ? Math.round((usableW - colGap * 4) * (0.62 / 4.62))
     : Math.round((usableW - colGap * 3) / 4);
@@ -75,10 +75,12 @@ export function computeLayout(
   // Row height is ALSO capped by the column width: tall exports (1080x1920)
   // grow the band but not the columns, and an uncapped row makes bubbles and
   // type outgrow the box they live in.
+  // The 12-team column is narrow but its vertical band is generous, so it
+  // runs taller rows (bigger type) with tighter gaps between pair groups.
   const band = contentBottom - contentTop;
   const rowH = Math.max(
     28,
-    Math.min(Math.round(band * (six ? 0.1 : 0.085)), Math.round(colW * 0.42)),
+    Math.min(Math.round(band * (six ? 0.1 : twelve ? 0.095 : 0.085)), Math.round(colW * (twelve ? 0.5 : 0.42))),
   );
   const cellH = rowH * 2;
 
@@ -93,8 +95,8 @@ export function computeLayout(
   if (six) {
     r1Centers = [0.27, 0.73].map((nrm) => contentTop + nrm * band);
   } else {
-    const intraGap = Math.round(band * 0.08); // between the games of one pair
-    const interGap = Math.round(band * 0.15); // between the two pairs
+    const intraGap = Math.round(band * (twelve ? 0.055 : 0.08)); // between the games of one pair
+    const interGap = Math.round(band * (twelve ? 0.1 : 0.15)); // between the two pairs
     const total = cellH * 4 + intraGap * 2 + interGap;
     const top = contentTop + Math.max(0, Math.round((band - total) / 2));
     const c1 = top + cellH / 2;
