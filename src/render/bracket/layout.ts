@@ -42,6 +42,7 @@ export function computeLayout(
   insets: { top?: number; bottom?: number } = {},
 ): BracketLayout {
   const six = fieldSize === 6;
+  const twelve = fieldSize === 12;
   // Brand header/footer strips (when present) reserve their own bands; the
   // whole composition shifts inside them instead of drawing underneath.
   const insetTop = insets.top ?? 0;
@@ -53,11 +54,12 @@ export function computeLayout(
   const footerY = height - insetBottom - Math.round(height * 0.032);
   const contentBottom = footerY - Math.round(height * 0.03);
 
-  // Four columns: QF, SF, FINAL, CHAMPION.
+  // Columns: QF, SF, FINAL, CHAMPION - plus a leading ROUND 1 for 12 teams.
+  const colCount = twelve ? 5 : 4;
   const usableW = width - margin * 2;
-  const colGap = Math.round(usableW * 0.05);
-  const colW = Math.round((usableW - colGap * 3) / 4);
-  const colX = [0, 1, 2, 3].map((i) => margin + i * (colW + colGap));
+  const colGap = Math.round(usableW * (twelve ? 0.03 : 0.05));
+  const colW = Math.round((usableW - colGap * (colCount - 1)) / colCount);
+  const colX = Array.from({ length: colCount }, (_, i) => margin + i * (colW + colGap));
 
   // The cells own most of the vertical band; gaps stay smaller than a cell so
   // the bracket reads as boxes-with-breathing-room rather than dots in a void
@@ -76,12 +78,15 @@ export function computeLayout(
   const cells: CellBox[] = [];
   const connectors: Connector[] = [];
 
-  const qfIds = six ? ["qf1", "qf2"] : ["qf1", "qf2", "qf3", "qf4"];
-  let qfCenters: number[];
+  // First-round cells (Round 1 for 12 teams, otherwise the QFs/play-ins),
+  // grouped so games feeding the same next-round game sit tighter than the
+  // gap between pairs.
+  const r1Ids = twelve ? ["pr1", "pr2", "pr3", "pr4"] : six ? ["qf1", "qf2"] : ["qf1", "qf2", "qf3", "qf4"];
+  let r1Centers: number[];
   if (six) {
-    qfCenters = [0.27, 0.73].map((nrm) => contentTop + nrm * band);
+    r1Centers = [0.27, 0.73].map((nrm) => contentTop + nrm * band);
   } else {
-    const intraGap = Math.round(band * 0.08); // between QFs of one pair
+    const intraGap = Math.round(band * 0.08); // between the games of one pair
     const interGap = Math.round(band * 0.15); // between the two pairs
     const total = cellH * 4 + intraGap * 2 + interGap;
     const top = contentTop + Math.max(0, Math.round((band - total) / 2));
@@ -89,41 +94,60 @@ export function computeLayout(
     const c2 = c1 + cellH + intraGap;
     const c3 = c2 + cellH + interGap;
     const c4 = c3 + cellH + intraGap;
-    qfCenters = [c1, c2, c3, c4];
+    r1Centers = [c1, c2, c3, c4];
   }
-  qfIds.forEach((id, i) => {
-    cells.push({ id, x: colX[0], y: qfCenters[i] - cellH / 2, w: colW, h: cellH });
+  r1Ids.forEach((id, i) => {
+    cells.push({ id, x: colX[0], y: r1Centers[i] - cellH / 2, w: colW, h: cellH });
   });
 
+  // Quarterfinals (12-team only): each bye-seed QF aligns with the Round 1 game
+  // that feeds it.
+  const qfCol = twelve ? 1 : 0;
+  if (twelve) {
+    ["qf1", "qf2", "qf3", "qf4"].forEach((id, i) => {
+      cells.push({ id, x: colX[1], y: r1Centers[i] - cellH / 2, w: colW, h: cellH });
+    });
+  }
+  const qfCenters = r1Centers;
+
   // Semifinals. In a 6-team field each semi aligns with its play-in game (the bye
-  // seed shares the cell); in an 8-team field a semi sits between two QFs.
+  // seed shares the cell); otherwise a semi sits between the two games feeding it.
   const sf1Center = six ? qfCenters[0] : (qfCenters[0] + qfCenters[1]) / 2;
   const sf2Center = six ? qfCenters[1] : (qfCenters[2] + qfCenters[3]) / 2;
-  cells.push({ id: "sf1", x: colX[1], y: sf1Center - cellH / 2, w: colW, h: cellH });
-  cells.push({ id: "sf2", x: colX[1], y: sf2Center - cellH / 2, w: colW, h: cellH });
+  cells.push({ id: "sf1", x: colX[qfCol + 1], y: sf1Center - cellH / 2, w: colW, h: cellH });
+  cells.push({ id: "sf2", x: colX[qfCol + 1], y: sf2Center - cellH / 2, w: colW, h: cellH });
 
   const finalCenter = (sf1Center + sf2Center) / 2;
-  cells.push({ id: "final", x: colX[2], y: finalCenter - cellH / 2, w: colW, h: cellH });
+  cells.push({ id: "final", x: colX[qfCol + 2], y: finalCenter - cellH / 2, w: colW, h: cellH });
 
   const championH = Math.round(rowH * 1.3);
-  const champion: CellBox = { id: "champion", x: colX[3], y: finalCenter - championH / 2, w: colW, h: championH };
+  const champion: CellBox = { id: "champion", x: colX[qfCol + 3], y: finalCenter - championH / 2, w: colW, h: championH };
 
   const byId = new Map(cells.map((c) => [c.id, c]));
-  connectors.push(connect(byId.get("qf1")!, byId.get("sf1")!));
-  connectors.push(connect(byId.get("qf2")!, byId.get(six ? "sf2" : "sf1")!));
+  if (twelve) {
+    ["pr1", "pr2", "pr3", "pr4"].forEach((id, i) => {
+      connectors.push(connect(byId.get(id)!, byId.get(`qf${i + 1}`)!));
+    });
+  }
   if (!six) {
+    connectors.push(connect(byId.get("qf1")!, byId.get("sf1")!));
+    connectors.push(connect(byId.get("qf2")!, byId.get("sf1")!));
     connectors.push(connect(byId.get("qf3")!, byId.get("sf2")!));
     connectors.push(connect(byId.get("qf4")!, byId.get("sf2")!));
+  } else {
+    connectors.push(connect(byId.get("qf1")!, byId.get("sf1")!));
+    connectors.push(connect(byId.get("qf2")!, byId.get("sf2")!));
   }
   connectors.push(connect(byId.get("sf1")!, byId.get("final")!));
   connectors.push(connect(byId.get("sf2")!, byId.get("final")!));
   connectors.push(connect(byId.get("final")!, champion));
 
   const columns: ColumnLabel[] = [
-    { text: six ? "PLAY-IN" : "QUARTERFINALS", x: colX[0] + colW / 2 },
-    { text: "SEMIFINALS", x: colX[1] + colW / 2 },
-    { text: "FINAL", x: colX[2] + colW / 2 },
-    { text: "CHAMPION", x: colX[3] + colW / 2 },
+    ...(twelve ? [{ text: "ROUND 1", x: colX[0] + colW / 2 }] : []),
+    { text: six ? "PLAY-IN" : "QUARTERFINALS", x: colX[qfCol] + colW / 2 },
+    { text: "SEMIFINALS", x: colX[qfCol + 1] + colW / 2 },
+    { text: "FINAL", x: colX[qfCol + 2] + colW / 2 },
+    { text: "CHAMPION", x: colX[qfCol + 3] + colW / 2 },
   ];
 
   return {

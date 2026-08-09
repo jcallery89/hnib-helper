@@ -1,5 +1,5 @@
 import type { HnibEvent } from "../types.ts";
-import { playoffSeedingRules, TIEBREAK_RULES } from "./rules.ts";
+import { playoffSeedingRules, tiebreakRulesFor } from "./rules.ts";
 import { fieldSizeFor } from "./field.ts";
 
 // Content for an on-brand shareable graphic (Instagram). Pure data so it can be
@@ -100,13 +100,13 @@ export function playoffPictureCardContent(
   };
 }
 
-/** "Tiebreakers" card: the seven-step procedure, numbered. */
+/** "Tiebreakers" card: the event's procedure, numbered. */
 export function tiebreakCardContent(event: HnibEvent): ShareCardContent {
   return {
     kicker: `${event.name} - Tiebreakers`,
     title: "Tiebreakers",
     intro: ["How teams tied on points are ranked, and how every seeding and placing step is decided."],
-    items: TIEBREAK_RULES.map((r, i) => ({ badge: String(i + 1), text: r })),
+    items: tiebreakRulesFor(event).map((r, i) => ({ badge: String(i + 1), text: r })),
     footnote: "Head to head applies only when exactly two teams are tied. Every decision is logged.",
   };
 }

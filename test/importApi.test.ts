@@ -80,3 +80,34 @@ describe("importApiData", () => {
     expect(dataset.teams.find((t) => t.id === "t-metro")!.apiId).toBe("api-met");
   });
 });
+
+describe("premature scores (status is the only truth)", () => {
+  const feed = JSON.stringify({
+    Games: [
+      { GameID: "g1", HomeTeamName: "Eastern", HomeTeamCode: "EAS", AwayTeamName: "Metro", AwayTeamCode: "MET", HomeTeamScore: 4, AwayTeamScore: 2, Status: "FINAL", Date: "2026-06-26T10:00:00Z", Description: "Game 1" },
+      // The bad row: a goal entered while the game is still SCHEDULED.
+      { GameID: "g2", HomeTeamName: "NE Connecticut", HomeTeamCode: "NEC", AwayTeamName: "Eastern", AwayTeamCode: "EAS", HomeTeamScore: 1, AwayTeamScore: 0, Status: "SCHEDULED", Date: "2026-06-29T16:20:00Z", Description: "Game 45" },
+      // Feed idle default for unplayed games: 0-0. Not a warning.
+      { GameID: "g3", HomeTeamName: "Metro", HomeTeamCode: "MET", AwayTeamName: "NE Connecticut", AwayTeamCode: "NEC", HomeTeamScore: 0, AwayTeamScore: 0, Status: "SCHEDULED", Date: "2026-06-29T18:00:00Z", Description: "Game 46" },
+      // In progress with a live score: remaining, warned, score ignored.
+      { GameID: "g4", HomeTeamName: "Eastern", HomeTeamCode: "EAS", AwayTeamName: "NE Connecticut", AwayTeamCode: "NEC", HomeTeamScore: 2, AwayTeamScore: 1, Status: "IN PROGRESS", Date: "2026-06-29T12:00:00Z", Description: "Game 44" },
+    ],
+  });
+
+  it("imports non-final games with null scores no matter what the feed says", () => {
+    const { dataset } = importApiData(feed, null);
+    const byId = new Map(dataset.games.map((g) => [g.id, g]));
+    expect(byId.get("g1")).toMatchObject({ status: "final", homeScore: 4, awayScore: 2 });
+    expect(byId.get("g2")).toMatchObject({ status: "scheduled", homeScore: null, awayScore: null });
+    expect(byId.get("g3")).toMatchObject({ status: "scheduled", homeScore: null, awayScore: null });
+    expect(byId.get("g4")).toMatchObject({ status: "scheduled", homeScore: null, awayScore: null });
+  });
+
+  it("warns loudly for a score on a non-final game, and stays quiet for 0-0", () => {
+    const { summary } = importApiData(feed, null);
+    const dataWarnings = summary.warnings.filter((w) => w.startsWith("DATA WARNING"));
+    expect(dataWarnings.some((w) => w.includes("Game 45") && w.includes("1-0") && w.includes("SCHEDULED"))).toBe(true);
+    expect(dataWarnings.some((w) => w.includes("Game 44") && w.includes("IN PROGRESS"))).toBe(true);
+    expect(dataWarnings.some((w) => w.includes("Game 46"))).toBe(false);
+  });
+});

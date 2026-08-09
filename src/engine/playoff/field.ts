@@ -10,7 +10,7 @@ import { computeStandings, hasUnequalSchedules } from "../standings.ts";
 import {
   buildContext,
   rankStandings,
-  tiebreakProcedure,
+  procedureFor,
   type ContextOptions,
 } from "../tiebreak/index.ts";
 
@@ -51,6 +51,7 @@ export function buildPlayoffField(
   opts: FieldOptions = {},
 ): PlayoffField {
   const fieldSize = fieldSizeFor(event, opts.fieldSize);
+  const procedure = procedureFor(event.tiebreakRule);
   const warnings: string[] = [];
 
   const overall = computeStandings(teams, games, event.pointSystem);
@@ -73,7 +74,7 @@ export function buildPlayoffField(
         `Division "${div.name}" has teams with different game counts; ranking compares raw totals.`,
       );
     }
-    divisionStandings.set(div.id, rankStandings(subset, tiebreakProcedure, ctx));
+    divisionStandings.set(div.id, rankStandings(subset, procedure, ctx));
   }
 
   // 2. Auto-qualifier tiers by event rule, plus whether wildcards fill the rest.
@@ -106,7 +107,7 @@ export function buildPlayoffField(
     const tierStandings = tier
       .map((id) => overallById.get(id))
       .filter((s): s is Standing => Boolean(s));
-    const ranked = rankStandings(tierStandings, tiebreakProcedure, ctx);
+    const ranked = rankStandings(tierStandings, procedure, ctx);
     for (const s of ranked) {
       if (nextSeed > fieldSize) break;
       seeds.push({ seed: nextSeed++, teamId: s.teamId, source: "auto", notes: s.tieBreakNotes });
@@ -117,7 +118,7 @@ export function buildPlayoffField(
   // 3. Wildcards: best of the rest across all divisions (rules that allow them).
   if (allowWildcards) {
     const rest = overall.filter((s) => !taken.has(s.teamId));
-    const rankedRest = rankStandings(rest, tiebreakProcedure, ctx);
+    const rankedRest = rankStandings(rest, procedure, ctx);
     for (const s of rankedRest) {
       if (nextSeed > fieldSize) break;
       seeds.push({

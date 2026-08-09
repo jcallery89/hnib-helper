@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { computeStandings, hasUnequalSchedules } from "../src/engine/standings.ts";
+import { computeStandings, hasUnequalSchedules, scheduleCountWarnings } from "../src/engine/standings.ts";
+import type { Game } from "../src/engine/types.ts";
 import { team, rr } from "./helpers.ts";
 
 describe("computeStandings", () => {
@@ -27,5 +28,28 @@ describe("computeStandings", () => {
 
     const lopsided = [rr("A", "B", 1, 0), rr("A", "C", 1, 0)]; // B and C play once, A twice
     expect(hasUnequalSchedules(computeStandings(teams, lopsided))).toBe(true);
+  });
+});
+
+describe("scheduleCountWarnings", () => {
+  const T = (id: string) => ({ id, eventId: "e", divisionId: "d", name: id.toUpperCase() });
+  const G = (id: string, h: string, a: string): Game =>
+    ({ id, divisionId: null, round: "rr", rink: null, slotStart: null, homeTeamId: h, awayTeamId: a, homeScore: null, awayScore: null, status: "scheduled", decidedBy: null });
+
+  it("flags a team whose played-plus-remaining differs from everyone else", () => {
+    const teams = [T("a"), T("b"), T("c"), T("d")];
+    // a and b have 2 rr games; c has 2; d has only 1 - d is the broken one.
+    const games = [G("1", "a", "b"), G("2", "a", "c"), G("3", "b", "c"), G("4", "d", "a")];
+    // counts: a 3, b 2, c 2, d 1 -> mode 2; a and d flagged.
+    const warnings = scheduleCountWarnings(teams, games);
+    expect(warnings.some((w) => w.includes("D has 1 round-robin game "))).toBe(true);
+    expect(warnings.some((w) => w.includes("A has 3"))).toBe(true);
+    expect(warnings.some((w) => w.includes("B has"))).toBe(false);
+  });
+
+  it("stays quiet when every team has the same count", () => {
+    const teams = [T("a"), T("b"), T("c"), T("d")];
+    const games = [G("1", "a", "b"), G("2", "c", "d"), G("3", "a", "c"), G("4", "b", "d")];
+    expect(scheduleCountWarnings(teams, games)).toEqual([]);
   });
 });

@@ -34,6 +34,25 @@ export const tiebreakProcedure: Procedure = () => [
   coinFlip,
 ];
 
+/**
+ * The Girls Major Showcase order, confirmed by JC June 2026: Head-to-Head comes
+ * FIRST (still only when exactly two teams are tied), then Most Wins, fewest
+ * Goals Against, most Goals For, coin toss. The restart-on-breakout behavior is
+ * shared, so a 3+ group that narrows to two teams gets head-to-head next.
+ */
+export const girlsMajorTiebreakProcedure: Procedure = () => [
+  headToHead,
+  mostWins,
+  leastGoalsAllowed,
+  mostGoalsFor,
+  coinFlip,
+];
+
+/** The procedure an event uses, by its (optional) tiebreakRule. */
+export function procedureFor(rule?: import("../types.ts").TiebreakRule): Procedure {
+  return rule === "girls_major" ? girlsMajorTiebreakProcedure : tiebreakProcedure;
+}
+
 export interface ContextOptions {
   pointSystem?: PointSystem;
   rng?: () => number;

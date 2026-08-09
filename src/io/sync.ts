@@ -145,6 +145,7 @@ export async function fullSync(
   if (sameEvent && prev) {
     dataset.event.seedingRule = prev.event.seedingRule;
     dataset.event.fieldSize = prev.event.fieldSize;
+    dataset.event.tiebreakRule = prev.event.tiebreakRule;
     dataset.event.hasPlayoffBracket = prev.event.hasPlayoffBracket;
     dataset.event.pointSystem = prev.event.pointSystem;
   }

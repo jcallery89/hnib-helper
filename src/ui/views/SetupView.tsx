@@ -1,6 +1,6 @@
 import { useState } from "preact/hooks";
 import type { Dataset } from "../../io/dataset.ts";
-import type { SeedingRule } from "../../engine/types.ts";
+import type { SeedingRule, TiebreakRule } from "../../engine/types.ts";
 import { loadSampleDataset, loadDemoDataset } from "../../io/sampleData.ts";
 import { clearAllSessions, downloadFile, loadEvent, loadBallotConfig, saveBallotConfig } from "../../io/session.ts";
 import { applyResultsCsv, gamesToCsv } from "../../io/csv.ts";
@@ -377,7 +377,7 @@ export function SetupView({ dataset, replace, removeCurrent, eventCount }: Props
               onChange={(e) => edit((d) => (d.event.seedingRule = (e.target as HTMLSelectElement).value as SeedingRule))}
             >
               <option value="jrhigh_winners_next_two">Jr. High: winners + next two per division, pooled (6 teams)</option>
-              <option value="jrhigh_top2_per_division">Sophomore: winners + runners-up + wildcards (8 teams)</option>
+              <option value="jrhigh_top2_per_division">Sophomore / Girls Major: winners + runners-up + wildcards (8 or 12 teams)</option>
               <option value="soph_division_winners">Legacy: division winners only, then wildcards (not standard)</option>
             </select>
           </label>
@@ -390,6 +390,18 @@ export function SetupView({ dataset, replace, removeCurrent, eventCount }: Props
               value={dataset.event.fieldSize ?? 8}
               onInput={(e) => edit((d) => (d.event.fieldSize = Math.max(2, Number((e.target as HTMLInputElement).value) || 8)))}
             />
+          </label>
+          <label class="row">
+            Tiebreak order:
+            <select
+              value={dataset.event.tiebreakRule ?? "standard"}
+              onChange={(e) =>
+                edit((d) => (d.event.tiebreakRule = (e.target as HTMLSelectElement).value as TiebreakRule))
+              }
+            >
+              <option value="standard">Standard: wins, then head-to-head</option>
+              <option value="girls_major">Girls Major: head-to-head first</option>
+            </select>
           </label>
         </div>
         <div class="row" style={{ gap: 16, marginTop: 12 }}>

@@ -1,6 +1,7 @@
 import type { Dataset } from "./dataset.ts";
 import type { Division, Game, GameRound, Team } from "../engine/types.ts";
 import { DEFAULT_POINT_SYSTEM } from "../engine/pointSystem.ts";
+import { scheduleCountWarnings } from "../engine/standings.ts";
 import { extractPlayoffSlots } from "./importPlayoffApi.ts";
 
 export interface ApiImportSummary {
@@ -92,7 +93,18 @@ export function importApiData(
       skipped++; // placeholder / not-yet-determined matchup
       continue;
     }
+    // Played means Status FINAL, full stop. SCHEDULED and IN PROGRESS games are
+    // remaining, and their scores are NOT imported: the feed reports 0-0 for
+    // unplayed games, and a scorekeeper can enter goals before the game state
+    // flips, so a premature score must never leak into any "played" inference.
     const status = (g.Status ?? "").toUpperCase() === "FINAL" && g.HomeTeamScore != null && g.AwayTeamScore != null ? "final" : "scheduled";
+    if (status !== "final" && ((g.HomeTeamScore ?? 0) !== 0 || (g.AwayTeamScore ?? 0) !== 0)) {
+      warnings.push(
+        `DATA WARNING: ${g.Description ?? "a game"} (${(g.HomeTeamName || g.HomeTeamCode || "?")} vs ${(g.AwayTeamName || g.AwayTeamCode || "?")}) ` +
+          `has a score entered (${g.HomeTeamScore}-${g.AwayTeamScore}) but its status is ${g.Status ?? "unknown"}, not FINAL. ` +
+          `The score was ignored; it will count once the feed marks the game FINAL.`,
+      );
+    }
     if (round === "rr") rr++;
     else playoff++;
 
@@ -104,8 +116,8 @@ export function importApiData(
       slotStart: normalizeDate(g.Date, g.Time),
       homeTeamId: home.id,
       awayTeamId: away.id,
-      homeScore: status === "final" ? (g.HomeTeamScore as number) : g.HomeTeamScore ?? null,
-      awayScore: status === "final" ? (g.AwayTeamScore as number) : g.AwayTeamScore ?? null,
+      homeScore: status === "final" ? (g.HomeTeamScore as number) : null,
+      awayScore: status === "final" ? (g.AwayTeamScore as number) : null,
       status,
       decidedBy: status === "final" ? "regulation" : null,
     });
@@ -126,10 +138,11 @@ export function importApiData(
 
   // Default the playoff format by division count (operator can override in Setup;
   // re-syncs preserve their choice). Two divisions reads as Jr. High (6-team,
-  // pooled next-two); anything else as Sophomore (8-team, winners + runners-up +
-  // wildcards).
+  // pooled next-two); five or more as Girls Major (12-team, winners + runners-up
+  // + 2 wildcards); anything else as Sophomore (8-team, same tiering).
   const realDivisions = divisions.filter((d) => d.id !== "unassigned" && d.teamIds.length > 0).length;
   const jrHigh = realDivisions === 2;
+  const girlsMajor = realDivisions >= 5;
 
   const dataset: Dataset = {
     event: {
@@ -140,7 +153,8 @@ export function importApiData(
       format: "festival",
       hasPlayoffBracket: true,
       seedingRule: jrHigh ? "jrhigh_winners_next_two" : "jrhigh_top2_per_division",
-      fieldSize: jrHigh ? 6 : 8,
+      fieldSize: jrHigh ? 6 : girlsMajor ? 12 : 8,
+      tiebreakRule: girlsMajor ? "girls_major" : "standard",
       pointSystem: { ...DEFAULT_POINT_SYSTEM },
     },
     divisions,
@@ -149,6 +163,7 @@ export function importApiData(
   };
 
   if (teams.length === 0) warnings.push("No teams were found in the schedule JSON.");
+  warnings.push(...scheduleCountWarnings(teams, outGames));
 
   // Pull playoff game times from the same feed so the bracket shows them.
   const slots = extractPlayoffSlots(scheduleJson, dataset.event.fieldSize ?? 8).byCell;

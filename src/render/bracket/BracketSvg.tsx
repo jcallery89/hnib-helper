@@ -31,7 +31,9 @@ export function BracketSvg({ width, height, title, bracket, nameById, colorById,
   const championId = gameById.get("final")?.winnerTeamId ?? null;
 
   const titleSize = Math.round(height * 0.038);
-  const labelSize = Math.round(height * 0.014);
+  // Round labels shrink with the column count so a 5-column (12-team) layout
+  // never lets "QUARTERFINALS" spill into its neighbors.
+  const labelSize = Math.min(Math.round(height * 0.014), Math.floor(width / (layout.columns.length * 10)));
   const seedSize = Math.round(layout.rowH * 0.4);
   const nameSize = Math.round(layout.rowH * 0.47);
 

@@ -96,3 +96,37 @@ export function hasUnequalSchedules(standings: Standing[]): boolean {
   const first = played[0].gp;
   return played.some((s) => s.gp !== first);
 }
+
+/**
+ * Assert every team carries the same number of round-robin games on its
+ * schedule, played plus remaining (4 at HNIB festivals). A team off the common
+ * count means the schedule data is broken - a missing, duplicated, or
+ * misclassified game - and standings and the playoff picture would silently
+ * skew, so callers should show these loudly.
+ */
+export function scheduleCountWarnings(teams: Team[], games: Game[]): string[] {
+  const count = new Map<string, number>(teams.map((t) => [t.id, 0]));
+  for (const g of games) {
+    if (g.round !== "rr") continue;
+    if (count.has(g.homeTeamId)) count.set(g.homeTeamId, (count.get(g.homeTeamId) ?? 0) + 1);
+    if (count.has(g.awayTeamId)) count.set(g.awayTeamId, (count.get(g.awayTeamId) ?? 0) + 1);
+  }
+  if (count.size < 2) return [];
+
+  // The expected count is the mode across teams, so one broken team does not
+  // flag every other team instead.
+  const freq = new Map<number, number>();
+  for (const n of count.values()) freq.set(n, (freq.get(n) ?? 0) + 1);
+  const expected = [...freq.entries()].sort((a, b) => b[1] - a[1] || b[0] - a[0])[0][0];
+
+  const nameById = new Map(teams.map((t) => [t.id, t.name]));
+  const warnings: string[] = [];
+  for (const [id, n] of count) {
+    if (n !== expected) {
+      warnings.push(
+        `DATA WARNING: ${nameById.get(id) ?? id} has ${n} round-robin game${n === 1 ? "" : "s"} on the schedule (played plus remaining); every other team has ${expected}.`,
+      );
+    }
+  }
+  return warnings;
+}
