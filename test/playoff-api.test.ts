@@ -36,3 +36,54 @@ describe("extractPlayoffSlots", () => {
     expect(Object.keys(byCell).sort()).toEqual(["final", "qf1", "qf2", "sf1", "sf2"]);
   });
 });
+
+// The 2026 Boys Major feed (observed live): quarterfinals labeled "Playoff N"
+// in ICE-TIME order with real seeded teams ("Playoff 1" was the 3v6 game),
+// semifinals "SemiFinal N", an explicit "Championship", then the All-Star.
+const BOYS_MAJOR_FEED = JSON.stringify({
+  Games: [
+    { Description: "Game 30", HomeTeamCode: "Central/West", AwayTeamCode: "CT/Mid-Atlantic", Status: "FINAL", Date: "2026-08-01T16:50:00Z", Location: "Worcester Ice Center - MGH", LocationCode: "WIC-MGH" },
+    { Description: "Playoff 1", HomeTeamCode: "New England", AwayTeamCode: "Southern NE", Status: "SCHEDULED", Date: "2026-08-02T08:00:00Z", Location: "Worcester Ice Center - Lamacchia", LocationCode: "WIC-LAM" },
+    { Description: "Playoff 2", HomeTeamCode: "National", AwayTeamCode: "Greater Boston", Status: "SCHEDULED", Date: "2026-08-02T08:10:00Z", Location: "Worcester Ice Center - MGH", LocationCode: "WIC-MGH" },
+    { Description: "Playoff 3", HomeTeamCode: "Western Mass", AwayTeamCode: "North Shore", Status: "SCHEDULED", Date: "2026-08-02T09:00:00Z", Location: "Worcester Ice Center - Lamacchia", LocationCode: "WIC-LAM" },
+    { Description: "Playoff 4", HomeTeamCode: "Middlesex", AwayTeamCode: "South Shore", Status: "SCHEDULED", Date: "2026-08-02T09:10:00Z", Location: "Worcester Ice Center - MGH", LocationCode: "WIC-MGH" },
+    { Description: "SemiFinal 1", HomeTeamCode: "", AwayTeamCode: "", Status: "SCHEDULED", Date: "2026-08-02T10:00:00Z", Location: "Worcester Ice Center - Lamacchia", LocationCode: "WIC-LAM" },
+    { Description: "SemiFinal 2", HomeTeamCode: "", AwayTeamCode: "", Status: "SCHEDULED", Date: "2026-08-02T11:00:00Z", Location: "Worcester Ice Center - Lamacchia", LocationCode: "WIC-LAM" },
+    { Description: "Championship", HomeTeamCode: "", AwayTeamCode: "", Status: "SCHEDULED", Date: "2026-08-02T13:00:00Z", Location: "Worcester Ice Center - Lamacchia", LocationCode: "WIC-LAM" },
+    { Description: "All-Star Game", HomeTeamCode: "", AwayTeamCode: "", Status: "SCHEDULED", Date: "2026-08-02T15:00:00Z", Location: "Worcester Ice Center - Lamacchia", LocationCode: "WIC-LAM" },
+  ],
+});
+
+const BOYS_MAJOR_PAIRS: Array<{ cellId: string; teams: [string, string] }> = [
+  { cellId: "qf1", teams: ["Western Mass", "North Shore"] },
+  { cellId: "qf2", teams: ["Middlesex", "South Shore"] },
+  { cellId: "qf3", teams: ["National", "Greater Boston"] },
+  { cellId: "qf4", teams: ["New England", "Southern NE"] },
+];
+
+describe("extractPlayoffSlots - Playoff N labels with real teams", () => {
+  it("maps first-round games by seeded team pair, not by ice-time numbering", () => {
+    const { byCell } = extractPlayoffSlots(BOYS_MAJOR_FEED, 8, { qfTeamPairs: BOYS_MAJOR_PAIRS });
+    expect(byCell.qf1).toMatchObject({ slotStart: "2026-08-02T09:00:00", rink: "Lamacchia" });
+    expect(byCell.qf2).toMatchObject({ slotStart: "2026-08-02T09:10:00", rink: "MGH" });
+    expect(byCell.qf3).toMatchObject({ slotStart: "2026-08-02T08:10:00", rink: "MGH" });
+    expect(byCell.qf4).toMatchObject({ slotStart: "2026-08-02T08:00:00", rink: "Lamacchia" });
+    expect(byCell.sf1).toMatchObject({ slotStart: "2026-08-02T10:00:00", rink: "Lamacchia" });
+    expect(byCell.sf2).toMatchObject({ slotStart: "2026-08-02T11:00:00" });
+    expect(byCell.final).toMatchObject({ slotStart: "2026-08-02T13:00:00" });
+    expect(Object.keys(byCell).sort()).toEqual(["final", "qf1", "qf2", "qf3", "qf4", "sf1", "sf2"]);
+  });
+
+  it("falls back to the trailing number when playoff teams are unknown", () => {
+    const noPairs = extractPlayoffSlots(BOYS_MAJOR_FEED, 8).byCell;
+    // Without the seeded pairs the number is the only signal - qf1 lands on
+    // the 8:00 game. Imperfect, but times still appear.
+    expect(noPairs.qf1).toMatchObject({ slotStart: "2026-08-02T08:00:00" });
+    expect(noPairs.final).toMatchObject({ slotStart: "2026-08-02T13:00:00" });
+  });
+
+  it("never treats the All-Star game as the championship", () => {
+    const { byCell } = extractPlayoffSlots(BOYS_MAJOR_FEED, 8, { qfTeamPairs: BOYS_MAJOR_PAIRS });
+    expect(byCell.final?.slotStart).not.toBe("2026-08-02T15:00:00");
+  });
+});

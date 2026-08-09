@@ -8,6 +8,8 @@
 
 import { importApiData } from "./importApi.ts";
 import { extractPlayoffSlots } from "./importPlayoffApi.ts";
+import { buildPlayoffField } from "../engine/playoff/field.ts";
+import { qfPairings } from "../engine/playoff/bracket.ts";
 import { parseLeaders, parsePlayerProfile, parseTeamRoster } from "./importApiPlayers.ts";
 import type { Dataset, PlayerGameLine } from "./dataset.ts";
 import type { Player, PlayerStatLine } from "../engine/types.ts";
@@ -150,7 +152,27 @@ export async function fullSync(
 
   // Re-extract playoff game times using the carried-forward field size (the
   // import default may have guessed a different size before config was applied).
-  const autoSlots = extractPlayoffSlots(base.scheduleJson, dataset.event.fieldSize ?? 8).byCell;
+  // The seeded first-round pairs travel along so a feed that fills real teams
+  // into its first-round games ("Playoff 1..4" in ice-time order) maps by
+  // matchup instead of by unreliable numbering.
+  const fieldSizeNow = dataset.event.fieldSize === 6 ? 6 : 8;
+  let qfTeamPairs: Array<{ cellId: string; teams: [string, string] }> = [];
+  try {
+    const field = buildPlayoffField(dataset.event, dataset.divisions, dataset.teams, dataset.games, {
+      pointSystem: dataset.event.pointSystem,
+      teams: dataset.teams,
+    });
+    const teamBySeed = new Map(field.seeds.map((s) => [s.seed, s.teamId]));
+    const nameById = new Map(dataset.teams.map((t) => [t.id, t.name]));
+    for (const p of qfPairings(fieldSizeNow)) {
+      const a = nameById.get(teamBySeed.get(p.high) ?? "");
+      const b = nameById.get(teamBySeed.get(p.low) ?? "");
+      if (a && b) qfTeamPairs.push({ cellId: p.id, teams: [a, b] });
+    }
+  } catch {
+    qfTeamPairs = []; // field not seedable yet; label mapping still applies
+  }
+  const autoSlots = extractPlayoffSlots(base.scheduleJson, fieldSizeNow, { qfTeamPairs }).byCell;
   if (Object.keys(autoSlots).length) dataset.playoffSchedule = autoSlots;
 
   // Team rosters + stats.
@@ -222,6 +244,7 @@ export async function fullSync(
     if (prev.allStarIds) dataset.allStarIds = prev.allStarIds;
     if (prev.playerWriteups) dataset.playerWriteups = prev.playerWriteups;
     if (prev.playerGameLogs) dataset.playerGameLogs = prev.playerGameLogs;
+    if (prev.ballot) dataset.ballot = prev.ballot;
     // Manual team-color overrides win over the API base and survive re-syncs.
     if (prev.teamColors) {
       dataset.teamColors = prev.teamColors;
@@ -229,6 +252,14 @@ export async function fullSync(
         const c = prev.teamColors[t.id];
         if (c) t.colorPrimary = c;
       }
+    }
+    // Default-preserve: any other Dataset field the API rebuild did not set
+    // carries forward automatically, so a future locally-owned field cannot
+    // be silently dropped by re-sync just because it is missing from this list.
+    const src = prev as unknown as Record<string, unknown>;
+    const dst = dataset as unknown as Record<string, unknown>;
+    for (const key of Object.keys(src)) {
+      if (dst[key] === undefined && src[key] !== undefined) dst[key] = src[key];
     }
   }
 

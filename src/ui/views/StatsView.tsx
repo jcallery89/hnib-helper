@@ -1,6 +1,7 @@
 import { useMemo, useState } from "preact/hooks";
 import type { Dataset } from "../../io/dataset.ts";
 import type { Player, PlayerSummary } from "../../engine/types.ts";
+import { ballotPosition } from "../../engine/ballot/ballot.ts";
 import { playerSummaries } from "../state/store.ts";
 import { downloadFile } from "../../io/session.ts";
 import { buildBallotRoster, ballotRosterCsv, ballotRosterSql, defaultBallotTable } from "../../io/ballotExport.ts";
@@ -99,7 +100,8 @@ export function StatsView({ dataset, update }: Props) {
         ) : (
           <>
             {(["F", "D", "G"] as const).map((pos) => {
-              const group = flaggedRows.filter((r) => (r.player.position ?? "") === pos);
+              // Bucket like the ballot does so blank-position players are not dropped.
+              const group = flaggedRows.filter((r) => ballotPosition(r.player, r.summary) === pos);
               if (group.length === 0) return null;
               return (
                 <p key={pos}>

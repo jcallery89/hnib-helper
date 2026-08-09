@@ -15,10 +15,17 @@ import type { PlayoffSlot } from "./dataset.ts";
  * half), so cells map by the trailing number. The championship has no usable
  * label, so it is taken as the earliest still-to-play game with no real teams -
  * the All-Star exhibition is later, and round-robin games always have teams.
+ *
+ * Some events label the first round "Playoff 1..4" with the REAL seeded teams
+ * filled in, and the numbering follows ice-time order, not bracket order
+ * (observed: "Playoff 1" was the 3v6 game). Those map by TEAM PAIR against
+ * the seeded field passed in opts.qfTeamPairs; the trailing number is only a
+ * last resort when the teams are unknown.
  */
 export function extractPlayoffSlots(
   scheduleJson: string,
   fieldSize: number,
+  opts: { qfTeamPairs?: Array<{ cellId: string; teams: [string, string] }> } = {},
 ): { byCell: Record<string, PlayoffSlot>; warnings: string[] } {
   const warnings: string[] = [];
   let data: unknown;
@@ -37,6 +44,14 @@ export function extractPlayoffSlots(
     if (!byCell[cell]) byCell[cell] = slot;
   };
 
+  // Seeded first-round pairs, keyed by their (order-free, normalized) teams.
+  const norm = (s: unknown) => String(s ?? "").toLowerCase().replace(/\s+/g, "").trim();
+  const pairKey = (a: unknown, b: unknown) => [norm(a), norm(b)].sort().join("|");
+  const cellByTeams = new Map<string, string>();
+  for (const p of opts.qfTeamPairs ?? []) {
+    if (p.teams[0] && p.teams[1]) cellByTeams.set(pairKey(p.teams[0], p.teams[1]), p.cellId);
+  }
+
   for (const g of raw as Array<Record<string, unknown>>) {
     const desc = String(g.Description ?? "");
     const d = desc.toLowerCase();
@@ -49,6 +64,12 @@ export function extractPlayoffSlots(
     };
     const num = numIn(desc);
 
+    // A first-round game with real teams maps by the seeded pairing no matter
+    // how it is labeled (works for "Playoff N" ice-time numbering too).
+    const teamCell =
+      cellByTeams.get(pairKey(g.HomeTeamCode, g.AwayTeamCode)) ??
+      cellByTeams.get(pairKey(g.HomeTeamName, g.AwayTeamName));
+
     if (/semi/.test(d)) {
       if (num) set(`sf${num}`, slot);
     } else if (/play-?in|prelim/.test(d)) {
@@ -59,6 +80,12 @@ export function extractPlayoffSlots(
       if (num) set(`qf${num}`, slot);
     } else if (/final|championship/.test(d)) {
       set("final", slot);
+    } else if (teamCell) {
+      set(teamCell, slot);
+    } else if (/playoff/.test(d)) {
+      // Labeled playoff game whose teams are not known yet: the trailing
+      // number is the only signal left.
+      if (num) set(`qf${num}`, slot);
     } else {
       // Unlabeled "Game N": a bracket placeholder game has no resolved teams and
       // has not been played; round-robin games always carry real team codes.

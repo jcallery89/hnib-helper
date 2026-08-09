@@ -18,8 +18,13 @@ interface Props {
   eventCount: number;
 }
 
-// 2025 Jr. High Festival, confirmed by JC. Prefilled as a convenient default.
-const DEFAULT_EVENT_ID = "63655fc1-1db9-46a5-a948-44f63d297810";
+// Event ids confirmed by JC. The first entry is prefilled as the default.
+const KNOWN_EVENTS = [
+  { name: "Boys Major Showcase 2026", id: "ebc5c5b9-9a1e-44f7-a6b8-466aefac97ee" },
+  { name: "Girls Major Showcase 2026", id: "3171c084-927e-4336-bba8-41939699c738" },
+  { name: "Jr. High Festival 2025", id: "63655fc1-1db9-46a5-a948-44f63d297810" },
+];
+const DEFAULT_EVENT_ID = KNOWN_EVENTS[0].id;
 
 export function SetupView({ dataset, replace, removeCurrent, eventCount }: Props) {
   const [csv, setCsv] = useState("");
@@ -172,6 +177,22 @@ export function SetupView({ dataset, replace, removeCurrent, eventCount }: Props
           <button class="btn primary" disabled={syncing || !syncId.trim()} onClick={doSync}>
             {syncing ? "Syncing..." : "Sync event"}
           </button>
+        </div>
+        <div class="row" style={{ marginBottom: 12 }}>
+          <span class="note">Known events:</span>
+          {KNOWN_EVENTS.map((ev) => (
+            <button
+              key={ev.id}
+              class="btn secondary"
+              disabled={syncing}
+              onClick={() => {
+                setSyncId(ev.id);
+                setApiName(ev.name);
+              }}
+            >
+              {ev.name}
+            </button>
+          ))}
         </div>
         <p class="note">
           Or paste the JSON yourself - Schedule: hnib.app/api/schedule/EVENT-ID, Divisions:

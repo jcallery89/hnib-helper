@@ -98,8 +98,23 @@ Auto-sync (3 min)** when the event was loaded from hnib.app.
   report; the seeding + tie-breaking rules are printed at the bottom.
 - **Players** - per-team rosters; player-card preview + PNG export; on-demand
   game log; editable scouting report.
-- **Stats** - all players in sortable tables, team filter, **All-Star flagging**
-  with an All-Star pool and CSV export.
+- **Stats** - ALL players in sortable tables (skaters: GP/G/A/PTS; goalies:
+  GP/GAA/SV%), team filter, **All-Star flagging** (star toggle) with an
+  All-Star Pool and CSV export.
+- **Ballot** - nomination tracker for the Boys Major Showcase coaches ballot:
+  every rostered player listed by position (production-sorted), a Nominated
+  checkbox per player (worked from the Gravity Forms entries export),
+  directors' Roster/Alternate calls and per-player notes on the nominated
+  group, team filter and nominated-only view. Exports: nominated players
+  CSV, and a notification CSV with parent/player contact columns produced by
+  a one-shot join against a pasted registration export
+  (`src/io/contactJoin.ts` - contact details are never written to the
+  Dataset, preserving the no-PII guarantee). Engine logic in
+  `src/engine/ballot/`; state in `Dataset.ballot` (`nominatedIds`,
+  `selections`, `playerNotes`), preserved across re-sync.
+  For the LIVE-STATS Gravity Forms ballot on hnibonline.com (GP Populate
+  Anything reading a MySQL table refreshed from the API by a server-side
+  cron), see `wp/` - sync PHP, importable form JSON, and the setup runbook.
 - **Share** - on-brand graphics: **Playoff Seeding**, **Playoff Picture**
   (clinched / in the hunt / eliminated), **Tiebreakers**, **Announcement /
   Scenario** (free text), and **Day Schedule** (combines every event on a chosen
@@ -147,14 +162,27 @@ Public read API at `https://hnib.app/api`: `/event/{id}`, `/schedule/{eventId}`,
 `PrimaryRGB`), `/player_profile/{id}`, `/leaders/{eventId}`.
 
 - **Setup -> Sync event** with the event UUID pulls schedule, scores, real team
-  colors, playoff rounds, divisions, every team roster with player stats, the
-  leaders board, and **playoff game times** (section 6). The 2025 Jr. High event
-  id is `63655fc1-1db9-46a5-a948-44f63d297810`.
-- Re-sync PRESERVES all local work: playoff results, All-Star flags, scouting
-  writeups, fetched game logs, team-color overrides, and hand-fixed game times.
+  colors, exact playoff rounds (from each game's Description), divisions, every
+  team roster with player stats, the leaders board, and **playoff game times**
+  (section 6). Known event ids (also quick-pick buttons in Setup): 2026 Boys
+  Major Showcase `ebc5c5b9-9a1e-44f7-a6b8-466aefac97ee`, 2025 Jr. High
+  `63655fc1-1db9-46a5-a948-44f63d297810`.
+- API docs are checked in under `docs/`: `TOURNO-API.md` (field-by-field
+  reference with real observed shapes, date/time quirks, and playoff
+  Description gotchas - the practical source of truth) and `tourno-api.html`
+  (reverse-engineered OpenAPI spec; open in a browser, Redoc). Notables
+  beyond what the tool consumes: `/game/{id}` returns a full box score with
+  per-game player lines and a goal-by-goal ScoringSummary (scorer +
+  assists), and `/search/{eventId}` finds players by name.
+- Re-sync PRESERVES all local work: playoff results, ballot state, All-Star
+  flags, scouting writeups, fetched game logs, team-color overrides, and
+  hand-fixed game times. Any Dataset field the sync does not rebuild is
+  carried forward by default (`src/io/sync.ts`), so new locally-owned fields
+  survive without touching the preserve list.
 - `src/io/sync.ts` calls the browser first; if blocked (CORS) it falls back to
   `public/hnib-proxy.php`, a same-origin whitelist-only GET relay shipped in
   `dist/`.
+- Game logs (`/player_profile/{id}`) are fetched on demand per player.
 - **The build/dev environment cannot reach hnib.app** (network policy). To
   capture sample API JSON, open the URL in a real browser and paste it.
 
@@ -189,21 +217,25 @@ override if needed.
 
 ## 7. All-Star nomination ballot sync (Gravity Forms)
 
-Full setup is in **`docs/ALL-STAR-BALLOT.md`**. In brief: the tool can push each
-event's roster (team, jersey, position, live stats) to a small PHP endpoint on
-the HNIB WordPress site, which refreshes a MySQL table that a Gravity Forms
-ballot reads via Gravity Wiz "Populate Anything" (GPPA). Coaches then see live
-names/numbers/stats when voting.
+**Current approach (Boys Major 2026, live on hnibonline.com): `wp/`.** A
+server-side PHP (`wp/hnib-ballot-sync.php`, uploaded to the WordPress root,
+run by a SiteGround cron every 15 min) PULLS rosters + stats straight from the
+hnib.app API and refreshes `gf_boysmajor_rosters`; the importable form
+(`wp/boys-major-ballot-form.json`) reads it via Gravity Wiz "Populate
+Anything" (GPPA) with team-chained dropdowns. No browser involvement at all.
+See `wp/README.md` for the runbook.
+
+**Legacy approach (Sophomore/Jr. High, superseded):** the tool could PUSH each
+event's roster from the browser to a PHP endpoint on the WordPress site.
 
 - **Setup -> All-Star ballot auto-sync**: enable it, set the endpoint URL and a
-  shared token. Every sync then also pushes the roster.
-- Endpoint: `public/hnib-ballot-sync.php` (deployed as `hnibballotsync.php`).
-  Token-gated, CORS-locked to the tool's origin. Two DB modes: dedicated
-  least-privilege MySQL user (Mode A) or WordPress `$wpdb` (Mode B).
-- Sophomore and Jr. High use separate ballot forms and separate tables
-  (`gf_soph_rosters`, `gf_jrhigh_rosters`). Duplicate a Gravity Form by editing
-  its exported JSON (find/replace the table name); the GPPA field filters break
-  if you switch the table in the UI.
+  shared token. Every sync then also pushes the roster. Leave this OFF for
+  events using the `wp/` cron approach - the new endpoint rejects pushes.
+- Endpoint template: `public/hnib-ballot-sync.php` (deployed as
+  `hnibballotsync.php`). Token-gated, CORS-locked. Full setup in
+  `docs/ALL-STAR-BALLOT.md`.
+- Sophomore and Jr. High used separate ballot forms and tables
+  (`gf_soph_rosters`, `gf_jrhigh_rosters`).
 
 ---
 
@@ -211,7 +243,8 @@ names/numbers/stats when voting.
 
 - **`Dataset`** (`src/io/dataset.ts`): event, divisions, teams, games, plus
   optional `bracketResults`, `playoffSchedule`, `players`, `playerStats`,
-  `leaders`, `playerGameLogs`, `playerWriteups`, `allStarIds`, `teamColors`.
+  `leaders`, `playerGameLogs`, `playerWriteups`, `allStarIds`, `teamColors`,
+  `ballot` (coaches-ballot state).
 - **`HnibEvent`**: `seedingRule`, `fieldSize` (6 or 8), `hasPlayoffBracket`,
   `pointSystem`.
 - **`Player`**: keyed by id; `jersey` unique within a team, NOT globally. Has
@@ -280,17 +313,23 @@ open each in its own tab with `?event=<id>` in the address.
 
 ## 12. Open / possible next steps
 
-- All-Star roster builder from the flagged pool (balanced squads, exportable).
-- Headshots into the player-card avatar once registration provides photo URLs.
+- Balanced All-Star game squads from the flagged pool (the coaches ballot and
+  final at-large roster are built; see the Ballot tab).
+- Read divisions automatically from the standings page if needed.
+- Headshots into the card avatar once registration provides photo URLs.
 - Confirm 8-team playoff game-time auto-mapping against a live Sophomore feed.
-- Fuller AI-written scouting reports (needs a server piece to hold an API key).
+- Fuller AI-written scouting reports (needs an API key path; static site cannot
+  safely hold a secret - would require a small server piece).
 - CP-SAT scheduler upgrade (current Phase 2 is greedy + local search in JS).
 
 ---
 
 ## 13. Git
 
-Work lives on branch **`claude/stoic-babbage-toy386-xglxrh`** (repo
-`jcallery89/hnib-helper`). `main` is empty - always work from the branch. Build
-and test before committing: `npm run build && npm test`. Do not create PRs unless
-asked. See `START_HERE.md` for the new-session kickoff prompt.
+Work lives on branch **`claude/all-star-ballot-system-pzj8x1`** (repo
+`jcallery89/hnib-helper`). Earlier branches (`claude/stoic-babbage-toy386*`,
+`claude/transparent-social-cards-gn5sou`) were merged into it on 2026-08-01 and
+are behind - never build or deploy from them. `main` is empty. Build and test
+before committing: `npm run build && npm test`. Pushing the branch triggers the
+FTPS deploy GitHub Action. Do not create PRs unless asked. See `START_HERE.md`
+for the new-session kickoff prompt.

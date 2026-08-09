@@ -1,5 +1,6 @@
 import type { Division, Game, HnibEvent, Player, PlayerStatLine, Team } from "../engine/types.ts";
 import type { BracketResult } from "../engine/playoff/bracket.ts";
+import type { BallotState } from "../engine/ballot/ballot.ts";
 
 /** One row on the event leaders board (as published by the Tourno API). */
 export interface LeaderEntry {
@@ -51,6 +52,8 @@ export interface Dataset {
   playerWriteups?: Record<string, string>;
   /** Player ids flagged for All-Star consideration. */
   allStarIds?: string[];
+  /** All-Star coaches ballot: coach rankings, consensus, and final roster calls. */
+  ballot?: BallotState;
   /** Manual team color overrides keyed by team id; survive re-syncs. */
   teamColors?: Record<string, string>;
   /** Scheduled time + rink for each bracket game, keyed by bracket game id. */

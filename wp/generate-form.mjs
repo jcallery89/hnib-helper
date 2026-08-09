@@ -1,0 +1,317 @@
+// Generates the ready-to-import Gravity Forms coaches ballots (Boys and
+// Girls Major Showcases), with every player dropdown wired to GP Populate
+// Anything reading the roster table that wp/hnib-ballot-sync.php keeps
+// current for that event.
+//
+// Field property sets are modeled on the working Sophomore All-Star Ballot
+// export (GF 2.10.4) so the import lands cleanly. Regenerate with:
+//   node wp/generate-form.mjs
+
+import { writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+const EVENTS = [
+  { title: "Boys Major Showcase Coaches Ballot 2026", table: "gf_boysmajor_rosters", file: "boys-major-ballot-form.json" },
+  { title: "Girls Major Showcase Coaches Ballot 2026", table: "gf_girlsmajor_rosters", file: "girls-major-ballot-form.json" },
+];
+
+const FORM_ID = 1; // remapped by Gravity Forms on import
+let TABLE = EVENTS[0].table; // set per event in the build loop below
+
+// Deterministic stand-ins for the editor-generated ids in the sample export.
+const layoutGroupId = (n) => n.toString(16).padStart(8, "0");
+let uuidCounter = 1782590000000;
+const uuid = () => uuidCounter++;
+
+const common = {
+  is_payment: false,
+  duplicatable: true,
+  repeatable: true,
+  adminLabel: "",
+  errorMessage: "",
+  visibility: "visible",
+  inputs: null,
+  allowsPrepopulate: false,
+  inputMask: false,
+  inputMaskValue: "",
+  inputMaskIsCustom: false,
+  maxLength: "",
+  labelPlacement: "",
+  descriptionPlacement: "",
+  subLabelPlacement: "",
+  cssClass: "",
+  inputName: "",
+  noDuplicates: false,
+  defaultValue: "",
+  conditionalLogic: "",
+  productField: "",
+  layoutGridColumnSpan: 12,
+  enableEnhancedUI: 0,
+  multipleFiles: false,
+  maxFiles: "",
+  calculationFormula: "",
+  calculationRounding: "",
+  enableCalculation: "",
+  disableQuantity: false,
+  displayAllCategories: false,
+  useRichTextEditor: false,
+  errors: [],
+  fields: "",
+  displayOnly: "",
+  formId: FORM_ID,
+  enableAutocomplete: false,
+  autocompleteAttribute: "",
+};
+
+let nextId = 1;
+let groupCounter = 1;
+
+function textField(label, { required = false, description = "" } = {}) {
+  return {
+    ...common,
+    type: "text",
+    id: nextId++,
+    label,
+    isRequired: required,
+    size: "large",
+    description,
+    placeholder: "",
+    choices: "",
+    enablePasswordInput: "",
+    layoutGroupId: layoutGroupId(groupCounter++),
+  };
+}
+
+function textareaField(label, { description = "" } = {}) {
+  return {
+    ...common,
+    type: "textarea",
+    id: nextId++,
+    label,
+    isRequired: false,
+    size: "large",
+    description,
+    descriptionPlacement: "above",
+    placeholder: "",
+    choices: "",
+    maxLength: "",
+    layoutGroupId: layoutGroupId(groupCounter++),
+  };
+}
+
+function sectionField(label, description) {
+  return {
+    ...common,
+    type: "section",
+    id: nextId++,
+    label,
+    isRequired: false,
+    size: "medium",
+    description,
+    placeholder: "",
+    choices: "",
+    displayOnly: true,
+    layoutGroupId: layoutGroupId(groupCounter++),
+  };
+}
+
+// A GPPA-populated select. The static `choices` are only a fallback shown if
+// the GP Populate Anything plugin were missing; GPPA replaces them at render.
+function gppaSelect(label, placeholder, gppa) {
+  return {
+    ...common,
+    type: "select",
+    id: nextId++,
+    label,
+    isRequired: gppa.required ?? false,
+    size: "medium",
+    description: "",
+    placeholder,
+    choices: [{ text: "Populated automatically from live rosters", value: "", isSelected: false, price: "" }],
+    enablePrice: "",
+    checkboxLabel: "",
+    enableEnhancedUI: false,
+    layoutGroupId: layoutGroupId(groupCounter++),
+    "gppa-choices-enabled": true,
+    "gppa-choices-object-type": "database",
+    "gppa-choices-primary-property": TABLE,
+    "gppa-choices-ordering-property": gppa.orderBy,
+    "gppa-choices-ordering-method": gppa.orderDir,
+    "gppa-choices-filter-groups": gppa.filters ?? [],
+    "gppa-choices-templates": gppa.templates,
+    "gppa-choices-unique-results": true,
+    "gppa-values-enabled": false,
+    "gppa-values-object-type": "database",
+    "gppa-values-primary-property": "",
+    "gppa-values-ordering-property": "",
+    "gppa-values-ordering-method": "asc",
+    "gppa-values-filter-groups": [],
+    "gppa-values-templates": [],
+    "gppa-values-unique-results": true,
+  };
+}
+
+// Nomination ballot, same 3/2/1 structure as the Sophomore form: the coach
+// picks their team, and every player dropdown is chained to that choice with
+// a GPPA field filter (team_name is gf_field:N) plus the position filter.
+function buildFields() {
+  const teamField = gppaSelect("Team", "Team", {
+    required: true,
+    orderBy: "team_name",
+    orderDir: "asc",
+    templates: { value: "team_name", label: "team_name" },
+  });
+  teamField.description = "Select the team you coached. The player lists below show that team's roster.";
+
+  const playerSelect = (label, pos, orderBy, orderDir, required) =>
+    gppaSelect(label, label, {
+      required,
+      filters: [[
+        { property: "team_name", operator: "is", value: `gf_field:${teamField.id}`, uuid: uuid() },
+        { property: "position", operator: "is", value: pos, uuid: uuid() },
+      ]],
+      orderBy,
+      orderDir,
+      templates: { value: "player_key", label: "display" },
+    });
+
+  return [
+    textField("Coach's Name", { required: true }),
+    textField("Cell #", {
+      required: true,
+      description: "Please provide your cell # so we can reach out if we need any clarification.",
+    }),
+    teamField,
+    sectionField(
+      "Forwards",
+      "Nominate your team's top 3 forwards, best first. Stats in each list update automatically as games are played.",
+    ),
+    playerSelect("#1 Forward", "F", "points", "desc", true),
+    playerSelect("#2 Forward", "F", "points", "desc", false),
+    playerSelect("#3 Forward", "F", "points", "desc", false),
+    sectionField("Defense", "Nominate your team's top 2 defensemen, best first."),
+    playerSelect("#1 Defenseman", "D", "points", "desc", true),
+    playerSelect("#2 Defenseman", "D", "points", "desc", false),
+    sectionField("Goaltender", "Nominate your team's top goaltender."),
+    playerSelect("#1 Goalie", "G", "svpct", "desc", true),
+    textareaField("Important Notes", {
+      description:
+        "Injuries, position changes, or players you would take with an asterisk. " +
+        "Anything the directors should know before the final roster is set.",
+    }),
+  ];
+}
+
+const buildForm = (title, fields) => ({
+  title,
+  description: "",
+  labelPlacement: "top_label",
+  descriptionPlacement: "below",
+  button: {
+    type: "text",
+    text: "Submit Ballot",
+    imageUrl: "",
+    conditionalLogic: null,
+    width: "auto",
+    location: "bottom",
+    layoutGridColumnSpan: 12,
+    id: "submit",
+  },
+  fields,
+  version: "2.10.4",
+  markupVersion: 2,
+  nextFieldId: nextId,
+  useCurrentUserAsAuthor: true,
+  postContentTemplateEnabled: false,
+  postTitleTemplateEnabled: false,
+  postTitleTemplate: "",
+  postContentTemplate: "",
+  lastPageButton: null,
+  pagination: null,
+  firstPageCssClass: null,
+  subLabelPlacement: "above",
+  validationSummary: "1",
+  requiredIndicator: "text",
+  customRequiredIndicator: "(Required)",
+  cssClass: "",
+  save: { enabled: false, button: { type: "link", text: "Save and Continue Later" } },
+  limitEntries: false,
+  limitEntriesCount: "",
+  limitEntriesPeriod: "",
+  limitEntriesMessage: "",
+  requireLogin: false,
+  requireLoginMessage: "",
+  scheduleForm: false,
+  scheduleStart: "",
+  scheduleStartHour: "",
+  scheduleStartMinute: "",
+  scheduleStartAmpm: "",
+  scheduleEnd: "",
+  scheduleEndHour: "",
+  scheduleEndMinute: "",
+  scheduleEndAmpm: "",
+  schedulePendingMessage: "",
+  scheduleMessage: "",
+  enableHoneypot: true,
+  honeypotAction: "spam",
+  enableAnimation: false,
+  id: FORM_ID,
+  validationPlacement: "below",
+  saveButtonText: "Save and Continue Later",
+  deprecated: "",
+  saveEnabled: "",
+  confirmations: [
+    {
+      id: "bm2026confirm01",
+      name: "Default Confirmation",
+      isDefault: true,
+      type: "message",
+      message:
+        "Thank you for submitting your ballot. If you have any changes, please text Jamie Callery at 978-873-0774.",
+      url: "",
+      pageId: "",
+      queryString: "",
+      event: "",
+      disableAutoformat: false,
+      conditionalLogic: [],
+      page: "",
+    },
+  ],
+  notifications: [
+    {
+      id: "bm2026notify01",
+      isActive: true,
+      to: "{admin_email}",
+      name: "Admin Notification",
+      event: "form_submission",
+      toType: "email",
+      subject: title,
+      message: "{all_fields}",
+      service: "wordpress",
+      toEmail: "{admin_email}",
+      routing: null,
+      fromName: "",
+      from: "{admin_email}",
+      replyTo: "",
+      bcc: "",
+      disableAutoformat: false,
+      notification_conditional_logic_object: "",
+      notification_conditional_logic: "0",
+      conditionalLogic: null,
+      cc: "",
+      enableAttachments: false,
+    },
+  ],
+});
+
+for (const ev of EVENTS) {
+  TABLE = ev.table;
+  nextId = 1;
+  groupCounter = 1;
+  const fields = buildFields();
+  const out = { 0: buildForm(ev.title, fields), version: "3.0.0" };
+  const path = join(dirname(fileURLToPath(import.meta.url)), ev.file);
+  writeFileSync(path, JSON.stringify(out));
+  console.log(`Wrote ${path}: ${fields.length} fields, nextFieldId ${nextId}`);
+}
