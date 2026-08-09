@@ -21,6 +21,13 @@ on:
       - main
   workflow_dispatch:
 
+# Never run two FTP syncs at once: concurrent syncs corrupt the server-side
+# sync-state file and leave index.html pointing at bundles that were never
+# uploaded (a persistent white screen). Later runs queue behind the active one.
+concurrency:
+  group: siteground-deploy
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
