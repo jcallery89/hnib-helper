@@ -87,3 +87,44 @@ describe("extractPlayoffSlots - Playoff N labels with real teams", () => {
     expect(byCell.final?.slotStart).not.toBe("2026-08-02T15:00:00");
   });
 });
+
+// The 12-team Girls Major: Round 1 (pr cells) with real seeded teams, bye-seed
+// quarterfinals identified by the bye team, semis and championship labeled.
+const GIRLS_FEED = JSON.stringify({
+  Games: [
+    { Description: "Game 50", HomeTeamCode: "Mass Pub/Cath", AwayTeamCode: "45th Parallel", Status: "FINAL", Date: "2026-08-07T15:00:00Z", Location: "Worcester Ice Center - Lamacchia" },
+    { Description: "Playoff 1", HomeTeamCode: "Worcester County", AwayTeamCode: "NE Connecticut", Status: "SCHEDULED", Date: "2026-08-09T08:00:00Z", Location: "Worcester Ice Center - Lamacchia" },
+    { Description: "Playoff 2", HomeTeamCode: "Mass Pub/Cath", AwayTeamCode: "45th Parallel", Status: "SCHEDULED", Date: "2026-08-09T08:10:00Z", Location: "Worcester Ice Center - MGH" },
+    { Description: "Playoff 5", HomeTeamCode: "Northern NE", AwayTeamCode: "", AwayTeamPlaceholder: "Winner of Playoff 1", Status: "SCHEDULED", Date: "2026-08-09T10:20:00Z", Location: "Worcester Ice Center - Lamacchia" },
+    { Description: "SemiFinal 1", HomeTeamCode: "", AwayTeamCode: "", Status: "SCHEDULED", Date: "2026-08-09T13:00:00Z", Location: "Worcester Ice Center - Lamacchia" },
+    { Description: "Championship", HomeTeamCode: "", AwayTeamCode: "", Status: "SCHEDULED", Date: "2026-08-09T16:00:00Z", Location: "Worcester Ice Center - Lamacchia" },
+    { Description: "All-Star Game", HomeTeamCode: "", AwayTeamCode: "", Status: "SCHEDULED", Date: "2026-08-09T18:00:00Z", Location: "Worcester Ice Center - Lamacchia" },
+  ],
+});
+
+describe("extractPlayoffSlots - 12-team field", () => {
+  const opts = {
+    qfTeamPairs: [
+      { cellId: "pr1", teams: ["Worcester County", "NE Connecticut"] as [string, string] },
+      { cellId: "pr2", teams: ["Mass Pub/Cath", "45th Parallel"] as [string, string] },
+    ],
+    byeTeamCells: [{ cellId: "qf1", team: "Northern NE" }],
+  };
+
+  it("maps Round 1 by pair, bye QFs by bye team, and never by an RR rematch", () => {
+    const { byCell } = extractPlayoffSlots(GIRLS_FEED, 12, opts);
+    // Game 50 is the same two teams as pr2 but round-robin styled: ignored.
+    expect(byCell.pr2).toMatchObject({ slotStart: "2026-08-09T08:10:00", rink: "MGH" });
+    expect(byCell.pr1).toMatchObject({ slotStart: "2026-08-09T08:00:00" });
+    // Playoff 5 maps to qf1 by its bye team even with an undecided opponent.
+    expect(byCell.qf1).toMatchObject({ slotStart: "2026-08-09T10:20:00" });
+    expect(byCell.sf1).toMatchObject({ slotStart: "2026-08-09T13:00:00" });
+    expect(byCell.final).toMatchObject({ slotStart: "2026-08-09T16:00:00" });
+  });
+
+  it("keeps pr cells when the field is 12", () => {
+    const { byCell } = extractPlayoffSlots(GIRLS_FEED, 12, opts);
+    expect(Object.keys(byCell)).toContain("pr1");
+    expect(Object.keys(byCell)).not.toContain("pr5");
+  });
+});

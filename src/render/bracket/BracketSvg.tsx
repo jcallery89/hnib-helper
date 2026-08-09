@@ -245,9 +245,14 @@ function renderCell(cell: CellBox, game: BracketGame, opts: CellOpts) {
     game.decidedBy === "ot" ? "OT" : game.decidedBy === "shootout" ? "SO" : "";
   const caption = opts.slot ? formatSlot(opts.slot) : "";
   // Captions must stay inside their own column: a wide one would run under
-  // the next round's opaque cell. Compress when the estimate exceeds the box.
-  const capSize = Math.round(rowH * 0.3);
-  const capSqueezed = caption.length * capSize * 0.48 > cell.w;
+  // the next round's caption or opaque cell. Shrink the font to fit first
+  // (like team names), keeping glyph compression as the backstop.
+  const capFull = Math.round(rowH * 0.28);
+  const capSize = Math.max(
+    Math.round(capFull * 0.7),
+    Math.min(capFull, Math.floor((cell.w - 6) / Math.max(1, caption.length * 0.45))),
+  );
+  const capSqueezed = caption.length * capSize * 0.45 > cell.w - 6;
   return (
     <g key={cell.id}>
       {caption && (
@@ -259,7 +264,7 @@ function renderCell(cell: CellBox, game: BracketGame, opts: CellOpts) {
           font-size={capSize}
           font-weight={600}
           letter-spacing="0.04em"
-          textLength={capSqueezed ? cell.w - 4 : undefined}
+          textLength={capSqueezed ? cell.w - 6 : undefined}
           lengthAdjust={capSqueezed ? "spacingAndGlyphs" : undefined}
         >
           {caption}
@@ -315,23 +320,26 @@ function teamRow(
   const name = teamId ? opts.nameById(teamId) : "-";
   const cy = rowY + opts.rowH / 2;
   const baseline = cy + opts.nameSize * 0.34;
-  const r = Math.round(opts.rowH * 0.28);
-  const bubbleX = cell.x + 10 + r;
-  const nameX = cell.x + 10 + r * 2 + 8;
+  const r = Math.round(opts.rowH * 0.26);
+  const pad = Math.max(6, Math.round(opts.rowH * 0.12));
+  const bubbleX = cell.x + pad + r;
+  const nameX = cell.x + pad + r * 2 + Math.max(5, Math.round(opts.rowH * 0.09));
 
   // Seed bubble: filled with the team's jersey color when the team is known,
   // a light outline when only the seed slot is (an undecided feeder).
   const rawColor = teamId ? opts.colorById?.(teamId) : undefined;
   const bubbleFill = rawColor && /^#[0-9a-fA-F]{6}$/.test(rawColor) ? rawColor : null;
 
-  // Long names (Sophomore All Stars, CT/Mid-Atlantic) first drop the font a
-  // step to fit between the seed bubble and the score, and only then compress
+  // Long names (Worcester County, NE Connecticut) first drop the font a step
+  // to fit between the seed bubble and the score, and only then compress
   // glyph spacing - never both from full size, which crushed names into
   // unreadable slivers on tall exports. Barlow Condensed runs ~0.45em/glyph.
-  const scoreReserve = Math.round(opts.nameSize * 1.2);
+  // Score space is only reserved once there IS a score, which matters most in
+  // the narrow 5-column 12-team layout where the bracket ships scoreless.
+  const scoreReserve = Math.round(opts.nameSize * (score !== null ? 1.2 : 0.35));
   const maxNameW = cell.x + cell.w - 12 - scoreReserve - nameX;
   const fittedNameSize = Math.max(
-    Math.round(opts.nameSize * 0.62),
+    Math.round(opts.nameSize * 0.55),
     Math.min(opts.nameSize, Math.floor(maxNameW / Math.max(1, name.length * 0.45))),
   );
   const nameSqueezed = name.length * fittedNameSize * 0.45 > maxNameW;

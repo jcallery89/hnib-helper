@@ -47,7 +47,7 @@ export function computeLayout(
   // whole composition shifts inside them instead of drawing underneath.
   const insetTop = insets.top ?? 0;
   const insetBottom = insets.bottom ?? 0;
-  const margin = Math.round(width * 0.045);
+  const margin = Math.round(width * (twelve ? 0.03 : 0.045));
   const headerY = insetTop + Math.round(height * 0.035);
   const labelY = insetTop + Math.round(height * 0.12);
   const contentTop = insetTop + Math.round(height * 0.155);
@@ -55,10 +55,17 @@ export function computeLayout(
   const contentBottom = footerY - Math.round(height * 0.03);
 
   // Columns: QF, SF, FINAL, CHAMPION - plus a leading ROUND 1 for 12 teams.
+  // In the crowded 5-column layout the champion box (a single centered name)
+  // cedes width to the four game columns, where every pixel feeds team names.
   const colCount = twelve ? 5 : 4;
   const usableW = width - margin * 2;
-  const colGap = Math.round(usableW * (twelve ? 0.03 : 0.05));
-  const colW = Math.round((usableW - colGap * (colCount - 1)) / colCount);
+  const colGap = Math.round(usableW * (twelve ? 0.022 : 0.05));
+  const champW = twelve
+    ? Math.round((usableW - colGap * 4) * (0.62 / 4.62))
+    : Math.round((usableW - colGap * 3) / 4);
+  const colW = twelve
+    ? Math.round((usableW - colGap * 4 - champW) / 4)
+    : champW;
   const colX = Array.from({ length: colCount }, (_, i) => margin + i * (colW + colGap));
 
   // The cells own most of the vertical band; gaps stay smaller than a cell so
@@ -121,7 +128,7 @@ export function computeLayout(
   cells.push({ id: "final", x: colX[qfCol + 2], y: finalCenter - cellH / 2, w: colW, h: cellH });
 
   const championH = Math.round(rowH * 1.3);
-  const champion: CellBox = { id: "champion", x: colX[qfCol + 3], y: finalCenter - championH / 2, w: colW, h: championH };
+  const champion: CellBox = { id: "champion", x: colX[qfCol + 3], y: finalCenter - championH / 2, w: champW, h: championH };
 
   const byId = new Map(cells.map((c) => [c.id, c]));
   if (twelve) {
@@ -147,7 +154,7 @@ export function computeLayout(
     { text: six ? "PLAY-IN" : "QUARTERFINALS", x: colX[qfCol] + colW / 2 },
     { text: "SEMIFINALS", x: colX[qfCol + 1] + colW / 2 },
     { text: "FINAL", x: colX[qfCol + 2] + colW / 2 },
-    { text: "CHAMPION", x: colX[qfCol + 3] + colW / 2 },
+    { text: "CHAMPION", x: colX[qfCol + 3] + champW / 2 },
   ];
 
   return {
