@@ -53,3 +53,45 @@ describe("parsePlayoffSchedule", () => {
     expect(nums).not.toContain(54);
   });
 });
+
+describe("published listing format (Girls Major 12-team)", () => {
+  // The schedule exactly as published for Sunday, August 9.
+  const LISTING = [
+    "Sunday, August 9 · Playoffs",
+    "8:00 AM", "12th seed vs 5th seed", "Lamacchia",
+    "8:10 AM", "11th seed vs 6th seed", "MGH",
+    "9:00 AM", "9th seed vs 8th seed", "Lamacchia",
+    "9:10 AM", "10th seed vs 7th seed", "MGH",
+    "10:00 AM", "5/12 winner vs 4th seed", "Lamacchia",
+    "10:10 AM", "6/11 winner vs 3rd seed", "MGH",
+    "11:00 AM", "8/9 winner vs 1st seed", "Lamacchia",
+    "11:10 AM", "7/10 winner vs 2nd seed", "MGH",
+    "12:00 PM", "Semifinal", "Lamacchia",
+    "12:10 PM", "Semifinal", "MGH",
+    "1:30 PM", "CHAMPIONSHIP", "Lamacchia",
+  ].join("\n");
+
+  it("maps every game of the published day onto the 12-team bracket", () => {
+    const { byCell, matched } = parsePlayoffSchedule(LISTING, { fieldSize: 12, eventKeyword: "", year: 2026 });
+    expect(matched).toBe(11);
+    // Round 1 by seed pair.
+    expect(byCell.pr2).toMatchObject({ slotStart: "2026-08-09T08:00:00", rink: "Lamacchia" }); // 5v12
+    expect(byCell.pr4).toMatchObject({ slotStart: "2026-08-09T08:10:00", rink: "MGH" }); // 6v11
+    expect(byCell.pr1).toMatchObject({ slotStart: "2026-08-09T09:00:00", rink: "Lamacchia" }); // 8v9
+    expect(byCell.pr3).toMatchObject({ slotStart: "2026-08-09T09:10:00", rink: "MGH" }); // 7v10
+    // Bye quarterfinals by "x/y winner vs Nth seed".
+    expect(byCell.qf2).toMatchObject({ slotStart: "2026-08-09T10:00:00", rink: "Lamacchia" }); // 4 hosts 5/12
+    expect(byCell.qf4).toMatchObject({ slotStart: "2026-08-09T10:10:00", rink: "MGH" }); // 3 hosts 6/11
+    expect(byCell.qf1).toMatchObject({ slotStart: "2026-08-09T11:00:00", rink: "Lamacchia" }); // 1 hosts 8/9
+    expect(byCell.qf3).toMatchObject({ slotStart: "2026-08-09T11:10:00", rink: "MGH" }); // 2 hosts 7/10
+    // Bare semifinals in listing order, then the championship.
+    expect(byCell.sf1).toMatchObject({ slotStart: "2026-08-09T12:00:00", rink: "Lamacchia" });
+    expect(byCell.sf2).toMatchObject({ slotStart: "2026-08-09T12:10:00", rink: "MGH" });
+    expect(byCell.final).toMatchObject({ slotStart: "2026-08-09T13:30:00", rink: "Lamacchia" });
+  });
+
+  it("keeps the eventKeyword filter out of listing pastes", () => {
+    const { matched } = parsePlayoffSchedule(LISTING, { fieldSize: 12, eventKeyword: "girls", year: 2026 });
+    expect(matched).toBe(11);
+  });
+});

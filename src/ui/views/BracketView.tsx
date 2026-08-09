@@ -136,10 +136,11 @@ export function BracketView({ dataset, analysis, update }: Props) {
         <p class="section-title">Game Times</p>
         <p class="note">
           Playoff times come in automatically on every sync, straight from the schedule feed, and
-          show above each bracket game. Use this box only to fix or fill a time by hand: paste the
-          playoff rows from the master schedule (day, time, rink, game number, matchup). Pasted times
-          are matched by seeds (Soph 1st, Jr High 4th) and winner references (W 43), and they win over
-          the synced times and survive future syncs. Only this event's rows are used.
+          show above each bracket game. Use this box to fix or fill times by hand: paste either the
+          tab-separated master schedule rows OR the published listing (a date header, then time,
+          matchup, and rink lines - "12th seed vs 5th seed", "5/12 winner vs 4th seed", "Semifinal",
+          "CHAMPIONSHIP"). Games are matched to bracket slots by their seeds and winner references,
+          and pasted times win over synced times and survive future syncs.
         </p>
         <textarea
           style={{ width: "100%", height: 120 }}

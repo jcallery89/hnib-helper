@@ -18,17 +18,24 @@ interface Row {
 }
 
 /**
- * Parse the master playoff schedule (one tab-separated row per game) and map
- * each game onto its bracket slot. The bracket structure is fixed, so a game's
- * seed placeholders ("Soph 2nd" / "Jr High 5th") and winner references ("W 43")
- * pin it to an exact cell:
+ * Parse a playoff schedule and map each game onto its bracket slot. Two input
+ * shapes are accepted:
  *
- *   Day  Time  Rink  GameNo  Home  Away  Event
- *   Mon 6/29  9:00 AM  Lamacchia  45  Soph 1st  Soph 8th  Sophomore
+ * 1. The tab-separated master schedule, one row per game:
+ *      Day  Time  Rink  GameNo  Home  Away  Event
+ *      Mon 6/29  9:00 AM  Lamacchia  45  Soph 1st  Soph 8th  Sophomore
  *
- * Quarterfinals/play-ins map by their seed pair, semifinals by the games they
- * draw winners from (or, for a 6-team field, by the bye seed), and the
- * championship row maps to the final.
+ * 2. The published listing (a date header, then time / matchup / rink lines):
+ *      Sunday, August 9 - Playoffs
+ *      8:00 AM
+ *      12th seed vs 5th seed
+ *      Lamacchia
+ *
+ * The bracket structure is fixed, so matchup text pins each game to an exact
+ * cell: first-round games by their seed pair ("12th seed vs 5th seed"), bye
+ * games by the bye seed plus a winner reference ("5/12 winner vs 4th seed",
+ * "Jr High 1st vs W 47"), "W 45 vs W 46" by the game those two feed, bare
+ * "Semifinal" rows in listing order, and any championship row to the final.
  */
 export function parsePlayoffSchedule(
   text: string,
@@ -77,12 +84,15 @@ export function parsePlayoffSchedule(
       const aWin = winnerRef(r.away);
       const hSeed = seedRef(r.home);
       const aSeed = seedRef(r.away);
+      // "5/12 winner" counts as a winner reference too (published listings).
+      const hAnyWin = hWin != null || pairWinnerRef(r.home) != null;
+      const aAnyWin = aWin != null || pairWinnerRef(r.away) != null;
       let cellId: string | undefined;
       if (hWin != null && aWin != null) {
         const f1 = feedsByCell.get(numToCell.get(hWin) ?? "");
         const f2 = feedsByCell.get(numToCell.get(aWin) ?? "");
         cellId = f1 && f1 === f2 ? f1 : undefined;
-      } else if ((hSeed != null && aWin != null) || (aSeed != null && hWin != null)) {
+      } else if ((hSeed != null && aAnyWin) || (aSeed != null && hAnyWin)) {
         const bye = hSeed ?? aSeed;
         cellId = byes.find((b) => b.bye === bye)?.id;
       }
@@ -91,6 +101,14 @@ export function parsePlayoffSchedule(
         numToCell.set(r.num, cellId);
       }
     }
+  }
+
+  // 2.5) Bare "Semifinal" rows carry no matchup info; assign them in listing
+  //      order to whichever semifinal cells are still open.
+  for (const r of rows) {
+    if (!/^\s*semi/i.test(r.home) || r.away.trim()) continue;
+    const free = ["sf1", "sf2"].find((id) => !byCell[id]);
+    if (free) byCell[free] = slotOf(r);
   }
 
   // 3) Championship -> the final.
@@ -119,13 +137,76 @@ function parseRows(text: string, year: number): Row[] {
       event: cols[6] ?? "",
     });
   }
+  // Not the tab-separated master format; try the published listing shape.
+  return rows.length > 0 ? rows : parseListing(text, year);
+}
+
+const MONTHS: Record<string, string> = {
+  january: "01", february: "02", march: "03", april: "04", may: "05", june: "06",
+  july: "07", august: "08", september: "09", october: "10", november: "11", december: "12",
+};
+
+const TIME_LINE = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i;
+
+function monthDayIn(line: string): { mon: string; day: string } | null {
+  const m = /([A-Za-z]+)\s+(\d{1,2})/.exec(line);
+  if (!m) return null;
+  const mon = MONTHS[m[1].toLowerCase()];
+  return mon ? { mon, day: m[2].padStart(2, "0") } : null;
+}
+
+/**
+ * Parse the published listing: a date header ("Sunday, August 9 - Playoffs"),
+ * then repeating time / matchup / rink lines. Listings carry no game numbers,
+ * so rows get synthetic ones, and no event column - a listing is taken from a
+ * single event's page, so it always matches.
+ */
+function parseListing(text: string, year: number): Row[] {
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const rows: Row[] = [];
+  let date: { mon: string; day: string } | null = null;
+  let num = 1001; // synthetic; high so they never collide with real game numbers
+
+  for (let i = 0; i < lines.length; i++) {
+    const header = monthDayIn(lines[i]);
+    if (header && !TIME_LINE.test(lines[i])) {
+      date = header;
+      continue;
+    }
+    const tm = TIME_LINE.exec(lines[i]);
+    if (!tm) continue;
+    const matchup = lines[i + 1] ?? "";
+    const maybeRink = lines[i + 2] ?? "";
+    const rinkIsRink = maybeRink && !TIME_LINE.test(maybeRink) && !monthDayIn(maybeRink) && !/\svs\.?\s/i.test(maybeRink);
+    const [home, away = ""] = matchup.split(/\s+vs\.?\s+/i);
+
+    let hour = Number(tm[1]);
+    const ampm = tm[3].toUpperCase();
+    if (ampm === "PM" && hour < 12) hour += 12;
+    if (ampm === "AM" && hour === 12) hour = 0;
+    rows.push({
+      num: num++,
+      slotStart: date ? `${year}-${date.mon}-${date.day}T${String(hour).padStart(2, "0")}:${tm[2]}:00` : null,
+      rink: rinkIsRink ? maybeRink : null,
+      home: (home ?? "").trim(),
+      away: away.trim(),
+      event: "__listing__",
+    });
+    i += rinkIsRink ? 2 : 1;
+  }
   return rows;
 }
 
 function matchesEvent(r: Row, kw: string): boolean {
-  if (!kw) return true;
+  if (!kw || r.event === "__listing__") return true;
   const hay = `${r.event} ${r.home} ${r.away}`.toLowerCase();
   return hay.includes(kw);
+}
+
+// "5/12 winner" -> the seeds of the first-round game the winner comes from.
+function pairWinnerRef(s: string): [number, number] | null {
+  const m = /(\d+)\s*\/\s*(\d+)\s*win/i.exec(s);
+  return m ? [Number(m[1]), Number(m[2])] : null;
 }
 
 // "Soph 2nd" / "Jr High 5th" -> 2 / 5. Ignores "W 43" (no ordinal).
