@@ -1,0 +1,33 @@
+name: Event teams list
+
+# Prints an event's divisions, teams, coaches, and jersey colors as CSV in
+# the job log. Public event info only (hnib.app lists all of it).
+
+on:
+  workflow_dispatch:
+    inputs:
+      event_id:
+        description: Event ID to list teams for
+        required: false
+        default: 3171c084-927e-4336-bba8-41939699c738
+  push:
+    paths:
+      - ".github/workflows/teams-list.yml"
+      - "scripts/event_teams.py"
+
+jobs:
+  teams:
+    runs-on: ubuntu-latest
+    env:
+      EVENT_ID: ${{ inputs.event_id || '3171c084-927e-4336-bba8-41939699c738' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: List teams
+        run: python scripts/event_teams.py "$EVENT_ID"

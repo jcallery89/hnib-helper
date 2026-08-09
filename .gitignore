@@ -7,3 +7,6 @@ hnib-tournament-build.zip
 
 # Youth player photos + generated manifest - public repo, never commit (docs/HEADSHOTS.md)
 public/headshots/
+
+# Python bytecode cache (scripts/)
+__pycache__/

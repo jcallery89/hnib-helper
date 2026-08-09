@@ -1,0 +1,108 @@
+name: Recover event headshots
+
+# Fills the site's headshots/ folder for an event: direct bucket fetch by
+# current player ID, plus name+DOB recovery from a prior event's rosters
+# (docs/HEADSHOTS.md). Runs on GitHub's runners because they have open egress
+# to hnib.app and the GCS bucket, and holds the same FTP secrets the deploy
+# workflow uses, so photos land straight on the server - no local steps.
+#
+# Privacy: this repo and its logs are PUBLIC. recover_headshots.py prints only
+# opaque player IDs and counts - never names or birth dates - and photos are
+# uploaded straight to the site, never stored as workflow artifacts.
+
+on:
+  workflow_dispatch:
+    inputs:
+      current_event:
+        description: Event ID to fill headshots for
+        required: false
+        default: 3171c084-927e-4336-bba8-41939699c738
+      prior_event:
+        description: Prior event ID to recover older photos from
+        required: false
+        default: eb6bad98-2b24-4d9d-a191-6d9cae2ae837
+  push:
+    paths:
+      - ".github/workflows/girls-headshots.yml"
+      - "scripts/recover_headshots.py"
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    env:
+      FTP_SERVER: ${{ secrets.FTP_SERVER }}
+      CURRENT_EVENT: ${{ inputs.current_event || '3171c084-927e-4336-bba8-41939699c738' }}
+      PRIOR_EVENT: ${{ inputs.prior_event || 'eb6bad98-2b24-4d9d-a191-6d9cae2ae837' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Pillow (converts mislabeled PNG bytes to real JPEG)
+        run: pip install pillow
+
+      - name: Scan, match, and download photos
+        run: python scripts/recover_headshots.py "$CURRENT_EVENT" "$PRIOR_EVENT" --out out-headshots
+
+      - name: Skip upload until FTP secrets are set
+        if: ${{ env.FTP_SERVER == '' }}
+        run: echo "FTP secrets not set - photos were fetched but not uploaded. Add FTP_SERVER / FTP_USERNAME / FTP_PASSWORD in repo Settings -> Secrets."
+
+      - name: Upload photos to the site over FTPS
+        if: ${{ env.FTP_SERVER != '' }}
+        env:
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+          rm -f out-headshots/recovery-summary.json
+          echo "uploading $(ls out-headshots/*.jpg 2>/dev/null | wc -l) photos"
+          # TLS settings must be in place BEFORE open, so the server is opened
+          # inside the script, not on the command line.
+          # SiteGround's FTP cert is issued for the shared server name, not the
+          # account's FTP hostname, so hostname verification cannot pass; the
+          # deploy action accepts the same cert (loose mode). Transfer stays TLS.
+          cat > job.lftp <<EOF
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ssl:verify-certificate no
+          set cmd:fail-exit true
+          open -u "$FTP_USERNAME","$FTP_PASSWORD" "$FTP_SERVER"
+          mirror -R --no-perms out-headshots headshots
+          cls -1 headshots > server-listing.txt
+          bye
+          EOF
+          lftp -f job.lftp
+
+      - name: Rebuild manifest.js from the server's full folder
+        if: ${{ env.FTP_SERVER != '' }}
+        env:
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          python3 - <<'EOF'
+          import json, os
+          ids = sorted(
+              os.path.basename(line.strip())[:-4]
+              for line in open("server-listing.txt")
+              if line.strip().endswith(".jpg")
+          )
+          manifest = {i: f"./headshots/{i}.jpg" for i in ids}
+          with open("manifest.js", "w") as f:
+              f.write("window.HNIB_HEADSHOTS=" + json.dumps(manifest) + ";")
+          print(len(ids), "manifest entries (full server folder)")
+          EOF
+          cat > manifest.lftp <<EOF
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ssl:verify-certificate no
+          set cmd:fail-exit true
+          open -u "$FTP_USERNAME","$FTP_PASSWORD" "$FTP_SERVER"
+          put -O headshots manifest.js
+          bye
+          EOF
+          lftp -f manifest.lftp
