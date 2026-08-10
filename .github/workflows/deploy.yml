@@ -11,10 +11,13 @@ name: Build and deploy to SiteGround
 # Create the FTP account with its directory set to the tournament folder
 # (e.g. public_html/tournament). Then SERVER_DIR below can stay "./".
 
-# Push-deploy DISABLED on this retired branch (2026-08-09, approved by JC):
-# it was merged into claude/all-star-ballot-system-pzj8x1, the only branch
-# that deploys. A push here must never overwrite the live site again.
+# Only the canonical branch deploys. Older session branches were merged into
+# it; a build from one of them would put a stale site live (whole tabs
+# missing), so pushes to any other branch must never trigger this.
 on:
+  push:
+    branches:
+      - claude/all-star-ballot-system-pzj8x1
   workflow_dispatch:
 
 # Never run two FTP syncs at once: concurrent syncs corrupt the server-side
