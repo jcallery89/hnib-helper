@@ -1,7 +1,7 @@
 import type { Dataset } from "./dataset.ts";
 import type { Player, PlayerSummary } from "../engine/types.ts";
-import { summarizePlayers } from "../engine/players/summary.ts";
 import { buildPlayoffField } from "../engine/playoff/field.ts";
+import { matchRegistrationRows } from "./contactJoin.ts";
 
 // Build the recruiting guide workbook as plain data (sheet name + rows of
 // cells), so the shape is testable without the spreadsheet library. The caller
@@ -19,11 +19,53 @@ export interface GuideSheet {
 export interface RecruitingGuide {
   filename: string;
   sheets: GuideSheet[];
+  /** How many players picked up registration details, and who did not. */
+  registrationMatched: number;
+  registrationUnmatched: string[];
+  warnings: string[];
 }
 
 const BIO_HEAD = ["#", "Player", "Pos", "Birth Year", "Ht", "Wt", "Shoots", "Hometown", "School / Club"];
 const SKATER_STATS_HEAD = ["GP", "G", "A", "PTS", "PIM"];
 const GOALIE_STATS_HEAD = ["GP", "Saves", "GA", "GAA", "SV%"];
+
+// Registration columns worth a recruiter's eye, appended after the stats.
+// Street address and ZIP are deliberately NOT pulled: coaches recruit by email
+// and phone, and a home address has no recruiting use.
+const REG_COLS = {
+  gradYr: ["yr", "year", "gradyear", "classof"],
+  schoolFall: ["schoolfall", "school(fall)", "school"],
+  teamNext: ["teamnextseason", "team(nextseason)", "nextteam", "teamnext"],
+  level: ["hockeylevel", "level"],
+  city: ["city"],
+  state: ["st", "state"],
+  shoots: ["shoots", "shot"],
+  height: ["ht", "height"],
+  weight: ["wt", "weight"],
+  social: ["social", "instagram", "ig"],
+  parentName: ["p/gname", "pgname", "parentname", "parent/guardianname", "guardianname"],
+  parentCell: ["pgcell", "p/gcell", "parentcell", "parentphone"],
+  parentEmail: ["pgemail", "p/gemail", "parentemail"],
+  playerCell: ["playercell", "playerphone"],
+  playerEmail: ["playeremail"],
+} as const;
+
+type RegCol = keyof typeof REG_COLS;
+
+const REG_HEAD = [
+  "Grad Yr", "School (Fall)", "Team (Next Season)", "Level", "Social",
+  "Parent / Guardian", "PG Cell", "PG Email", "Player Cell", "Player Email",
+];
+
+/** Per-player registration extras, keyed by player id. Never stored. */
+export type RegistrationExtras = Map<string, Partial<Record<RegCol, string>>>;
+
+export interface GuideOptions {
+  /** Pre-computed summaries (carry the games-played fallback). */
+  summaries?: Map<string, PlayerSummary>;
+  /** Raw registration export paste; joined for this export only. */
+  registrationCsv?: string;
+}
 
 /**
  * Build the full recruiting guide for an event: an overview with division
@@ -31,12 +73,39 @@ const GOALIE_STATS_HEAD = ["GP", "Saves", "GA", "GAA", "SV%"];
  * sorted by GAA, and one roster sheet per team. Tournament stats come from the
  * synced player stat lines, so re-exporting after a sync refreshes every number.
  */
-export function buildRecruitingGuide(dataset: Dataset): RecruitingGuide {
-  const summaries = new Map(
-    summarizePlayers(dataset.players ?? [], dataset.playerStats ?? []).map((s) => [s.playerId, s]),
-  );
+export function buildRecruitingGuide(dataset: Dataset, opts: GuideOptions = {}): RecruitingGuide {
+  // Summaries must come from the caller when available: the store applies the
+  // games-played fallback for Tourno box scores that report GP as 0, and
+  // recomputing here would blank the GP column.
+  const summaries = opts.summaries ?? new Map<string, PlayerSummary>();
   const teamName = new Map(dataset.teams.map((t) => [t.id, t.name]));
   const players = dataset.players ?? [];
+
+  // One-shot registration join for this export. Contact details are read into
+  // the workbook and never written to the Dataset (no-PII guarantee).
+  const reg: RegistrationExtras = new Map();
+  let registrationUnmatched: string[] = [];
+  const warnings: string[] = [];
+  if (opts.registrationCsv && opts.registrationCsv.trim()) {
+    const match = matchRegistrationRows(opts.registrationCsv, players, dataset.teams);
+    warnings.push(...match.warnings);
+    registrationUnmatched = match.unmatched;
+    const idx = Object.fromEntries(
+      (Object.keys(REG_COLS) as RegCol[]).map((k) => [k, match.columnIndex(REG_COLS[k])]),
+    ) as Record<RegCol, number>;
+    for (const [playerId, row] of match.rowByPlayerId) {
+      const vals: Partial<Record<RegCol, string>> = {};
+      for (const k of Object.keys(REG_COLS) as RegCol[]) {
+        const i = idx[k];
+        const v = i >= 0 ? (row[i] ?? "").trim() : "";
+        if (v) vals[k] = v;
+      }
+      reg.set(playerId, vals);
+    }
+  }
+
+  const bio = (p: Player) => bioCells(p, reg.get(p.id));
+  const regCells = (p: Player) => registrationCells(reg.get(p.id));
 
   const sheets: GuideSheet[] = [overviewSheet(dataset)];
 
@@ -57,10 +126,15 @@ export function buildRecruitingGuide(dataset: Dataset): RecruitingGuide {
     rows: [
       [`${dataset.event.name} - all skaters by tournament scoring`],
       [],
-      ["Team", ...BIO_HEAD, ...SKATER_STATS_HEAD],
-      ...skaters.map((p) => [teamName.get(p.teamId) ?? "", ...bioCells(p), ...skaterStatCells(summaries.get(p.id))]),
+      ["Team", ...BIO_HEAD, ...SKATER_STATS_HEAD, ...REG_HEAD],
+      ...skaters.map((p) => [
+        teamName.get(p.teamId) ?? "",
+        ...bio(p),
+        ...skaterStatCells(summaries.get(p.id)),
+        ...regCells(p),
+      ]),
     ],
-    colWidths: [18, 4, 22, 4, 10, 6, 5, 6, 20, 20, 4, 4, 4, 5, 5],
+    colWidths: [18, 4, 22, 4, 10, 6, 5, 6, 20, 20, 4, 4, 4, 5, 5, 8, 24, 26, 16, 18, 20, 15, 26, 15, 26],
   });
 
   // Goalies by GAA (those with data first).
@@ -79,10 +153,15 @@ export function buildRecruitingGuide(dataset: Dataset): RecruitingGuide {
     rows: [
       [`${dataset.event.name} - goalies by goals-against average`],
       [],
-      ["Team", ...BIO_HEAD, ...GOALIE_STATS_HEAD],
-      ...goalies.map((p) => [teamName.get(p.teamId) ?? "", ...bioCells(p), ...goalieStatCells(summaries.get(p.id))]),
+      ["Team", ...BIO_HEAD, ...GOALIE_STATS_HEAD, ...REG_HEAD],
+      ...goalies.map((p) => [
+        teamName.get(p.teamId) ?? "",
+        ...bio(p),
+        ...goalieStatCells(summaries.get(p.id)),
+        ...regCells(p),
+      ]),
     ],
-    colWidths: [18, 4, 22, 4, 10, 6, 5, 6, 20, 20, 4, 6, 4, 6, 6],
+    colWidths: [18, 4, 22, 4, 10, 6, 5, 6, 20, 20, 4, 6, 4, 6, 6, 8, 24, 26, 16, 18, 20, 15, 26, 15, 26],
   });
 
   // One sheet per team, skaters then goalies, jersey order.
@@ -103,21 +182,23 @@ export function buildRecruitingGuide(dataset: Dataset): RecruitingGuide {
             .join("    ") || null,
         ],
         [],
-        [...BIO_HEAD, ...SKATER_STATS_HEAD, "GAA", "SV%"],
+        [...BIO_HEAD, ...SKATER_STATS_HEAD, "GAA", "SV%", ...REG_HEAD],
         ...ordered.map((p) => {
           const s = summaries.get(p.id);
-          return isG(p)
-            ? [...bioCells(p), ...skaterStatCells(s), fmt2(s?.gaa), fmt3(s?.savePct)]
-            : [...bioCells(p), ...skaterStatCells(s), null, null];
+          const rates = isG(p) ? [fmt2(s?.gaa), fmt3(s?.savePct)] : [null, null];
+          return [...bio(p), ...skaterStatCells(s), ...rates, ...regCells(p)];
         }),
       ],
-      colWidths: [4, 22, 4, 10, 6, 5, 6, 20, 20, 4, 4, 4, 5, 5, 6, 6],
+      colWidths: [4, 22, 4, 10, 6, 5, 6, 20, 20, 4, 4, 4, 5, 5, 6, 6, 8, 24, 26, 16, 18, 20, 15, 26, 15, 26],
     });
   }
 
   return {
     filename: `${slug(dataset.event.name)}-recruiting-guide.xlsx`,
     sheets: sheets.map((s, i) => ({ ...s, name: sheetName(s.name, i, sheets) })),
+    registrationMatched: reg.size,
+    registrationUnmatched,
+    warnings,
   };
 }
 
@@ -150,17 +231,36 @@ function name(p: Player): string {
   return `${p.firstName} ${p.lastName}`.trim();
 }
 
-function bioCells(p: Player): Cell[] {
+// Roster data wins; registration fills the gaps the API roster leaves blank.
+function bioCells(p: Player, r?: Partial<Record<RegCol, string>>): Cell[] {
+  const hometown =
+    p.hometown ??
+    ([r?.city, r?.state].filter(Boolean).join(", ") || null);
   return [
     p.jersey,
     name(p),
     p.position ?? null,
     p.birthYear ?? null,
-    fmtHeight(p.heightInches),
-    p.weightLbs ?? null,
-    p.shoots ?? null,
-    p.hometown ?? null,
-    p.school ?? null,
+    fmtHeight(p.heightInches) ?? r?.height ?? null,
+    p.weightLbs ?? (r?.weight ? Number(r.weight) || r.weight : null),
+    p.shoots ?? (r?.shoots ? r.shoots.charAt(0).toUpperCase() : null),
+    hometown,
+    p.school ?? r?.schoolFall ?? null,
+  ];
+}
+
+function registrationCells(r?: Partial<Record<RegCol, string>>): Cell[] {
+  return [
+    r?.gradYr ?? null,
+    r?.schoolFall ?? null,
+    r?.teamNext ?? null,
+    r?.level ?? null,
+    r?.social ?? null,
+    r?.parentName ?? null,
+    r?.parentCell ?? null,
+    r?.parentEmail ?? null,
+    r?.playerCell ?? null,
+    r?.playerEmail ?? null,
   ];
 }
 

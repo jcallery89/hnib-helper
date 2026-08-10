@@ -27,6 +27,7 @@ export function StatsView({ dataset, update }: Props) {
   const [goalieSort, setGoalieSort] = useState<{ key: string; dir: Dir }>({ key: "gaa", dir: "asc" });
   const [guideBusy, setGuideBusy] = useState(false);
   const [guideMsg, setGuideMsg] = useState("");
+  const [regPaste, setRegPaste] = useState("");
 
   // The spreadsheet library is heavy, so it loads on demand rather than in the
   // main bundle. The guide itself is built as plain data (recruitingGuide.ts).
@@ -34,7 +35,9 @@ export function StatsView({ dataset, update }: Props) {
     setGuideBusy(true);
     setGuideMsg("");
     try {
-      const guide = buildRecruitingGuide(dataset);
+      // Pass the store's summaries so GP carries its fallback, and the
+      // registration paste for a one-shot join (never stored).
+      const guide = buildRecruitingGuide(dataset, { summaries, registrationCsv: regPaste });
       const XLSX = await import("xlsx");
       const wb = XLSX.utils.book_new();
       for (const sheet of guide.sheets) {
@@ -43,7 +46,19 @@ export function StatsView({ dataset, update }: Props) {
         XLSX.utils.book_append_sheet(wb, ws, sheet.name);
       }
       XLSX.writeFile(wb, guide.filename);
-      setGuideMsg(`Exported ${guide.filename} (${guide.sheets.length} sheets).`);
+      const bits = [`Exported ${guide.filename} (${guide.sheets.length} sheets)`];
+      if (regPaste.trim()) {
+        bits.push(`registration merged for ${guide.registrationMatched} players`);
+        if (guide.registrationUnmatched.length) {
+          bits.push(
+            `no registration row for ${guide.registrationUnmatched.length}: ` +
+              guide.registrationUnmatched.slice(0, 3).join("; ") +
+              (guide.registrationUnmatched.length > 3 ? "..." : ""),
+          );
+        }
+      }
+      if (guide.warnings.length) bits.push(guide.warnings.slice(0, 2).join(" "));
+      setGuideMsg(bits.join(" - ") + ".");
     } catch (e) {
       setGuideMsg(e instanceof Error ? e.message : "Export failed.");
     } finally {
@@ -153,7 +168,19 @@ export function StatsView({ dataset, update }: Props) {
           bios (birth year, height, weight, shoots, hometown, school) and live tournament stats.
           Re-export after a sync and every number refreshes.
         </p>
-        <div class="toolbar">
+        <p class="note">
+          Optional: paste the registration export below to merge in grad year, fall school, next
+          season's team, level, social, and parent/player contacts. Rows match by team and jersey
+          with a last-name check. The paste is used for this download only - contact details are
+          never saved into the app. Street address and ZIP are not pulled.
+        </p>
+        <textarea
+          style={{ width: "100%", height: 90 }}
+          placeholder={"Event Team\t#\tYR\tPOS\tFirst Name\tLast Name\tSchool (Fall)\t..."}
+          value={regPaste}
+          onInput={(e) => setRegPaste((e.target as HTMLTextAreaElement).value)}
+        />
+        <div class="toolbar" style={{ marginTop: 8 }}>
           <button class="btn primary" disabled={guideBusy} onClick={exportRecruitingGuide}>
             {guideBusy ? "Building..." : "Recruiting guide (Excel)"}
           </button>

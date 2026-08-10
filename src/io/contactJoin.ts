@@ -48,57 +48,75 @@ function findCol(header: string[], synonyms: readonly string[]): number {
   return -1;
 }
 
+export interface RegistrationMatch {
+  /** The export's header row, for callers that pull their own columns. */
+  header: string[];
+  /** Matched raw registration row per player id. */
+  rowByPlayerId: Map<string, string[]>;
+  /** "Team #9 First Last" descriptions of players with no registration row. */
+  unmatched: string[];
+  warnings: string[];
+  /** Column index for a set of header synonyms, or -1. */
+  columnIndex: (synonyms: readonly string[]) => number;
+}
+
 /**
  * Match players to registration rows by team name + jersey (last name as the
  * safety check, same policy as the registration import), with a team + full
- * name fallback for players without a jersey number.
+ * name fallback for players without a jersey number. Returns the RAW matched
+ * rows so each caller can read only the columns it needs; nothing here is
+ * written to the Dataset.
  */
-export function joinContacts(
+export function matchRegistrationRows(
   csv: string,
   players: Player[],
   teams: Team[],
   eventFilter?: string,
-): ContactJoinResult {
-  const out: ContactJoinResult = { rows: [], unmatched: [], warnings: [] };
+): RegistrationMatch {
+  const out: RegistrationMatch = {
+    header: [],
+    rowByPlayerId: new Map(),
+    unmatched: [],
+    warnings: [],
+    columnIndex: () => -1,
+  };
   const table = parseCsv(csv);
   if (table.length < 2) {
     out.warnings.push("The pasted registration export has no data rows.");
     return out;
   }
   const header = table[0];
-  const col: Record<ContactCol, number> = Object.fromEntries(
-    (Object.keys(CONTACT_COLS) as ContactCol[]).map((k) => [k, findCol(header, CONTACT_COLS[k])]),
-  ) as Record<ContactCol, number>;
-  for (const required of ["team", "last"] as const) {
-    if (col[required] < 0) {
-      out.warnings.push(`The paste is missing the ${required === "team" ? "Event Team" : "Last Name"} column. Is it the registration export?`);
+  out.header = header;
+  out.columnIndex = (synonyms) => findCol(header, synonyms);
+
+  const teamCol = findCol(header, CONTACT_COLS.team);
+  const lastCol = findCol(header, CONTACT_COLS.last);
+  const firstCol = findCol(header, CONTACT_COLS.first);
+  const jerseyCol = findCol(header, CONTACT_COLS.jersey);
+  const eventCol = findCol(header, CONTACT_COLS.event);
+  for (const [idx, label] of [[teamCol, "Event Team"], [lastCol, "Last Name"]] as const) {
+    if (idx < 0) {
+      out.warnings.push(`The paste is missing the ${label} column. Is it the registration export?`);
       return out;
     }
   }
-  if (
-    col.parentName < 0 && col.parentCell < 0 && col.parentEmail < 0 &&
-    col.playerCell < 0 && col.playerEmail < 0
-  ) {
-    out.warnings.push("No contact columns found in the paste (PG Cell, PG Email, Player Cell, Player Email).");
-    return out;
-  }
 
-  const cell = (row: string[], k: ContactCol) => (col[k] >= 0 ? (row[col[k]] ?? "").trim() : "");
-  const doFilter = col.event >= 0 && !!eventFilter && eventFilter.trim() !== "";
+  const at = (row: string[], i: number) => (i >= 0 ? (row[i] ?? "").trim() : "");
+  const doFilter = eventCol >= 0 && !!eventFilter && eventFilter.trim() !== "";
 
   // Index the registration rows two ways: team+jersey, and team+full name.
   const byTeamJersey = new Map<string, string[]>();
   const byTeamName = new Map<string, string[]>();
   for (let r = 1; r < table.length; r++) {
     const row = table[r];
-    if (doFilter && cell(row, "event") !== eventFilter) continue;
-    const team = normalize(cell(row, "team"));
+    if (doFilter && at(row, eventCol) !== eventFilter) continue;
+    const team = normalize(at(row, teamCol));
     if (!team) continue;
-    const jerseyDigits = cell(row, "jersey").replace(/[^\d]/g, "");
+    const jerseyDigits = at(row, jerseyCol).replace(/[^\d]/g, "");
     if (jerseyDigits !== "" && !byTeamJersey.has(`${team}#${Number(jerseyDigits)}`)) {
       byTeamJersey.set(`${team}#${Number(jerseyDigits)}`, row);
     }
-    const nameKey = `${team}|${normalize(cell(row, "first"))}|${normalize(cell(row, "last"))}`;
+    const nameKey = `${team}|${normalize(at(row, firstCol))}|${normalize(at(row, lastCol))}`;
     if (!byTeamName.has(nameKey)) byTeamName.set(nameKey, row);
   }
 
@@ -109,9 +127,9 @@ export function joinContacts(
     const who = `${teamName} ${p.jersey !== null ? `#${p.jersey} ` : ""}${p.firstName} ${p.lastName}`.trim();
 
     let row = p.jersey !== null ? byTeamJersey.get(`${team}#${p.jersey}`) : undefined;
-    if (row && normalize(cell(row, "last")) !== normalize(p.lastName) && cell(row, "last") !== "") {
+    if (row && normalize(at(row, lastCol)) !== normalize(p.lastName) && at(row, lastCol) !== "") {
       out.warnings.push(
-        `${who}: registration row at that team and jersey is ${cell(row, "first")} ${cell(row, "last")}; matched by name instead.`,
+        `${who}: registration row at that team and jersey is ${at(row, firstCol)} ${at(row, lastCol)}; matched by name instead.`,
       );
       row = undefined;
     }
@@ -120,6 +138,41 @@ export function joinContacts(
       out.unmatched.push(who);
       continue;
     }
+    out.rowByPlayerId.set(p.id, row);
+  }
+  return out;
+}
+
+/**
+ * The notification join: contact columns only, for the ballot download. Values
+ * are READ AND RETURNED ONLY - nothing here touches the Dataset.
+ */
+export function joinContacts(
+  csv: string,
+  players: Player[],
+  teams: Team[],
+  eventFilter?: string,
+): ContactJoinResult {
+  const out: ContactJoinResult = { rows: [], unmatched: [], warnings: [] };
+  const match = matchRegistrationRows(csv, players, teams, eventFilter);
+  out.warnings.push(...match.warnings);
+  out.unmatched.push(...match.unmatched);
+  if (match.header.length === 0) return out;
+
+  const col: Record<ContactCol, number> = Object.fromEntries(
+    (Object.keys(CONTACT_COLS) as ContactCol[]).map((k) => [k, match.columnIndex(CONTACT_COLS[k])]),
+  ) as Record<ContactCol, number>;
+  if (
+    col.parentName < 0 && col.parentCell < 0 && col.parentEmail < 0 &&
+    col.playerCell < 0 && col.playerEmail < 0
+  ) {
+    return { rows: [], unmatched: [], warnings: ["No contact columns found in the paste (PG Cell, PG Email, Player Cell, Player Email)."] };
+  }
+
+  const cell = (row: string[], k: ContactCol) => (col[k] >= 0 ? (row[col[k]] ?? "").trim() : "");
+  for (const p of players) {
+    const row = match.rowByPlayerId.get(p.id);
+    if (!row) continue;
     out.rows.push({
       playerId: p.id,
       parentName: cell(row, "parentName"),
