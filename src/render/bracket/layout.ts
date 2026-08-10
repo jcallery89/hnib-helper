@@ -47,7 +47,7 @@ export function computeLayout(
   // whole composition shifts inside them instead of drawing underneath.
   const insetTop = insets.top ?? 0;
   const insetBottom = insets.bottom ?? 0;
-  const margin = Math.round(width * 0.045);
+  const margin = Math.round(width * (twelve ? 0.025 : 0.045));
   const headerY = insetTop + Math.round(height * 0.035);
   const labelY = insetTop + Math.round(height * 0.12);
   const contentTop = insetTop + Math.round(height * 0.155);
@@ -55,10 +55,17 @@ export function computeLayout(
   const contentBottom = footerY - Math.round(height * 0.03);
 
   // Columns: QF, SF, FINAL, CHAMPION - plus a leading ROUND 1 for 12 teams.
+  // In the crowded 5-column layout the champion box (a single centered name)
+  // cedes width to the four game columns, where every pixel feeds team names.
   const colCount = twelve ? 5 : 4;
   const usableW = width - margin * 2;
-  const colGap = Math.round(usableW * (twelve ? 0.03 : 0.05));
-  const colW = Math.round((usableW - colGap * (colCount - 1)) / colCount);
+  const colGap = Math.round(usableW * (twelve ? 0.018 : 0.05));
+  const champW = twelve
+    ? Math.round((usableW - colGap * 4) * (0.62 / 4.62))
+    : Math.round((usableW - colGap * 3) / 4);
+  const colW = twelve
+    ? Math.round((usableW - colGap * 4 - champW) / 4)
+    : champW;
   const colX = Array.from({ length: colCount }, (_, i) => margin + i * (colW + colGap));
 
   // The cells own most of the vertical band; gaps stay smaller than a cell so
@@ -68,27 +75,28 @@ export function computeLayout(
   // Row height is ALSO capped by the column width: tall exports (1080x1920)
   // grow the band but not the columns, and an uncapped row makes bubbles and
   // type outgrow the box they live in.
+  // The 12-team column is narrow but its vertical band is generous, so it
+  // runs taller rows (bigger type) with tighter gaps between pair groups.
   const band = contentBottom - contentTop;
   const rowH = Math.max(
     28,
-    Math.min(Math.round(band * (six ? 0.1 : 0.085)), Math.round(colW * 0.42)),
+    Math.min(Math.round(band * (six ? 0.1 : twelve ? 0.095 : 0.085)), Math.round(colW * (twelve ? 0.5 : 0.42))),
   );
   const cellH = rowH * 2;
 
   const cells: CellBox[] = [];
   const connectors: Connector[] = [];
 
-  // First-round cells: the pair feeding one semifinal (or the games feeding
-  // adjacent bye quarterfinals in a 12-team field) sit tighter than the gap
-  // between pairs, and the whole block centers in the band. A 6-team field has
-  // just the two play-ins, spread evenly.
+  // First-round cells (Round 1 for 12 teams, otherwise the QFs/play-ins),
+  // grouped so games feeding the same next-round game sit tighter than the
+  // gap between pairs.
   const r1Ids = twelve ? ["pr1", "pr2", "pr3", "pr4"] : six ? ["qf1", "qf2"] : ["qf1", "qf2", "qf3", "qf4"];
   let r1Centers: number[];
   if (six) {
     r1Centers = [0.27, 0.73].map((nrm) => contentTop + nrm * band);
   } else {
-    const intraGap = Math.round(band * 0.08); // within a pair
-    const interGap = Math.round(band * 0.15); // between the two pairs
+    const intraGap = Math.round(band * (twelve ? 0.055 : 0.08)); // between the games of one pair
+    const interGap = Math.round(band * (twelve ? 0.1 : 0.15)); // between the two pairs
     const total = cellH * 4 + intraGap * 2 + interGap;
     const top = contentTop + Math.max(0, Math.round((band - total) / 2));
     const c1 = top + cellH / 2;
@@ -122,7 +130,7 @@ export function computeLayout(
   cells.push({ id: "final", x: colX[qfCol + 2], y: finalCenter - cellH / 2, w: colW, h: cellH });
 
   const championH = Math.round(rowH * 1.3);
-  const champion: CellBox = { id: "champion", x: colX[qfCol + 3], y: finalCenter - championH / 2, w: colW, h: championH };
+  const champion: CellBox = { id: "champion", x: colX[qfCol + 3], y: finalCenter - championH / 2, w: champW, h: championH };
 
   const byId = new Map(cells.map((c) => [c.id, c]));
   if (twelve) {
@@ -148,7 +156,7 @@ export function computeLayout(
     { text: six ? "PLAY-IN" : "QUARTERFINALS", x: colX[qfCol] + colW / 2 },
     { text: "SEMIFINALS", x: colX[qfCol + 1] + colW / 2 },
     { text: "FINAL", x: colX[qfCol + 2] + colW / 2 },
-    { text: "CHAMPION", x: colX[qfCol + 3] + colW / 2 },
+    { text: "CHAMPION", x: colX[qfCol + 3] + champW / 2 },
   ];
 
   return {

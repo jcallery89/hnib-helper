@@ -32,6 +32,19 @@ regenerates `manifest.js` from the full folder, preserving photos already there
 from other events. Needs network access to hnib.app + storage.googleapis.com -
 run it locally, not in a sandboxed dev env without egress.
 
+## Automated recovery (GitHub Actions)
+
+`scripts/recover_headshots.py CURRENT_EVENT PRIOR_EVENT` runs both passes in
+one shot: direct bucket fetch for every current-event player, then exact
+name+DOB matching against the prior event for the rest (weaker matches are
+flagged by player ID, never guessed). The `Recover event headshots` workflow
+(`.github/workflows/girls-headshots.yml`) runs it on GitHub's runners - which
+have open egress and the deploy FTP secrets - and uploads results straight
+into the server's `headshots/` folder, then rebuilds `manifest.js` from the
+server's FULL folder listing so existing photos from other events survive.
+Because this repo and its Action logs are public, the script prints only
+opaque player IDs and counts; photos are never stored as workflow artifacts.
+
 ## Players the bucket does not have
 
 For the 2026 Boys Major, 204/255 players had bucket photos. 33 more were

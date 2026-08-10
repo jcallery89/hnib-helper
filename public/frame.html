@@ -91,6 +91,13 @@
           <select id="gameSel" disabled><option value="">Season card (no game)</option></select>
         </div>
         <div>
+          <label>Layout</label>
+          <select id="styleSel">
+            <option value="full" selected>Full frame</option>
+            <option value="intro">Intro only - name, number, team, hometown, birth year</option>
+          </select>
+        </div>
+        <div>
           <label>Size</label>
           <select id="sizeSel">
             <option value="story" selected>Story 1080x1920</option>
@@ -315,12 +322,15 @@
     var g = cv.getContext("2d");
     g.clearRect(0, 0, W, H);
 
+    // Intro layout: the top band only - headshot, name, number, team,
+    // hometown, birth year - with everything below fully transparent.
+    var intro = $("styleSel").value === "intro";
     var footMode = $("footSel").value;
-    var gl = currentGame();
+    var gl = intro ? null : currentGame();
     // A selected game always gets the full bottom band for its stat line.
-    var showBand = gl !== null || footMode !== "none";
-    var headerH = 320;
-    var footerH = showBand ? 220 : 60;
+    var showBand = !intro && (gl !== null || footMode !== "none");
+    var headerH = intro ? 250 : 320;
+    var footerH = intro ? 0 : showBand ? 220 : 60;
 
     var fonts = [
       "600 90px Teko", "700 60px Teko", "700 34px 'Barlow Condensed'",
@@ -341,13 +351,24 @@
         var header = imgs[0], footer = imgs[1], shot = imgs[2];
 
         /* ---------- TOP BAND ---------- */
-        g.fillStyle = "#ffffff";
-        g.fillRect(0, 0, W, headerH);
-        g.drawImage(header, 0, 0, W, 60);
+        if (intro) {
+          // Tighter band, no brand strip; a soft shadow settles it on video.
+          g.save();
+          g.shadowColor = "rgba(17,30,63,0.4)";
+          g.shadowBlur = 28;
+          g.shadowOffsetY = 10;
+          g.fillStyle = "#ffffff";
+          g.fillRect(0, 0, W, headerH);
+          g.restore();
+        } else {
+          g.fillStyle = "#ffffff";
+          g.fillRect(0, 0, W, headerH);
+          g.drawImage(header, 0, 0, W, 60);
+        }
         gradBar(g, 0, headerH - 6, W, 6);
 
         // headshot circle or initials
-        var cx = 150, cy = 60 + (headerH - 66) / 2, r = 92;
+        var cx = 150, cy = intro ? (headerH - 6) / 2 : 60 + (headerH - 66) / 2, r = 92;
         g.save();
         g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.closePath();
         g.fillStyle = "#eef2f8"; g.fill();
@@ -403,7 +424,8 @@
         g.fillText(bioTxt, nameX, cy + 92);
         g.textBaseline = "alphabetic";
 
-        /* ---------- BOTTOM BAND ---------- */
+        /* ---------- BOTTOM BAND (skipped entirely in intro layout) ---------- */
+        if (intro) return;
         var fy = H - footerH;
         if (!showBand) {
           gradBar(g, 0, fy, W, 6);
@@ -437,8 +459,9 @@
     if (!p) return;
     var gl = currentGame();
     var a = document.createElement("a");
+    var intro = $("styleSel").value === "intro";
     a.download = "HNIB_frame_" + p.name.replace(/[^a-z0-9]+/gi, "_") +
-      (gl ? "_vs_" + (gl.opponent || "game").replace(/[^a-z0-9]+/gi, "_") : "") +
+      (intro ? "_intro" : gl ? "_vs_" + (gl.opponent || "game").replace(/[^a-z0-9]+/gi, "_") : "") +
       "_" + $("sizeSel").value + ".png";
     a.href = $("cv").toDataURL("image/png");
     a.click();
@@ -448,6 +471,7 @@
   $("teamSel").addEventListener("change", pickTeam);
   $("playerSel").addEventListener("change", function () { loadGames(); draw(); });
   $("gameSel").addEventListener("change", draw);
+  $("styleSel").addEventListener("change", draw);
   $("sizeSel").addEventListener("change", draw);
   $("footSel").addEventListener("change", draw);
   $("exportBtn").addEventListener("click", exportPng);

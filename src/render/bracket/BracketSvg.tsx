@@ -245,9 +245,14 @@ function renderCell(cell: CellBox, game: BracketGame, opts: CellOpts) {
     game.decidedBy === "ot" ? "OT" : game.decidedBy === "shootout" ? "SO" : "";
   const caption = opts.slot ? formatSlot(opts.slot) : "";
   // Captions must stay inside their own column: a wide one would run under
-  // the next round's opaque cell. Compress when the estimate exceeds the box.
-  const capSize = Math.round(rowH * 0.3);
-  const capSqueezed = caption.length * capSize * 0.48 > cell.w;
+  // the next round's caption or opaque cell. Shrink the font to fit first
+  // (like team names), keeping glyph compression as the backstop.
+  const capFull = Math.round(rowH * 0.28);
+  const capSize = Math.max(
+    Math.round(capFull * 0.7),
+    Math.min(capFull, Math.floor((cell.w - 6) / Math.max(1, caption.length * 0.45))),
+  );
+  const capSqueezed = caption.length * capSize * 0.45 > cell.w - 6;
   return (
     <g key={cell.id}>
       {caption && (
@@ -259,7 +264,7 @@ function renderCell(cell: CellBox, game: BracketGame, opts: CellOpts) {
           font-size={capSize}
           font-weight={600}
           letter-spacing="0.04em"
-          textLength={capSqueezed ? cell.w - 4 : undefined}
+          textLength={capSqueezed ? cell.w - 6 : undefined}
           lengthAdjust={capSqueezed ? "spacingAndGlyphs" : undefined}
         >
           {caption}
@@ -287,11 +292,11 @@ function renderCell(cell: CellBox, game: BracketGame, opts: CellOpts) {
       {teamRow(cell, cell.y + rowH, game.lowSeed, game.lowTeamId, game.lowScore, game.winnerTeamId, opts)}
       {tag && (
         <text
-          x={cell.x + cell.w - 6}
-          y={cell.y + cell.h - 5}
+          x={cell.x + cell.w - 5}
+          y={cell.y + cell.h - 4}
           fill={COLORS.royal}
           font-family={FONTS.body}
-          font-size={opts.seedSize}
+          font-size={Math.max(10, Math.round(rowH * 0.28))}
           font-weight={700}
           text-anchor="end"
         >
@@ -315,26 +320,29 @@ function teamRow(
   const name = teamId ? opts.nameById(teamId) : "-";
   const cy = rowY + opts.rowH / 2;
   const baseline = cy + opts.nameSize * 0.34;
-  const r = Math.round(opts.rowH * 0.28);
-  const bubbleX = cell.x + 10 + r;
-  const nameX = cell.x + 10 + r * 2 + 8;
+  const r = Math.round(opts.rowH * 0.22);
+  const pad = Math.max(5, Math.round(opts.rowH * 0.1));
+  const bubbleX = cell.x + pad + r;
+  const nameX = cell.x + pad + r * 2 + Math.max(4, Math.round(opts.rowH * 0.08));
 
   // Seed bubble: filled with the team's jersey color when the team is known,
   // a light outline when only the seed slot is (an undecided feeder).
   const rawColor = teamId ? opts.colorById?.(teamId) : undefined;
   const bubbleFill = rawColor && /^#[0-9a-fA-F]{6}$/.test(rawColor) ? rawColor : null;
 
-  // Long names (Sophomore All Stars, CT/Mid-Atlantic) first drop the font a
-  // step to fit between the seed bubble and the score, and only then compress
+  // Long names (Worcester County, NE Connecticut) first drop the font a step
+  // to fit between the seed bubble and the score, and only then compress
   // glyph spacing - never both from full size, which crushed names into
   // unreadable slivers on tall exports. Barlow Condensed runs ~0.45em/glyph.
-  const scoreReserve = Math.round(opts.nameSize * 1.2);
-  const maxNameW = cell.x + cell.w - 12 - scoreReserve - nameX;
+  // Score space is only reserved once there IS a score (a hockey score is a
+  // digit or two), which matters most in the narrow 5-column 12-team layout.
+  const scoreReserve = Math.round(opts.nameSize * (score !== null ? (score >= 10 ? 1.1 : 0.75) : 0.3));
+  const maxNameW = cell.x + cell.w - 10 - scoreReserve - nameX;
   const fittedNameSize = Math.max(
-    Math.round(opts.nameSize * 0.62),
-    Math.min(opts.nameSize, Math.floor(maxNameW / Math.max(1, name.length * 0.45))),
+    Math.round(opts.nameSize * 0.55),
+    Math.min(opts.nameSize, Math.floor(maxNameW / Math.max(1, name.length * 0.47))),
   );
-  const nameSqueezed = name.length * fittedNameSize * 0.45 > maxNameW;
+  const nameSqueezed = name.length * fittedNameSize * 0.47 > maxNameW;
 
   return (
     <g>

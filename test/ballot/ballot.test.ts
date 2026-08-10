@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ballotPosition,
+  countInvites,
   compareProduction,
   emptyBallot,
   positionLabel,
@@ -66,5 +67,28 @@ describe("positionLabel", () => {
     expect(positionLabel("F")).toBe("Forwards");
     expect(positionLabel("D")).toBe("Defense");
     expect(positionLabel("G")).toBe("Goaltenders");
+  });
+});
+
+describe("countInvites", () => {
+  const ballot = {
+    invites: { a: "yes", b: "invited", c: "invited", d: "no", e: "yes" },
+    targets: { F: 3, D: 2, G: 1 },
+  } as const;
+
+  it("tallies confirmed, pending, and declined against the position target", () => {
+    const c = countInvites(ballot, ["a", "b", "c", "d", "e"], "F");
+    expect(c).toMatchObject({ confirmed: 2, pending: 2, declined: 1, target: 3, over: 1 });
+  });
+
+  it("reports no overage without a target", () => {
+    const c = countInvites({ invites: ballot.invites }, ["a", "b", "c"], "F");
+    expect(c.target).toBeNull();
+    expect(c.over).toBe(0);
+  });
+
+  it("only counts the ids it is given", () => {
+    const c = countInvites(ballot, ["a"], "G");
+    expect(c).toMatchObject({ confirmed: 1, pending: 0, target: 1, over: 0 });
   });
 });

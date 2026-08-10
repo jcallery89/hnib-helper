@@ -9,7 +9,7 @@
 import { importApiData } from "./importApi.ts";
 import { extractPlayoffSlots } from "./importPlayoffApi.ts";
 import { buildPlayoffField } from "../engine/playoff/field.ts";
-import { qfPairings } from "../engine/playoff/bracket.ts";
+import { byePairings, qfPairings } from "../engine/playoff/bracket.ts";
 import { parseLeaders, parsePlayerProfile, parseTeamRoster } from "./importApiPlayers.ts";
 import type { Dataset, PlayerGameLine } from "./dataset.ts";
 import type { Player, PlayerStatLine } from "../engine/types.ts";
@@ -155,8 +155,10 @@ export async function fullSync(
   // The seeded first-round pairs travel along so a feed that fills real teams
   // into its first-round games ("Playoff 1..4" in ice-time order) maps by
   // matchup instead of by unreliable numbering.
-  const fieldSizeNow = dataset.event.fieldSize === 6 ? 6 : 8;
+  const fieldSizeNow: 6 | 8 | 12 =
+    dataset.event.fieldSize === 6 ? 6 : dataset.event.fieldSize === 12 ? 12 : 8;
   let qfTeamPairs: Array<{ cellId: string; teams: [string, string] }> = [];
+  let byeTeamCells: Array<{ cellId: string; team: string }> = [];
   try {
     const field = buildPlayoffField(dataset.event, dataset.divisions, dataset.teams, dataset.games, {
       pointSystem: dataset.event.pointSystem,
@@ -169,10 +171,17 @@ export async function fullSync(
       const b = nameById.get(teamBySeed.get(p.low) ?? "");
       if (a && b) qfTeamPairs.push({ cellId: p.id, teams: [a, b] });
     }
+    // Bye-seed games (12-team QFs, 6-team semis) are identified by the bye
+    // team alone, since the other side is a still-undecided winner.
+    for (const b of byePairings(fieldSizeNow)) {
+      const t = nameById.get(teamBySeed.get(b.bye) ?? "");
+      if (t) byeTeamCells.push({ cellId: b.id, team: t });
+    }
   } catch {
     qfTeamPairs = []; // field not seedable yet; label mapping still applies
+    byeTeamCells = [];
   }
-  const autoSlots = extractPlayoffSlots(base.scheduleJson, fieldSizeNow, { qfTeamPairs }).byCell;
+  const autoSlots = extractPlayoffSlots(base.scheduleJson, fieldSizeNow, { qfTeamPairs, byeTeamCells }).byCell;
   if (Object.keys(autoSlots).length) dataset.playoffSchedule = autoSlots;
 
   // Team rosters + stats.

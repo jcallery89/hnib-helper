@@ -4,12 +4,15 @@ import type { Player, PlayerSummary } from "../../engine/types.ts";
 import {
   type BallotPosition,
   type BallotSelection,
+  type InviteStatus,
   ballotPosition,
   compareProduction,
+  countInvites,
   emptyBallot,
   positionLabel,
 } from "../../engine/ballot/ballot.ts";
 import { joinContacts } from "../../io/contactJoin.ts";
+import { parseBallotEntries } from "../../io/importBallotEntries.ts";
 import { listRegistrationEvents } from "../../io/importRegistration.ts";
 import { playerSummaries } from "../state/store.ts";
 import { downloadFile } from "../../io/session.ts";
@@ -27,6 +30,9 @@ export function BallotView({ dataset, update }: Props) {
   const [registrationCsv, setRegistrationCsv] = useState("");
   const [registrationEvent, setRegistrationEvent] = useState("");
   const [joinStatus, setJoinStatus] = useState<string[]>([]);
+  const [entriesCsv, setEntriesCsv] = useState("");
+  const [entriesStatus, setEntriesStatus] = useState<string[]>([]);
+  const [notifyScope, setNotifyScope] = useState<"all" | "invited" | "pending">("invited");
 
   const ballot = dataset.ballot ?? emptyBallot();
   const nominated = useMemo(() => new Set(ballot.nominatedIds ?? []), [ballot.nominatedIds]);
@@ -92,6 +98,50 @@ export function BallotView({ dataset, update }: Props) {
     });
   }
 
+  function importEntries() {
+    const res = parseBallotEntries(entriesCsv, dataset.players ?? [], dataset.teams);
+    if (res.nominatedIds.length > 0) {
+      update((d) => {
+        if (!d.ballot) d.ballot = emptyBallot();
+        const set = new Set(d.ballot.nominatedIds ?? []);
+        for (const id of res.nominatedIds) set.add(id);
+        d.ballot.nominatedIds = [...set];
+        d.ballot.coachRanks = { ...(d.ballot.coachRanks ?? {}), ...res.coachRanks };
+      });
+    }
+    const status: string[] = [];
+    status.push(
+      `Marked ${res.matched} nominations from ${res.ballots} ballots. Already-marked players stay marked; nothing is ever unmarked by an import.`,
+    );
+    if (res.unmatched.length > 0) {
+      status.push(
+        `Could not match ${res.unmatched.length}: ${res.unmatched.map((u) => `${u.team}: ${u.cell}`).join("; ")}. Tick those by hand.`,
+      );
+    }
+    for (const n of res.notes) {
+      status.push(`Note from ${n.coach || n.team} (${n.team}): ${n.note}`);
+    }
+    status.push(...res.warnings);
+    setEntriesStatus(status);
+  }
+
+  function setInvite(id: string, value: InviteStatus | "") {
+    update((d) => {
+      if (!d.ballot) d.ballot = emptyBallot();
+      const inv = { ...(d.ballot.invites ?? {}) };
+      if (value === "") delete inv[id];
+      else inv[id] = value;
+      d.ballot.invites = inv;
+    });
+  }
+
+  function setTarget(pos: BallotPosition, value: number) {
+    update((d) => {
+      if (!d.ballot) d.ballot = emptyBallot();
+      d.ballot.targets = { F: 0, D: 0, G: 0, ...(d.ballot.targets ?? {}), [pos]: value };
+    });
+  }
+
   function statText(s: PlayerSummary | undefined, pos: BallotPosition): string {
     if (pos === "G") {
       const gaa = s?.gaa !== undefined ? s.gaa.toFixed(2) : "-";
@@ -101,11 +151,19 @@ export function BallotView({ dataset, update }: Props) {
     return `GP ${s?.gp ?? 0}, ${s?.goals ?? 0}g ${s?.assists ?? 0}a ${s?.points ?? 0}pts`;
   }
 
-  function nominatedCsvRows(): string[][] {
+  // Which players a scoped export covers: everyone nominated, everyone with
+  // an invite out or accepted, or only those still awaiting a reply.
+  function inScope(id: string, scope: "all" | "invited" | "pending"): boolean {
+    if (scope === "all") return true;
+    const s = ballot.invites?.[id];
+    return scope === "invited" ? s === "invited" || s === "yes" : s === "invited";
+  }
+
+  function nominatedCsvRows(scope: "all" | "invited" | "pending" = "all"): string[][] {
     const rows: string[][] = [];
     for (const pos of POSITIONS) {
       for (const p of groups[pos]) {
-        if (!nominated.has(p.id)) continue;
+        if (!nominated.has(p.id) || !inScope(p.id, scope)) continue;
         const s = summaries.get(p.id);
         rows.push([
           teamName.get(p.teamId) ?? p.teamId,
@@ -120,7 +178,9 @@ export function BallotView({ dataset, update }: Props) {
           pos === "G" ? (s?.gaa !== undefined ? s.gaa.toFixed(2) : "") : String(s?.goals ?? 0),
           pos === "G" ? (s?.savePct !== undefined ? s.savePct.toFixed(3) : "") : String(s?.assists ?? 0),
           pos === "G" ? "" : String(s?.points ?? 0),
+          ballot.coachRanks?.[p.id] !== undefined ? String(ballot.coachRanks[p.id]) : "",
           ballot.selections?.[p.id] ?? "",
+          ballot.invites?.[p.id] ?? "",
           ballot.playerNotes?.[p.id] ?? "",
         ]);
       }
@@ -128,23 +188,24 @@ export function BallotView({ dataset, update }: Props) {
     return rows;
   }
 
-  function exportNominated() {
+  function exportNominated(scope: "all" | "invited" = "all") {
     const header = [
       "team", "jersey", "last", "first", "position", "birthYear", "hometown", "school",
-      "gp", "g_or_gaa", "a_or_svpct", "pts", "selection", "note",
+      "gp", "g_or_gaa", "a_or_svpct", "pts", "coach_rank", "selection", "invite", "note",
     ];
-    const lines = nominatedCsvRows().map((r) => r.map(csvCell).join(","));
+    const lines = nominatedCsvRows(scope).map((r) => r.map(csvCell).join(","));
     downloadFile(
-      `${dataset.event.year}-nominated-players.csv`,
+      `${dataset.event.year}-${scope === "invited" ? "invited" : "nominated"}-players.csv`,
       [header.join(","), ...lines].join("\n"),
       "text/csv",
     );
   }
 
   function exportNotificationList() {
+    const scoped = nominatedPlayers.filter((p) => inScope(p.id, notifyScope));
     const result = joinContacts(
       registrationCsv,
-      nominatedPlayers,
+      scoped,
       dataset.teams,
       registrationEvents.length > 1 ? registrationEvent : undefined,
     );
@@ -155,13 +216,13 @@ export function BallotView({ dataset, update }: Props) {
     }
     const contactById = new Map(result.rows.map((r) => [r.playerId, r]));
     const header = [
-      "team", "jersey", "last", "first", "position", "selection",
+      "team", "jersey", "last", "first", "position", "coach_rank", "selection", "invite",
       "parent_name", "parent_cell", "parent_email", "player_cell", "player_email", "note",
     ];
     const lines: string[] = [];
     for (const pos of POSITIONS) {
       for (const p of groups[pos]) {
-        if (!nominated.has(p.id)) continue;
+        if (!nominated.has(p.id) || !inScope(p.id, notifyScope)) continue;
         const c = contactById.get(p.id);
         lines.push(
           [
@@ -170,7 +231,9 @@ export function BallotView({ dataset, update }: Props) {
             p.lastName,
             p.firstName,
             pos,
+            ballot.coachRanks?.[p.id] !== undefined ? String(ballot.coachRanks[p.id]) : "",
             ballot.selections?.[p.id] ?? "",
+            ballot.invites?.[p.id] ?? "",
             c?.parentName ?? "",
             c?.parentCell ?? "",
             c?.parentEmail ?? "",
@@ -183,13 +246,17 @@ export function BallotView({ dataset, update }: Props) {
     }
     if (lines.length > 0 && result.rows.length > 0) {
       downloadFile(
-        `${dataset.event.year}-nomination-notifications.csv`,
+        `${dataset.event.year}-${notifyScope === "all" ? "nomination" : "invite"}-notifications.csv`,
         [header.join(","), ...lines].join("\n"),
         "text/csv",
       );
-      status.unshift(`Downloaded contacts for ${result.rows.length} of ${nominatedPlayers.length} nominated players.`);
+      status.unshift(`Downloaded contacts for ${result.rows.length} of ${scoped.length} players in scope.`);
     } else if (lines.length === 0) {
-      status.unshift("No players are marked as nominated yet.");
+      status.unshift(
+        notifyScope === "all"
+          ? "No players are marked as nominated yet."
+          : "No players match that scope yet. Mark invites in the tables above first.",
+      );
     } else {
       status.unshift("No nominated players matched the paste. Check that it is the registration export for this event.");
     }
@@ -220,6 +287,39 @@ export function BallotView({ dataset, update }: Props) {
           {POSITIONS.map((pos) => `${positionLabel(pos)} ${groups[pos].filter((p) => nominated.has(p.id)).length}`).join(", ")}
           {" - "}Roster {rosterCount}, Alternates {alternateCount}.
         </p>
+        <div class="row" style={{ gap: 18, flexWrap: "wrap" }}>
+          {POSITIONS.map((pos) => {
+            const ids = groups[pos].map((p) => p.id);
+            const c = countInvites(ballot, ids, pos);
+            return (
+              <label class="row" style={{ gap: 6 }} key={pos}>
+                <strong>{positionLabel(pos)}:</strong>
+                <span class="note">
+                  {c.confirmed} in, {c.pending} awaiting reply, {c.declined} declined
+                </span>
+                of target
+                <input
+                  type="number"
+                  min={0}
+                  style={{ width: 56 }}
+                  aria-label={`${positionLabel(pos)} target`}
+                  value={ballot.targets?.[pos] || ""}
+                  onInput={(e) => setTarget(pos, Number((e.target as HTMLInputElement).value) || 0)}
+                />
+              </label>
+            );
+          })}
+        </div>
+        {POSITIONS.map((pos) => {
+          const c = countInvites(ballot, groups[pos].map((p) => p.id), pos);
+          if (c.over === 0) return null;
+          return (
+            <p class="note" style={{ color: "#d6453d", fontWeight: 600 }} key={`over-${pos}`}>
+              {positionLabel(pos)}: confirmed plus outstanding invites exceed the target by {c.over}.
+              Hold further invites until replies land or the target changes.
+            </p>
+          );
+        })}
         <div class="toolbar">
           <label class="row" style={{ gap: 6 }}>
             Team
@@ -238,10 +338,51 @@ export function BallotView({ dataset, update }: Props) {
             />
             Nominated only
           </label>
-          <button class="btn secondary" onClick={exportNominated} disabled={nominated.size === 0}>
+          <button class="btn secondary" onClick={() => exportNominated("all")} disabled={nominated.size === 0}>
             Export nominated (CSV)
           </button>
+          <button
+            class="btn secondary"
+            onClick={() => exportNominated("invited")}
+            disabled={Object.keys(ballot.invites ?? {}).length === 0}
+          >
+            Export invited (CSV)
+          </button>
         </div>
+      </div>
+
+      <div class="card">
+        <p class="section-title">Import ballots (Gravity Forms entries)</p>
+        <p class="note">
+          Paste the entries export from the ballot form (Forms, Import/Export, Export Entries).
+          Every pick is matched to the roster by team, jersey, and name and marked Nominated.
+          Coach notes are listed below for the directors; imports only add marks, never remove.
+        </p>
+        <textarea
+          rows={4}
+          style={{ width: "100%" }}
+          placeholder="Paste the ballot entries CSV"
+          value={entriesCsv}
+          onInput={(e) => setEntriesCsv((e.target as HTMLTextAreaElement).value)}
+        />
+        <div class="toolbar" style={{ marginTop: 8 }}>
+          <button class="btn" onClick={importEntries} disabled={entriesCsv.trim() === ""}>
+            Load nominations
+          </button>
+          <button
+            class="btn secondary"
+            onClick={() => {
+              setEntriesCsv("");
+              setEntriesStatus([]);
+            }}
+            disabled={entriesCsv === "" && entriesStatus.length === 0}
+          >
+            Clear
+          </button>
+        </div>
+        {entriesStatus.map((s, i) => (
+          <p class="note" key={i}>{s}</p>
+        ))}
       </div>
 
       {POSITIONS.map((pos) => {
@@ -261,12 +402,14 @@ export function BallotView({ dataset, update }: Props) {
                 <thead>
                   <tr>
                     <th>Nominated</th>
+                    <th>Coach pick</th>
                     <th>Player</th>
                     <th>Team</th>
                     <th>#</th>
                     <th>Birth Yr</th>
                     <th>Stats</th>
                     <th>Final call</th>
+                    <th>Invite</th>
                     <th>Note</th>
                   </tr>
                 </thead>
@@ -282,6 +425,13 @@ export function BallotView({ dataset, update }: Props) {
                             checked={isNominated}
                             onChange={() => toggleNominated(p.id)}
                           />
+                        </td>
+                        <td>
+                          {ballot.coachRanks?.[p.id] ? (
+                            <strong title="The slot the coach put this player in on the ballot">
+                              #{ballot.coachRanks[p.id]}
+                            </strong>
+                          ) : null}
                         </td>
                         <td>{p.lastName}, {p.firstName}</td>
                         <td>{teamName.get(p.teamId) ?? p.teamId}</td>
@@ -299,6 +449,22 @@ export function BallotView({ dataset, update }: Props) {
                               <option value="">-</option>
                               <option value="roster">Roster</option>
                               <option value="alternate">Alternate</option>
+                            </select>
+                          ) : null}
+                        </td>
+                        <td>
+                          {isNominated ? (
+                            <select
+                              aria-label={`Invite: ${p.firstName} ${p.lastName}`}
+                              value={ballot.invites?.[p.id] ?? ""}
+                              onChange={(e) =>
+                                setInvite(p.id, (e.target as HTMLSelectElement).value as InviteStatus | "")
+                              }
+                            >
+                              <option value="">-</option>
+                              <option value="invited">Invited</option>
+                              <option value="yes">RSVP yes</option>
+                              <option value="no">Declined</option>
                             </select>
                           ) : null}
                         </td>
@@ -325,10 +491,21 @@ export function BallotView({ dataset, update }: Props) {
       <div class="card">
         <p class="section-title">Notification export (contacts)</p>
         <p class="note">
-          Paste the HNIB registration export below to download the nominated players with parent
-          and player contact columns for notification. Contact details are used for this download
-          only and are never saved in the app.
+          Paste the HNIB registration export below to download players with parent and player
+          contact columns for notification. Contact details are used for this download only and
+          are never saved in the app.
         </p>
+        <label class="row" style={{ gap: 6 }}>
+          Who to include
+          <select
+            value={notifyScope}
+            onChange={(e) => setNotifyScope((e.target as HTMLSelectElement).value as "all" | "invited" | "pending")}
+          >
+            <option value="invited">Invited players (sent or confirmed)</option>
+            <option value="pending">Awaiting reply only</option>
+            <option value="all">Everyone nominated</option>
+          </select>
+        </label>
         <textarea
           rows={5}
           style={{ width: "100%" }}

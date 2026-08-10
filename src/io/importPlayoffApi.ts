@@ -25,7 +25,10 @@ import type { PlayoffSlot } from "./dataset.ts";
 export function extractPlayoffSlots(
   scheduleJson: string,
   fieldSize: number,
-  opts: { qfTeamPairs?: Array<{ cellId: string; teams: [string, string] }> } = {},
+  opts: {
+    qfTeamPairs?: Array<{ cellId: string; teams: [string, string] }>;
+    byeTeamCells?: Array<{ cellId: string; team: string }>;
+  } = {},
 ): { byCell: Record<string, PlayoffSlot>; warnings: string[] } {
   const warnings: string[] = [];
   let data: unknown;
@@ -51,6 +54,12 @@ export function extractPlayoffSlots(
   for (const p of opts.qfTeamPairs ?? []) {
     if (p.teams[0] && p.teams[1]) cellByTeams.set(pairKey(p.teams[0], p.teams[1]), p.cellId);
   }
+  // Bye-seed cells (12-team QFs, 6-team semis): the bye team uniquely
+  // identifies its game even while the other side is an undecided winner.
+  const cellByByeTeam = new Map<string, string>();
+  for (const b of opts.byeTeamCells ?? []) {
+    if (b.team) cellByByeTeam.set(norm(b.team), b.cellId);
+  }
 
   for (const g of raw as Array<Record<string, unknown>>) {
     const desc = String(g.Description ?? "");
@@ -64,11 +73,18 @@ export function extractPlayoffSlots(
     };
     const num = numIn(desc);
 
-    // A first-round game with real teams maps by the seeded pairing no matter
-    // how it is labeled (works for "Playoff N" ice-time numbering too).
-    const teamCell =
-      cellByTeams.get(pairKey(g.HomeTeamCode, g.AwayTeamCode)) ??
-      cellByTeams.get(pairKey(g.HomeTeamName, g.AwayTeamName));
+    // Team-based matching applies only to games NOT labeled like round robin:
+    // a first-round seeded pair can have met during the round robin (same
+    // division wildcard), and that "Game N" must never steal a bracket slot.
+    const rrStyled = /^game\s*\d+$/i.test(desc.trim());
+    const teamCell = rrStyled
+      ? undefined
+      : (cellByTeams.get(pairKey(g.HomeTeamCode, g.AwayTeamCode)) ??
+        cellByTeams.get(pairKey(g.HomeTeamName, g.AwayTeamName)) ??
+        cellByByeTeam.get(norm(g.HomeTeamCode)) ??
+        cellByByeTeam.get(norm(g.AwayTeamCode)) ??
+        cellByByeTeam.get(norm(g.HomeTeamName)) ??
+        cellByByeTeam.get(norm(g.AwayTeamName)));
 
     if (/semi/.test(d)) {
       if (num) set(`sf${num}`, slot);
@@ -84,8 +100,12 @@ export function extractPlayoffSlots(
       set(teamCell, slot);
     } else if (/playoff/.test(d)) {
       // Labeled playoff game whose teams are not known yet: the trailing
-      // number is the only signal left.
-      if (num) set(`qf${num}`, slot);
+      // number is the only signal left. A 12-team feed numbers Round 1 first
+      // (1-4), then the quarterfinals (5-8).
+      if (num) {
+        if (fieldSize === 12) set(num <= 4 ? `pr${num}` : `qf${num - 4}`, slot);
+        else set(`qf${num}`, slot);
+      }
     } else {
       // Unlabeled "Game N": a bracket placeholder game has no resolved teams and
       // has not been played; round-robin games always carry real team codes.
