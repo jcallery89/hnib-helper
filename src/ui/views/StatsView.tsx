@@ -5,6 +5,7 @@ import { ballotPosition } from "../../engine/ballot/ballot.ts";
 import { playerSummaries } from "../state/store.ts";
 import { downloadFile } from "../../io/session.ts";
 import { buildBallotRoster, ballotRosterCsv, ballotRosterSql, defaultBallotTable } from "../../io/ballotExport.ts";
+import { buildRecruitingGuide } from "../../io/recruitingGuide.ts";
 
 interface Props {
   dataset: Dataset;
@@ -24,6 +25,31 @@ export function StatsView({ dataset, update }: Props) {
   const [teamFilter, setTeamFilter] = useState("all");
   const [skaterSort, setSkaterSort] = useState<{ key: string; dir: Dir }>({ key: "points", dir: "desc" });
   const [goalieSort, setGoalieSort] = useState<{ key: string; dir: Dir }>({ key: "gaa", dir: "asc" });
+  const [guideBusy, setGuideBusy] = useState(false);
+  const [guideMsg, setGuideMsg] = useState("");
+
+  // The spreadsheet library is heavy, so it loads on demand rather than in the
+  // main bundle. The guide itself is built as plain data (recruitingGuide.ts).
+  async function exportRecruitingGuide() {
+    setGuideBusy(true);
+    setGuideMsg("");
+    try {
+      const guide = buildRecruitingGuide(dataset);
+      const XLSX = await import("xlsx");
+      const wb = XLSX.utils.book_new();
+      for (const sheet of guide.sheets) {
+        const ws = XLSX.utils.aoa_to_sheet(sheet.rows);
+        if (sheet.colWidths) ws["!cols"] = sheet.colWidths.map((wch) => ({ wch }));
+        XLSX.utils.book_append_sheet(wb, ws, sheet.name);
+      }
+      XLSX.writeFile(wb, guide.filename);
+      setGuideMsg(`Exported ${guide.filename} (${guide.sheets.length} sheets).`);
+    } catch (e) {
+      setGuideMsg(e instanceof Error ? e.message : "Export failed.");
+    } finally {
+      setGuideBusy(false);
+    }
+  }
 
   const teamName = useMemo(() => new Map(dataset.teams.map((t) => [t.id, t.name])), [dataset.teams]);
   const summaries = useMemo(() => playerSummaries(dataset), [dataset.players, dataset.playerStats, dataset.games]);
@@ -117,6 +143,25 @@ export function StatsView({ dataset, update }: Props) {
             </div>
           </>
         )}
+      </div>
+
+      <div class="card">
+        <p class="section-title">Recruiting Guide</p>
+        <p class="note">
+          One Excel workbook for college coaches and scouts: division standings, every skater in
+          the event ranked by tournament scoring, goalies by GAA, and a roster sheet per team with
+          bios (birth year, height, weight, shoots, hometown, school) and live tournament stats.
+          Re-export after a sync and every number refreshes.
+        </p>
+        <div class="toolbar">
+          <button class="btn primary" disabled={guideBusy} onClick={exportRecruitingGuide}>
+            {guideBusy ? "Building..." : "Recruiting guide (Excel)"}
+          </button>
+          {(dataset.players?.length ?? 0) === 0 && (
+            <span class="note">Sync the event first so rosters and stats are loaded.</span>
+          )}
+        </div>
+        {guideMsg && <p class="note">{guideMsg}</p>}
       </div>
 
       <div class="card">
