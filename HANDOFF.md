@@ -96,7 +96,11 @@ plus **Sync now / Auto-sync (3 min)** when the event was loaded from hnib.app.
   side, weekend schedule grid, P&L with break-evens and fill sensitivity,
   family value, copy summary / CSV / print / JSON. "Seed from a past event"
   copies teams, rosters, games per team, days, sheets, block cadence, and
-  playoff rounds from any synced event. Scenarios persist in localStorage.
+  playoff rounds from any synced event, or creates an "as run" scenario with
+  the real team names, roster counts, coaches, and headcount. An Actuals
+  panel (typed in by hand) drives a Model vs actual variance card and
+  "Apply actual rates" calibration (`src/engine/planner/actuals.ts`).
+  Scenarios persist in localStorage.
 - **Setup** - sync/import events, assign divisions, event settings, data
   reset/remove, CSV/JSON export, registration import.
 

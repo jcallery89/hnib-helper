@@ -89,7 +89,7 @@ function costs(s: Scenario, schedule: ScheduleResult, players: number): CostBrea
   groups.push({ key: "referral", label: "Referral commissions", amount: money(referral), lines: referralLines });
 
   // Per-player costs
-  const perPlayerRate = c.jerseyPerPlayer + c.appProfilePerPlayer + c.insurancePerPlayer;
+  const perPlayerRate = c.jerseyPerPlayer + c.appProfilePerPlayer + c.insurancePerPlayer + c.otherPerPlayer;
   const perPlayer = perPlayerRate * players;
   groups.push({
     key: "perPlayer",
@@ -99,6 +99,7 @@ function costs(s: Scenario, schedule: ScheduleResult, players: number): CostBrea
       { label: "Jerseys", formula: `${players} x $${c.jerseyPerPlayer}`, value: money(players * c.jerseyPerPlayer), money: true },
       { label: "App profiles", formula: `${players} x $${c.appProfilePerPlayer}`, value: money(players * c.appProfilePerPlayer), money: true },
       { label: "Insurance", formula: `${players} x $${c.insurancePerPlayer}`, value: money(players * c.insurancePerPlayer), money: true },
+      { label: "Other per player", formula: `${players} x $${c.otherPerPlayer}`, value: money(players * c.otherPerPlayer), money: true },
     ],
   });
 

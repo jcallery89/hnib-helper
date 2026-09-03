@@ -59,6 +59,7 @@ const SATELLITE_COSTS: CostInputs = {
   jerseyPerPlayer: 0,
   appProfilePerPlayer: 0,
   insurancePerPlayer: 0,
+  otherPerPlayer: 0,
   processingPct: 3,
   processingFlat: 0.3,
   cardShare: 90,

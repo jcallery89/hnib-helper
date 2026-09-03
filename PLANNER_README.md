@@ -134,6 +134,34 @@ No default case fails to schedule. The automated tests in `test/planner/`
 check every grid for double-booked sheets, teams in two places, back-to-back
 games, and sessions outside the ice window.
 
+## Comparing a real event with its actuals (Planner tab)
+
+1. Setup tab: sync the event from hnib.app by its event id.
+2. Planner tab, "Seed from a past event": pick the event and click
+   **New "as run" scenario**. The scenario gets the real team names (they
+   appear in the schedule grid), each team's roster count and coach, the
+   total headcount (the fill rate is set so the model carries exactly that
+   many players), games per team, days, sheets, block cadence, and playoff
+   rounds. The price comes from the profile (festival or showcase); costs
+   start at the profile defaults.
+3. Open **Actuals (from the books)** in the inputs and type in what the
+   event really did: registered players, gross revenue, processing fees, and
+   each cost line. Blank lines stay out of the comparison.
+4. The **Model vs actual** card shows every line side by side with the
+   variance, and the unit rates the actuals imply (ice per booked hour,
+   referee per game, coach per team, effective price per player, and so on).
+5. **Apply actual rates to this scenario** rewrites the scenario's unit
+   rates so the model reproduces the books. Then **Duplicate** it and change
+   the price, the games, the format, or the sheets to see what the event
+   would have made under a different plan, against both the as-run model
+   and the actuals. "Copy actuals to sibling scenarios" pushes the same
+   actual figures to every scenario built from that event.
+
+The Tourno data carries no money, so the actuals are always yours to enter.
+Syncing only works in the tournament site (a real browser talking to
+hnib.app); the offline file and the shared web copy can still receive an
+as-run scenario through the scenarios JSON.
+
 ## The shared web copy
 
 The same planner is also published as a private web page for testing. There,

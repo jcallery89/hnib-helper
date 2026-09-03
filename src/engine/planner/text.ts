@@ -40,6 +40,24 @@ export function comparisonRows(results: PlanResult[]): ComparisonRow[] {
     { label: "Break-even players", values: col((r) => (r.pnl.breakEvenPlayers === null ? "n/a" : `${r.pnl.breakEvenPlayers} (${r.pnl.breakEvenTeams} teams)`)) },
     { label: "Price per game", values: col((r) => usd(r.family.pricePerGame)) },
     { label: "Skater ice minutes", values: col((r) => `${r.family.skaterIceMinutesTotal} game + ${r.family.practiceMinutes} practice`) },
+    ...(results.some((r) => r.actuals)
+      ? [
+          {
+            label: "Actual net profit",
+            values: col((r) => {
+              const line = r.actuals?.lines.find((l) => l.key === "netProfit");
+              return line && line.actual !== null ? usd(line.actual) : "";
+            }),
+          },
+          {
+            label: "Actual minus model",
+            values: col((r) => {
+              const line = r.actuals?.lines.find((l) => l.key === "netProfit");
+              return line && line.variance !== null ? usd(line.variance) : "";
+            }),
+          },
+        ]
+      : []),
   ];
 }
 

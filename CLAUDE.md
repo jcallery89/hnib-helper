@@ -48,6 +48,9 @@ outside MA), MA Festival ($379), MA Showcase ($479). The same Preact screen
 offline `dist/hnib-event-planner.html` (built by `vite.planner.config.ts`,
 which inlines everything; no storage, no network). `PLANNER_README.md` is the
 staff-facing guide. Planner logic changes need fixtures in `test/planner/`.
+A scenario can be linked to a synced event (`EventLink`: team names, roster
+counts, coaches, headcount) and carry hand-entered `Actuals`; the engine
+compares model vs actual and can calibrate unit rates from the books.
 
 ## Multiple events at once
 

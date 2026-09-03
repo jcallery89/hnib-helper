@@ -1,6 +1,7 @@
 import { resolveFormat } from "./format.ts";
 import { buildSchedule, toMinutes } from "./schedule.ts";
 import { computePnl, familyValue, rosterSize } from "./pnl.ts";
+import { compareActuals } from "./actuals.ts";
 import type { PlanResult, Scenario } from "./types.ts";
 
 export * from "./types.ts";
@@ -10,6 +11,7 @@ export { resolveFormat, candidatePlans, describeGuarantee, labelForKind, poolNam
 export { buildSchedule, seededRounds, fmtTime, toMinutes, teamName } from "./schedule.ts";
 export { computePnl, familyValue, rosterSize, playersAt } from "./pnl.ts";
 export { summaryText, scheduleCsv, comparisonRows } from "./text.ts";
+export { emptyActuals, hasActuals, compareActuals, calibrateFromActuals, ACTUAL_FIXED_KEYS } from "./actuals.ts";
 
 /**
  * Validate a scenario without throwing: out-of-range values are clamped on a
@@ -20,8 +22,10 @@ export function validateScenario(input: Scenario): { scenario: Scenario; warning
   const s: Scenario = {
     ...input,
     structure: { ...input.structure, dayLabels: [...(input.structure.dayLabels ?? [])] },
-    costs: { ...input.costs },
+    costs: { ...input.costs, otherPerPlayer: input.costs.otherPerPlayer ?? 0 },
     pricing: { ...input.pricing },
+    event: input.event ?? null,
+    actuals: input.actuals ? { ...input.actuals } : null,
   };
   const st = s.structure;
 
@@ -76,6 +80,7 @@ export function validateScenario(input: Scenario): { scenario: Scenario; warning
     "jerseyPerPlayer",
     "appProfilePerPlayer",
     "insurancePerPlayer",
+    "otherPerPlayer",
     "processingPct",
     "processingFlat",
     "travel",
@@ -94,6 +99,18 @@ export function validateScenario(input: Scenario): { scenario: Scenario; warning
   if (c.cardShare < 0 || c.cardShare > 100) {
     warnings.push("Card share must be between 0 and 100 percent.");
     c.cardShare = Math.min(100, Math.max(0, c.cardShare));
+  }
+
+  if (s.actuals) {
+    const a = s.actuals as unknown as Record<string, number | string | null>;
+    for (const key of Object.keys(a)) {
+      if (key === "notes") continue;
+      const v = a[key];
+      if (typeof v === "number" && (!Number.isFinite(v) || v < 0)) {
+        warnings.push(`Actual ${labelFor(key).toLowerCase()} cannot be negative; ignoring it.`);
+        a[key] = null;
+      }
+    }
   }
 
   const p = s.pricing;
@@ -132,8 +149,15 @@ export function planScenario(input: Scenario): PlanResult {
     scenario.structure.format,
     scenario.structure.fixedRounds,
   );
-  const schedule = buildSchedule(scenario.structure, format.plan, scenario.structure.playoffs);
+  const schedule = buildSchedule(
+    scenario.structure,
+    format.plan,
+    scenario.structure.playoffs,
+    scenario.event?.teams.map((t) => t.name),
+  );
   const pnl = computePnl(scenario, schedule);
   const family = familyValue(scenario, format.plan, schedule);
-  return { scenario, format, schedule, pnl, family, warnings };
+  const partial: PlanResult = { scenario, format, schedule, pnl, family, actuals: null, warnings };
+  partial.actuals = compareActuals(partial);
+  return partial;
 }

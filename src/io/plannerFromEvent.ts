@@ -1,15 +1,25 @@
-import type { EventStructure, PlayoffFormat } from "../engine/planner/types.ts";
+import type { EventLink, EventStructure, LinkedTeam, PlayoffFormat } from "../engine/planner/types.ts";
 import type { Dataset } from "./dataset.ts";
 
-// Seed a planner structure from a synced event: how many teams and sheets it
-// ran, how many games each team played, the block cadence, and the playoff
-// rounds. Nothing about money lives in the tournament data, so costs and
-// pricing are left to the profile.
+// Seed a planner scenario from a synced event: the teams by name with their
+// roster counts and coaches, how many games each team played, the block
+// cadence, days, sheets, and playoff rounds. Nothing about money lives in the
+// tournament data, so costs and pricing are left to the profile and the
+// actuals are typed in by hand.
 
 export interface DerivedStructure {
   structure: Partial<EventStructure>;
+  /** The event and its teams, kept on the scenario for names and headcount. */
+  link: EventLink;
+  /** Fill rate that makes the model carry the real headcount (null unless rosters look complete). */
+  fillRate: number | null;
+  /** Every team has a roster of at least MIN_ROSTER players, so the headcount can be trusted. */
+  rosterComplete: boolean;
   notes: string[];
 }
+
+/** A team with fewer players than this has not really synced a roster. */
+const MIN_ROSTER = 5;
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -27,9 +37,27 @@ export function structureFromEvent(data: Dataset): DerivedStructure {
   const notes: string[] = [];
   const out: Partial<EventStructure> = {};
 
+  // Teams in division order, then by name, so pool A lines up with the first division.
+  const divisionIndex = new Map(data.divisions.map((d, i) => [d.id, i]));
+  const divisionName = new Map(data.divisions.map((d) => [d.id, d.name]));
+  const players = data.players ?? [];
+  const rosterCount = new Map<string, number>();
+  for (const p of players) rosterCount.set(p.teamId, (rosterCount.get(p.teamId) ?? 0) + 1);
+  const sortedTeams = [...data.teams].sort(
+    (a, b) => (divisionIndex.get(a.divisionId) ?? 99) - (divisionIndex.get(b.divisionId) ?? 99) || a.name.localeCompare(b.name),
+  );
+  const linkedTeams: LinkedTeam[] = sortedTeams.map((t) => ({
+    name: t.name,
+    players: rosterCount.get(t.id) ?? 0,
+    coach: t.coach || undefined,
+    division: divisionName.get(t.divisionId),
+  }));
+  const totalPlayers = linkedTeams.reduce((s, t) => s + t.players, 0);
+  const coachesNamed = linkedTeams.filter((t) => t.coach).length;
+
   const teams = data.teams.length;
   if (teams >= 2) out.teams = teams;
-  notes.push(`${teams} teams${data.divisions.length > 1 ? ` in ${data.divisions.length} divisions` : ""}.`);
+  notes.push(`${teams} teams${data.divisions.length > 1 ? ` in ${data.divisions.length} divisions` : ""}${coachesNamed ? `, ${coachesNamed} with a named coach` : ""}.`);
 
   // Games per team from the round robin.
   const rr = data.games.filter((g) => g.round === "rr");
@@ -94,9 +122,18 @@ export function structureFromEvent(data: Dataset): DerivedStructure {
     notes.push(`Ice ran from ${out.firstIce} to about ${out.lastIce}.`);
   }
 
-  // Average roster by position across teams that have rosters.
-  const players = data.players ?? [];
-  if (players.length > 0) {
+  // Roster by position, averaged across teams, and the fill rate that makes
+  // teams x roster x fill equal the real headcount. Only trusted when every
+  // team has a real roster; a half-synced event would otherwise shrink the
+  // model to a handful of players.
+  let fillRate: number | null = null;
+  const thin = linkedTeams.filter((t) => t.players < MIN_ROSTER).length;
+  const rosterComplete = players.length > 0 && thin === 0;
+  if (players.length > 0 && !rosterComplete) {
+    notes.push(
+      `Rosters look incomplete (${thin} of ${teams} teams have fewer than ${MIN_ROSTER} players synced); roster sizes and headcount left at the profile defaults.`,
+    );
+  } else if (rosterComplete) {
     const byTeam = new Map<string, { F: number; D: number; G: number }>();
     for (const p of players) {
       const rec = byTeam.get(p.teamId) ?? { F: 0, D: 0, G: 0 };
@@ -109,10 +146,24 @@ export function structureFromEvent(data: Dataset): DerivedStructure {
     out.forwards = avg("F");
     out.defense = avg("D");
     out.goalies = avg("G");
-    notes.push(`Average roster ${out.forwards} F / ${out.defense} D / ${out.goalies} G across ${n} rosters.`);
+    const target = teams * (out.forwards + out.defense + out.goalies);
+    if (target > 0) fillRate = Math.round((totalPlayers / target) * 1000) / 10;
+    notes.push(
+      `${totalPlayers} registered players across ${n} roster${n === 1 ? "" : "s"}; average ${out.forwards} F / ${out.defense} D / ${out.goalies} G` +
+        (fillRate !== null ? ` (fill rate ${fillRate}% keeps the model at ${totalPlayers}).` : "."),
+    );
   } else {
     notes.push("No rosters synced; roster sizes left at the profile defaults.");
   }
 
-  return { structure: out, notes };
+  const link: EventLink = {
+    eventId: data.event.id,
+    eventName: data.event.name,
+    year: data.event.year,
+    format: data.event.format,
+    teams: linkedTeams,
+    players: totalPlayers,
+    coachesNamed,
+  };
+  return { structure: out, link, fillRate, rosterComplete, notes };
 }

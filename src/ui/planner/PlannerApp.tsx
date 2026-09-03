@@ -1,18 +1,22 @@
 import { useMemo, useRef, useState } from "preact/hooks";
 import {
+  ACTUAL_FIXED_KEYS,
   PROFILES,
   PROFILE_ORDER,
+  calibrateFromActuals,
   comparisonRows,
   describeGuarantee,
+  emptyActuals,
   fmtTime,
   newScenario,
   planScenario,
   scheduleCsv,
   summaryText,
-  teamName,
 } from "../../engine/planner/index.ts";
 import type {
+  Actuals,
   CostInputs,
+  EventLink,
   EventStructure,
   FormatPlan,
   PlanResult,
@@ -126,19 +130,55 @@ export function PlannerApp({ initial, onChange, eventSources, deriveFromEvent, m
     });
   }
 
-  function loadEvent() {
+  function seedFromEvent(mode: "new" | "apply") {
     if (!deriveFromEvent || !eventPick) return;
     const derived = deriveFromEvent(eventPick);
     if (!derived) {
       setEventNotes(["Could not load that event."]);
       return;
     }
-    edit((s) => {
-      Object.assign(s.structure, derived.structure);
-      s.structure.fixedRounds = null;
-      s.structure.format = "auto";
-    });
+    const apply = (sc: Scenario) => {
+      Object.assign(sc.structure, derived.structure);
+      sc.structure.fixedRounds = null;
+      sc.structure.format = "auto";
+      if (derived.fillRate !== null) sc.pricing.fillRate = derived.fillRate;
+      sc.event = derived.link;
+      if (derived.rosterComplete) sc.actuals = { ...(sc.actuals ?? emptyActuals()), players: derived.link.players };
+    };
+    if (mode === "apply") {
+      edit(apply);
+    } else {
+      const profile: PlannerProfileKey = derived.link.format === "showcase" ? "ma-showcase" : "ma-festival";
+      const sc = newScenario(profile, `${derived.link.eventName} as run`);
+      apply(sc);
+      commit([...scenarios, sc]);
+      setActiveId(sc.id);
+    }
     setEventNotes(derived.notes);
+  }
+
+  function calibrate() {
+    const { scenario, changes } = calibrateFromActuals(active, result);
+    if (changes.length === 0) {
+      setStatus("Enter at least one actual figure first.");
+      return;
+    }
+    commit(scenarios.map((s) => (s.id === active.id ? scenario : s)));
+    setStatus(`Applied actual rates: ${changes.join(" ")}`);
+  }
+
+  function copyActualsToSiblings() {
+    const link = active.event;
+    if (!link || !active.actuals) return;
+    let n = 0;
+    commit(
+      scenarios.map((s) => {
+        if (s.id === active.id || s.event?.eventId !== link.eventId) return s;
+        n += 1;
+        return { ...s, actuals: structuredClone(active.actuals) };
+      }),
+    );
+    setStatus(n ? `Copied the actuals to ${n} other scenario${n === 1 ? "" : "s"} from ${link.eventName}.` : "No other scenarios come from this event yet.");
   }
 
   async function copySummary() {
@@ -293,7 +333,7 @@ export function PlannerApp({ initial, onChange, eventSources, deriveFromEvent, m
               {eventSources && eventSources.length > 0 && (
                 <div style={{ marginTop: 8 }}>
                   <h3>Seed from a past event</h3>
-                  <div class="pl-field" style={{ gridTemplateColumns: "minmax(0,1fr) auto" }}>
+                  <div class="pl-field" style={{ gridTemplateColumns: "minmax(0,1fr)" }}>
                     <select value={eventPick} onChange={(e) => setEventPick((e.currentTarget as HTMLSelectElement).value)}>
                       {eventSources.map((ev) => (
                         <option key={ev.id} value={ev.id}>
@@ -301,13 +341,18 @@ export function PlannerApp({ initial, onChange, eventSources, deriveFromEvent, m
                         </option>
                       ))}
                     </select>
-                    <button class="pl-btn" onClick={loadEvent}>
-                      Use
+                  </div>
+                  <div class="pl-toolbar" style={{ marginBottom: 4 }}>
+                    <button class="pl-btn primary" onClick={() => seedFromEvent("new")}>
+                      New "as run" scenario
+                    </button>
+                    <button class="pl-btn" onClick={() => seedFromEvent("apply")}>
+                      Apply to this scenario
                     </button>
                   </div>
                   <p class="pl-note">
-                    Copies the team count, roster sizes, games per team, days, sheets, block cadence, and playoff rounds
-                    from the synced event. Costs and price stay as they are.
+                    Brings over the teams by name with their roster counts and coaches, the real headcount, games per team, days,
+                    sheets, block cadence, and playoff rounds. Costs and price stay with the profile; enter the actuals below.
                   </p>
                   {eventNotes.map((n, i) => (
                     <p class="pl-note" key={i}>
@@ -322,6 +367,18 @@ export function PlannerApp({ initial, onChange, eventSources, deriveFromEvent, m
               <StructureInputs s={active.structure} edit={(f) => edit((sc) => f(sc.structure))} />
               <CostInputsPanel c={active.costs} roster={result.pnl.rosterPerTeam} edit={(f) => edit((sc) => f(sc.costs))} />
               <PricingInputsPanel p={active.pricing} edit={(f) => edit((sc) => f(sc.pricing))} />
+              <ActualsInputs
+                a={active.actuals ?? emptyActuals()}
+                linked={!!active.event}
+                edit={(f) =>
+                  edit((sc) => {
+                    sc.actuals = sc.actuals ?? emptyActuals();
+                    f(sc.actuals);
+                  })
+                }
+                onCalibrate={calibrate}
+                onCopy={copyActualsToSiblings}
+              />
             </div>
           </aside>
 
@@ -346,10 +403,12 @@ export function PlannerApp({ initial, onChange, eventSources, deriveFromEvent, m
               </div>
             )}
 
+            {active.event && <LinkedEventCard link={active.event} />}
             <Tiles r={result} />
             <FormatCard r={result} applyPlan={applyPlan} />
             <ScheduleCard r={result} />
             <PnlCard r={result} />
+            {result.actuals && <ActualsCard r={result} onCalibrate={calibrate} />}
             <FamilyCard r={result} />
             <CompareCard results={results} activeId={active.id} onPick={setActiveId} />
           </main>
@@ -591,7 +650,182 @@ function PricingInputsPanel({ p, edit }: { p: PricingInputs; edit: (f: (p: Prici
   );
 }
 
+function ActualsInputs({
+  a,
+  linked,
+  edit,
+  onCalibrate,
+  onCopy,
+}: {
+  a: Actuals;
+  linked: boolean;
+  edit: (f: (a: Actuals) => void) => void;
+  onCalibrate: () => void;
+  onCopy: () => void;
+}) {
+  const field = (label: string, key: keyof Actuals, prefix = "$", note?: string) => (
+    <OptNum label={label} value={a[key] as number | null} prefix={prefix} onChange={(v) => edit((x) => ((x as unknown as Record<string, number | null>)[key] = v))} note={note} />
+  );
+  return (
+    <details open>
+      <summary>Actuals (from the books)</summary>
+      <p class="pl-note">
+        Type in what the event really did. Blank lines stay out of the comparison. The Model vs actual card on the right shows the
+        variance on every line and the unit rates the actuals imply.
+      </p>
+      {field("Registered players", "players", "")}
+      {field("Gross revenue", "grossRevenue")}
+      {field("Processing fees", "processingFees")}
+      <h3 style={{ marginTop: 8 }}>Costs</h3>
+      {field("Ice", "ice")}
+      {field("Officials", "officials")}
+      {field("Scorekeepers", "scorekeepers")}
+      {field("Coaches", "coaches")}
+      {field("Referral commissions", "referral")}
+      {field("Per-player costs", "perPlayer", "$", "Jerseys, app profiles, insurance, anything else per registrant.")}
+      <h3 style={{ marginTop: 8 }}>Event fixed costs</h3>
+      {ACTUAL_FIXED_KEYS.map((k) => field(FIXED_LABELS[k], k))}
+      <div class="pl-field" style={{ gridTemplateColumns: "minmax(0,1fr)" }}>
+        <label>Notes</label>
+        <textarea
+          style={{ width: "100%", height: 56, fontFamily: "inherit", fontSize: 13 }}
+          value={a.notes}
+          onInput={(e) => edit((x) => (x.notes = (e.currentTarget as HTMLTextAreaElement).value))}
+        />
+      </div>
+      <div class="pl-toolbar" style={{ marginTop: 6, marginBottom: 0 }}>
+        <button class="pl-btn gold" onClick={onCalibrate}>
+          Apply actual rates to this scenario
+        </button>
+        {linked && (
+          <button class="pl-btn quiet" onClick={onCopy}>
+            Copy actuals to sibling scenarios
+          </button>
+        )}
+      </div>
+    </details>
+  );
+}
+
+const FIXED_LABELS: Record<(typeof ACTUAL_FIXED_KEYS)[number], string> = {
+  travel: "Staff travel",
+  lodging: "Lodging",
+  staff: "Staff",
+  video: "Video",
+  marketing: "Marketing",
+  trophies: "Trophies",
+  misc: "Misc",
+};
+
 // ---- Outputs -------------------------------------------------------------------
+
+function LinkedEventCard({ link }: { link: EventLink }) {
+  return (
+    <div class="pl-card">
+      <h2>
+        As run: {link.eventName} ({link.year})
+      </h2>
+      <p class="pl-note" style={{ margin: "0 0 6px" }}>
+        {link.teams.length} teams, {link.players} registered players
+        {link.coachesNamed ? `, ${link.coachesNamed} coaches named` : ""}. Team names carry into the schedule grid; the roster
+        counts set the headcount the model carries.
+      </p>
+      <details>
+        <summary style={{ fontSize: 15 }}>Teams</summary>
+        <div class="pl-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Team</th>
+                <th>Division</th>
+                <th class="num">Players</th>
+                <th>Coach</th>
+              </tr>
+            </thead>
+            <tbody>
+              {link.teams.map((t) => (
+                <tr key={t.name}>
+                  <td>{t.name}</td>
+                  <td>{t.division ?? ""}</td>
+                  <td class="num">{t.players}</td>
+                  <td>{t.coach ?? ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </div>
+  );
+}
+
+function ActualsCard({ r, onCalibrate }: { r: PlanResult; onCalibrate: () => void }) {
+  const cmp = r.actuals;
+  if (!cmp) return null;
+  const fmt = (v: number | null, money: boolean) => (v === null ? "" : money ? usd(v) : String(v));
+  const varianceClass = (line: PlanResult["actuals"] extends infer T ? (T extends { lines: Array<infer L> } ? L : never) : never) => {
+    if (line.variance === null || line.variance === 0) return "num";
+    // Revenue and profit lines: actual above model is good. Cost lines: actual above model is bad.
+    const goodWhenHigher = ["players", "grossRevenue", "netRevenue", "netProfit", "margin"].includes(line.key);
+    const good = goodWhenHigher ? line.variance > 0 : line.variance < 0;
+    return `num ${good ? "pl-var-pos" : "pl-var-neg"}`;
+  };
+  return (
+    <div class="pl-card">
+      <h2>Model vs actual</h2>
+      <p class="pl-note" style={{ margin: "0 0 8px" }}>
+        {cmp.entered} lines entered. Variance is actual minus model; green means the event did better than the model on that
+        line, red worse.
+      </p>
+      <div class="pl-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Line</th>
+              <th class="num">Model</th>
+              <th class="num">Actual</th>
+              <th class="num">Variance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {cmp.lines.map((l) => (
+              <tr key={l.key} class={["netRevenue", "totalCost", "netProfit"].includes(l.key) ? "total" : ""}>
+                <td>{l.label}</td>
+                <td class="num">{fmt(l.model, l.money)}</td>
+                <td class="num">{fmt(l.actual, l.money)}</td>
+                <td class={varianceClass(l)}>{l.variance === null ? "" : (l.variance > 0 ? "+" : "") + fmt(l.variance, l.money)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {cmp.rates.length > 0 && (
+        <div style={{ marginTop: 10 }}>
+          <h3>Unit rates the actuals imply</h3>
+          <div class="pl-scroll">
+            <table>
+              <tbody>
+                {cmp.rates.map((x) => (
+                  <tr key={x.key}>
+                    <td>{x.label}</td>
+                    <td class="formula">{x.formula}</td>
+                    <td class="num">{x.money ? usd(x.value, 2) : `${x.value}%`}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div class="pl-toolbar pl-noprint" style={{ marginTop: 8, marginBottom: 0 }}>
+            <button class="pl-btn gold" onClick={onCalibrate}>
+              Apply actual rates to this scenario
+            </button>
+            <span class="pl-note">Then duplicate it for what-ifs that start from the real numbers.</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function Tiles({ r }: { r: PlanResult }) {
   const p = r.pnl;
@@ -640,7 +874,7 @@ function FormatCard({ r, applyPlan }: { r: PlanResult; applyPlan: (p: FormatPlan
       </p>
       {f.plan.pools.length > 1 && (
         <p class="pl-note">
-          {f.plan.pools.map((pool, i) => `Pool ${String.fromCharCode(65 + i)}: ${pool.map(teamName).join(", ")}`).join(". ")}.
+          {f.plan.pools.map((pool, i) => `Pool ${String.fromCharCode(65 + i)}: ${pool.map((i) => r.schedule.teamNames[i]).join(", ")}`).join(". ")}.
         </p>
       )}
       {f.alternatives.length > 0 && (

@@ -159,8 +159,8 @@ function distribute(total: number, days: number): number[] {
   });
 }
 
-function gameLabel(g: Pairing, plan: FormatPlan): { label: string; stage: string } {
-  const label = `${teamName(g.a)} vs ${teamName(g.b)}`;
+function gameLabel(g: Pairing, plan: FormatPlan, nameOf: (i: number) => string): { label: string; stage: string } {
+  const label = `${nameOf(g.a)} vs ${nameOf(g.b)}`;
   if (g.stage === "pool") {
     const pool = plan.pools.findIndex((p) => p.includes(g.a));
     return { label, stage: `Pool ${poolName(pool)}` };
@@ -169,8 +169,14 @@ function gameLabel(g: Pairing, plan: FormatPlan): { label: string; stage: string
   return { label, stage: "Round robin" };
 }
 
-export function buildSchedule(structure: EventStructure, plan: FormatPlan, playoffs: PlayoffFormat): ScheduleResult {
+export function buildSchedule(
+  structure: EventStructure,
+  plan: FormatPlan,
+  playoffs: PlayoffFormat,
+  teamNames?: string[],
+): ScheduleResult {
   const warnings: string[] = [];
+  const nameOf = (i: number) => teamNames?.[i] || teamName(i);
   const days = Math.max(1, Math.round(structure.days));
   const sheets = Math.max(1, Math.round(structure.sheets));
   const block = Math.max(1, Math.round(structure.blockMinutes));
@@ -257,7 +263,7 @@ export function buildSchedule(structure: EventStructure, plan: FormatPlan, playo
           continue;
         }
         const [g] = remaining.splice(best, 1);
-        const { label, stage } = gameLabel(g, plan);
+        const { label, stage } = gameLabel(g, plan, nameOf);
         sessions.push({ day, sheet, start, end: start + block, kind: "game", label, teams: [g.a, g.b], stage });
         for (const t of [g.a, g.b]) {
           lastStart[t] = { day, start };
@@ -271,7 +277,7 @@ export function buildSchedule(structure: EventStructure, plan: FormatPlan, playo
     carry = want - placedToday;
   }
   if (remaining.length > 0) {
-    for (const g of remaining) unscheduled.push({ label: `${gameLabel(g, plan).label} (round robin)`, minutes: block });
+    for (const g of remaining) unscheduled.push({ label: `${gameLabel(g, plan, nameOf).label} (round robin)`, minutes: block });
   }
   // Drop trailing idle cells on each sheet/day: nothing was booked after them.
   trimTrailingIdle(sessions, cursor);
@@ -290,7 +296,7 @@ export function buildSchedule(structure: EventStructure, plan: FormatPlan, playo
         if (idx < 0) continue;
         const [t] = need.splice(idx, 1);
         s.kind = "practice";
-        s.label = `${teamName(t)} practice`;
+        s.label = `${nameOf(t)} practice`;
         s.teams = [t];
         s.stage = "Practice";
         s.end = s.start + pm;
@@ -308,14 +314,14 @@ export function buildSchedule(structure: EventStructure, plan: FormatPlan, playo
         if (!fitsDay(start, pm)) break;
         const idx = need.findIndex((t) => !busy(t, day, start, start + pm));
         const t = idx >= 0 ? need.splice(idx, 1)[0] : need.shift()!;
-        sessions.push({ day, sheet, start, end: start + pm, kind: "practice", label: `${teamName(t)} practice`, teams: [t], stage: "Practice" });
+        sessions.push({ day, sheet, start, end: start + pm, kind: "practice", label: `${nameOf(t)} practice`, teams: [t], stage: "Practice" });
         cursor[day][sheet] = start + pm + buffer;
         placed += 1;
         practiceCount += 1;
       }
       leftover = want - placed;
     }
-    for (const t of need) unscheduled.push({ label: `${teamName(t)} practice`, minutes: pm });
+    for (const t of need) unscheduled.push({ label: `${nameOf(t)} practice`, minutes: pm });
   }
 
   // ---- 3. Placement round and playoffs, on the last day ---------------------
@@ -414,6 +420,7 @@ export function buildSchedule(structure: EventStructure, plan: FormatPlan, playo
     bookedHours: round2(daySummaries.reduce((s, d) => s + d.bookedHours, 0)),
     activeHours: round2(daySummaries.reduce((s, d) => s + d.activeHours, 0)),
     teamGamesByDay,
+    teamNames: Array.from({ length: teams }, (_, i) => nameOf(i)),
     warnings,
   };
 }

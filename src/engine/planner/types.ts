@@ -70,6 +70,8 @@ export interface CostInputs {
   jerseyPerPlayer: number;
   appProfilePerPlayer: number;
   insurancePerPlayer: number;
+  /** Any other per-registrant cost (calibrated from actuals when nothing more specific fits). */
+  otherPerPlayer: number;
   processingPct: number; // percent of a card transaction
   processingFlat: number; // dollars per card transaction
   cardShare: number; // percent of registrants who pay by card
@@ -96,6 +98,78 @@ export interface Scenario {
   structure: EventStructure;
   costs: CostInputs;
   pricing: PricingInputs;
+  /** The synced event this scenario was built from, when it was. */
+  event?: EventLink | null;
+  /** Figures from the books, entered by hand, for the model-vs-actual view. */
+  actuals?: Actuals | null;
+}
+
+/** One team as it appeared in the synced event. */
+export interface LinkedTeam {
+  name: string;
+  players: number;
+  coach?: string;
+  division?: string;
+}
+
+/** What the planner keeps from a synced hnib.app event. */
+export interface EventLink {
+  eventId: string;
+  eventName: string;
+  year: number;
+  format?: "festival" | "showcase";
+  teams: LinkedTeam[];
+  /** Registered players across every roster. */
+  players: number;
+  /** Teams with a coach named in the event data. */
+  coachesNamed: number;
+}
+
+/** Actual figures from the books. null = not entered. */
+export interface Actuals {
+  players: number | null;
+  grossRevenue: number | null;
+  processingFees: number | null;
+  ice: number | null;
+  officials: number | null;
+  scorekeepers: number | null;
+  coaches: number | null;
+  referral: number | null;
+  perPlayer: number | null;
+  travel: number | null;
+  lodging: number | null;
+  staff: number | null;
+  video: number | null;
+  marketing: number | null;
+  trophies: number | null;
+  misc: number | null;
+  notes: string;
+}
+
+export interface VarianceLine {
+  key: string;
+  label: string;
+  model: number;
+  actual: number | null;
+  /** actual minus model; null until the actual is entered. */
+  variance: number | null;
+  money: boolean;
+}
+
+/** A unit rate the actuals imply, e.g. ice dollars per booked hour. */
+export interface ImpliedRate {
+  key: string;
+  label: string;
+  value: number;
+  formula: string;
+  money: boolean;
+}
+
+export interface ActualsComparison {
+  lines: VarianceLine[];
+  rates: ImpliedRate[];
+  /** How many lines have an actual entered. */
+  entered: number;
 }
 
 /** Portable file shape for saving and sharing scenarios between the app and the standalone file. */
@@ -207,6 +281,8 @@ export interface ScheduleResult {
   activeHours: number;
   /** games[team][day] for the fixed round-robin games. */
   teamGamesByDay: number[][];
+  /** Display name per team index (real names when linked to an event). */
+  teamNames: string[];
   warnings: string[];
 }
 
@@ -274,6 +350,8 @@ export interface PlanResult {
   schedule: ScheduleResult;
   pnl: PnlResult;
   family: FamilyValue;
+  /** Model vs actual, when any actual figure has been entered. */
+  actuals: ActualsComparison | null;
   /** Input problems: shown inline instead of producing silent nonsense. */
   warnings: string[];
 }

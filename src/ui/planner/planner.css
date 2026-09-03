@@ -338,6 +338,16 @@
   color: var(--pl-green);
 }
 
+.pl-var-pos {
+  color: var(--pl-green);
+  font-weight: 700;
+}
+
+.pl-var-neg {
+  color: var(--pl-red);
+  font-weight: 700;
+}
+
 .pl-name {
   font-family: var(--pl-body);
   font-size: 16px;
