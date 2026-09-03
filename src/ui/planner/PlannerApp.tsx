@@ -44,12 +44,17 @@ export interface PlannerAppProps {
   /** Show the masthead (standalone file). The app already has its own header. */
   masthead?: boolean;
   logoUrl?: string;
+  /**
+   * Hosted viewers that block file downloads: show the CSV and JSON in a
+   * text box (and copy it to the clipboard) instead of saving a file.
+   */
+  inlineExports?: boolean;
 }
 
 const usd = (n: number, decimals = 0) =>
   (n < 0 ? "-$" : "$") + Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 
-export function PlannerApp({ initial, onChange, eventSources, deriveFromEvent, masthead, logoUrl }: PlannerAppProps) {
+export function PlannerApp({ initial, onChange, eventSources, deriveFromEvent, masthead, logoUrl, inlineExports }: PlannerAppProps) {
   const [scenarios, setScenarios] = useState<Scenario[]>(initial.length ? initial : [newScenario("satellite")]);
   const [activeId, setActiveId] = useState<string>(scenarios[0].id);
   const [status, setStatus] = useState("");
@@ -144,27 +149,46 @@ export function PlannerApp({ initial, onChange, eventSources, deriveFromEvent, m
   }
   const [fallbackText, setFallbackText] = useState("");
 
+  async function showExchange(text: string, what: string) {
+    setFallbackText(text);
+    const ok = await copyText(text);
+    setStatus(ok ? `${what} copied to the clipboard and shown below.` : `${what} is shown below; select it and copy.`);
+  }
+
   function downloadCsv() {
-    download(`${slug(active.name)}-schedule.csv`, scheduleCsv(result), "text/csv");
+    const csv = scheduleCsv(result);
+    if (inlineExports) {
+      void showExchange(csv, "Schedule CSV");
+      return;
+    }
+    download(`${slug(active.name)}-schedule.csv`, csv, "text/csv");
   }
 
   function saveJson() {
-    download("hnib-planner-scenarios.json", serializeScenarios(scenarios), "application/json");
+    const json = serializeScenarios(scenarios);
+    if (inlineExports) {
+      void showExchange(json, "Scenarios JSON");
+      return;
+    }
+    download("hnib-planner-scenarios.json", json, "application/json");
     setStatus("Scenario file saved.");
+  }
+
+  function loadJsonText(text: string, source: string) {
+    try {
+      const list = parseScenarioFile(text);
+      commit(list);
+      setActiveId(list[0].id);
+      setStatus(`Loaded ${list.length} scenario${list.length === 1 ? "" : "s"} from ${source}.`);
+      setFallbackText("");
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Could not read that file.");
+    }
   }
 
   function loadJson(file: File) {
     const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const list = parseScenarioFile(String(reader.result));
-        commit(list);
-        setActiveId(list[0].id);
-        setStatus(`Loaded ${list.length} scenario${list.length === 1 ? "" : "s"} from ${file.name}.`);
-      } catch (err) {
-        setStatus(err instanceof Error ? err.message : "Could not read that file.");
-      }
-    };
+    reader.onload = () => loadJsonText(String(reader.result), file.name);
     reader.readAsText(file);
   }
 
@@ -205,13 +229,13 @@ export function PlannerApp({ initial, onChange, eventSources, deriveFromEvent, m
             Copy summary
           </button>
           <button class="pl-btn" onClick={downloadCsv}>
-            Download schedule CSV
+            {inlineExports ? "Show schedule CSV" : "Download schedule CSV"}
           </button>
           <button class="pl-btn" onClick={() => window.print()}>
             Print
           </button>
           <button class="pl-btn" onClick={saveJson}>
-            Save scenarios (JSON)
+            {inlineExports ? "Show scenarios JSON" : "Save scenarios (JSON)"}
           </button>
           <button class="pl-btn" onClick={() => fileRef.current?.click()}>
             Load scenarios (JSON)
@@ -231,7 +255,23 @@ export function PlannerApp({ initial, onChange, eventSources, deriveFromEvent, m
         </div>
         {fallbackText && (
           <div class="pl-card pl-noprint">
-            <textarea style={{ width: "100%", height: 160 }} readOnly value={fallbackText} />
+            <textarea
+              style={{ width: "100%", height: 160, fontFamily: "monospace", fontSize: 12 }}
+              value={fallbackText}
+              onInput={(e) => setFallbackText((e.currentTarget as HTMLTextAreaElement).value)}
+              aria-label="Export text"
+            />
+            <div class="pl-toolbar" style={{ marginTop: 6, marginBottom: 0 }}>
+              <button class="pl-btn" onClick={() => void copyText(fallbackText).then((ok) => setStatus(ok ? "Copied to the clipboard." : "Could not copy; select the text and copy it."))}>
+                Copy
+              </button>
+              <button class="pl-btn" onClick={() => loadJsonText(fallbackText, "the pasted text")}>
+                Load as scenarios JSON
+              </button>
+              <button class="pl-btn quiet" onClick={() => setFallbackText("")}>
+                Close
+              </button>
+            </div>
           </div>
         )}
 

@@ -32,6 +32,13 @@ Stack: Vite + TypeScript + Preact, Vitest, `html-to-image` for PNG export.
 inlines everything into `dist/hnib-event-planner.html`, the standalone offline
 event planner. `npm run build:planner` rebuilds just that file.
 
+`npm run build:artifact` also writes `dist/hnib-event-planner.artifact.html`, a
+body-only copy in "hosted" mode (exports show as copyable text because hosted
+viewers block downloads; scenarios persist in the viewer's browser). It is
+published as a shared test page for JC and Gary at
+https://claude.ai/code/artifact/aca42f5d-9de0-4d97-a620-ba9b525f618d; republish
+that file to the same URL after planner changes.
+
 ---
 
 ## Architecture (layers are kept separate on purpose)

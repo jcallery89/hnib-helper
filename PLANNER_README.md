@@ -134,6 +134,15 @@ No default case fails to schedule. The automated tests in `test/planner/`
 check every grid for double-booked sheets, teams in two places, back-to-back
 games, and sessions outside the ice window.
 
+## The shared web copy
+
+The same planner is also published as a private web page for testing. There,
+"Show schedule CSV" and "Show scenarios JSON" put the text in a box (and on
+the clipboard) instead of saving a file, because the page viewer blocks
+downloads, and your scenarios are remembered in your own browser between
+visits. Use the page's comment feature to leave notes on anything you want
+changed or added.
+
 ## Handing the file to a future staff member
 
 1. Send `hnib-event-planner.html` and, if you want them to start from your
