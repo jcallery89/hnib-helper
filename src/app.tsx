@@ -20,8 +20,9 @@ import { ScheduleView } from "./ui/views/ScheduleView.tsx";
 import { PlayersView } from "./ui/views/PlayersView.tsx";
 import { StatsView } from "./ui/views/StatsView.tsx";
 import { SetupView } from "./ui/views/SetupView.tsx";
+import { PlannerView } from "./ui/views/PlannerView.tsx";
 
-type TabKey = "results" | "standings" | "bracket" | "schedule" | "players" | "stats" | "setup";
+type TabKey = "results" | "standings" | "bracket" | "schedule" | "players" | "stats" | "planner" | "setup";
 
 const TABS: Array<{ key: TabKey; label: string }> = [
   { key: "results", label: "Results" },
@@ -30,6 +31,7 @@ const TABS: Array<{ key: TabKey; label: string }> = [
   { key: "schedule", label: "Schedule" },
   { key: "players", label: "Players" },
   { key: "stats", label: "Stats" },
+  { key: "planner", label: "Planner" },
   { key: "setup", label: "Setup" },
 ];
 
@@ -263,6 +265,7 @@ export function App() {
       {tab === "schedule" && <ScheduleView dataset={dataset} />}
       {tab === "players" && <PlayersView dataset={dataset} update={update} />}
       {tab === "stats" && <StatsView dataset={dataset} update={update} />}
+      {tab === "planner" && <PlannerView events={events} />}
       {tab === "setup" && (
         <SetupView dataset={dataset} replace={replace} removeCurrent={removeCurrent} eventCount={events.length} />
       )}

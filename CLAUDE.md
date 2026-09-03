@@ -35,6 +35,20 @@ teams are tied (skipped for 3+). 4. Goals Against (fewest). 5. Goals For (most).
   3-on-3 OT then shootout. `decidedBy` recorded.
 - Unequal game counts are flagged rather than compared blindly.
 
+## Event planner (satellite and Massachusetts events)
+
+`src/engine/planner/` prices and schedules a weekend event: format resolution
+(teams x games must be even; pools + crossover for 6 and 8; round robin +
+placement round for 4 x 4; balanced partial round robin for odd counts),
+a compact weekend grid (round robin, then practices, then playoffs on the last
+day, then All-Star; no back-to-back unless restBlocks is 0), P&L with
+break-evens, and family value. Profiles: Satellite ($299 Virginia test case,
+outside MA), MA Festival ($379), MA Showcase ($479). The same Preact screen
+(`src/ui/planner/PlannerApp.tsx`) is the app's Planner tab and the standalone
+offline `dist/hnib-event-planner.html` (built by `vite.planner.config.ts`,
+which inlines everything; no storage, no network). `PLANNER_README.md` is the
+staff-facing guide. Planner logic changes need fixtures in `test/planner/`.
+
 ## Multiple events at once
 
 The tool is a multi-event workspace. Each synced/imported event is saved under

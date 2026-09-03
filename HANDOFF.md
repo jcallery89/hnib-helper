@@ -26,7 +26,11 @@ hard-refresh (Ctrl+F5). `dist/` also contains `hnib-proxy.php`, an optional
 read-only relay (see "Live sync").
 
 Stack: Vite + TypeScript + Preact, Vitest, `html-to-image` for PNG export.
-~84 tests currently pass.
+~115 tests currently pass.
+
+`npm run build` also runs a second Vite build (`vite.planner.config.ts`) that
+inlines everything into `dist/hnib-event-planner.html`, the standalone offline
+event planner. `npm run build:planner` rebuilds just that file.
 
 ---
 
@@ -43,12 +47,21 @@ Stack: Vite + TypeScript + Preact, Vitest, `html-to-image` for PNG export.
     placement (greedy + local search), re-flow diff, fairness report
   - `players/summary.ts` - aggregate stat lines -> per-player summary;
     `players/writeup.ts` - generated scouting report text
+  - `planner/` - the event planner: `format.ts` (teams x games -> pairings,
+    pools, placement round, closest alternatives), `schedule.ts` (weekend grid:
+    round robin, practices, playoffs, All-Star; no back-to-back; ice-fit
+    check), `pnl.ts` (P&L, break-evens, sensitivity, family value),
+    `defaults.ts` (Satellite / MA Festival / MA Showcase profiles), `text.ts`
+    (copy summary, CSV)
 - `src/render/` - SVG renderers + PNG export. `bracket/`, `player/PlayerCard.tsx`,
   `brand.ts` (bundled brand assets as data URLs), `exportImage.ts`.
 - `src/io/` - data in/out. `dataset.ts` (the Dataset shape), `session.ts`
   (multi-event localStorage), `sampleData.ts`, CSV importers, the Tourno API
-  importers and `sync.ts`.
+  importers and `sync.ts`. `plannerFromEvent.ts` derives a planner structure
+  from a synced event; `plannerStore.ts` persists planner scenarios.
 - `src/ui/` - Preact views (`views/*`) and `state/store.ts` (derived data).
+  `ui/planner/PlannerApp.tsx` is the planner screen shared by the Planner tab
+  and the standalone file (`src/planner-main.tsx` + `planner.html`).
 - `src/styles/` - light theme tokens (matches the HNIB mobile app).
 - `src/assets/brand/` - logo, card strips, watermark from the HNIB asset pack.
 - `test/` - engine fixtures (tiebreak, field, schedule), importers, render smoke.
@@ -72,6 +85,11 @@ plus **Sync now / Auto-sync (3 min)** when the event was loaded from hnib.app.
 - **Stats** - ALL players in sortable tables (skaters: GP/G/A/PTS; goalies:
   GP/GAA/SV%), team filter, **All-Star flagging** (star toggle) with an
   All-Star Pool and CSV export.
+- **Planner** - the event planner (see `PLANNER_README.md`): scenarios side by
+  side, weekend schedule grid, P&L with break-evens and fill sensitivity,
+  family value, copy summary / CSV / print / JSON. "Seed from a past event"
+  copies teams, rosters, games per team, days, sheets, block cadence, and
+  playoff rounds from any synced event. Scenarios persist in localStorage.
 - **Setup** - sync/import events, assign divisions, event settings, data
   reset/remove, CSV/JSON export, registration import.
 
@@ -180,6 +198,8 @@ file spans multiple events.
 
 ## Open / possible next steps
 
+- Planner: enter the real Worcester Ice Center ice rate (the MA profiles carry
+  a $350/hour placeholder) and confirm satellite venue costs as they come in.
 - All-Star roster builder from the flagged pool (balanced squads, exportable).
 - Read divisions automatically from the standings page if needed.
 - Headshots into the card avatar once registration provides photo URLs.

@@ -26,6 +26,10 @@ drops straight onto SiteGround shared hosting.
   must move will move, and the diff is shown.
 - **Bracket export**: on-brand SVG rendered to PNG at 1080x1350, 1080x1920, and
   1080x1080.
+- **Event planner** (Planner tab, and a standalone offline file): weekend
+  schedule grid, P&L with break-evens and fill-rate sensitivity, and a family
+  value view for satellite events and Worcester festivals/showcases. See
+  `PLANNER_README.md`.
 
 ## Develop
 
@@ -50,6 +54,9 @@ The build is static files plus one optional PHP helper - no database, no Node.
    `public_html/tournament/`) via SiteGround File Manager or SFTP.
 3. Open the site. That is the entire deploy.
 
+`dist/hnib-event-planner.html` is the standalone event planner: one file that
+opens by double-click and works offline. Upload it with the rest or email it.
+
 `dist/` includes `hnib-proxy.php`, a read-only relay used by the "Sync from
 hnib.app" button when the browser cannot call `hnib.app/api` directly (CORS).
 It only forwards GETs to a whitelist of Tourno API read endpoints. Upload it
@@ -67,7 +74,8 @@ keys or outbound calls. Event data persists in the browser session
 - `src/engine/` - pure, side-effect-free engine (no DOM, no Preact, no I/O):
   types, standings, the tiebreak resolver, the playoff field/bracket builders,
   and the two-phase scheduler. This surface is portable - it can be lifted into
-  Google Apps Script later for a Sheets pipeline.
+  Google Apps Script later for a Sheets pipeline. `engine/planner/` holds the
+  event planner (format resolution, weekend grid, P&L).
 - `src/render/bracket/` - SVG bracket component, layout geometry, brand tokens,
   and the PNG export.
 - `src/io/` - sample data, CSV parse/serialize, session persistence.

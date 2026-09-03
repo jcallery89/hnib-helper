@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { h } from "preact";
 import { renderToString } from "preact-render-to-string";
 import { App } from "../src/app.tsx";
+import { PlannerApp } from "../src/ui/planner/PlannerApp.tsx";
+import { defaultScenarios } from "../src/engine/planner/index.ts";
 import { BracketSvg } from "../src/render/bracket/BracketSvg.tsx";
 import { buildPlayoffField } from "../src/engine/playoff/field.ts";
 import { buildBracket } from "../src/engine/playoff/bracket.ts";
@@ -13,6 +15,15 @@ describe("render layer", () => {
     const html = renderToString(h(App, {}));
     expect(html).toContain("Jr. High Festival");
     expect(html).toContain("Standings");
+  });
+
+  it("renders the event planner with the Virginia scenarios", () => {
+    const html = renderToString(h(PlannerApp, { initial: defaultScenarios(), masthead: true }));
+    expect(html).toContain("HNIB Event Planner");
+    expect(html).toContain("4 games, no practice");
+    expect(html).toContain("Break-even price");
+    expect(html).toContain("Seed 1 vs Seed 2");
+    expect(html).not.toContain("\u2014");
   });
 
   it("renders a bracket SVG with the seeded teams and a champion placeholder", () => {
