@@ -39,6 +39,11 @@ published as a shared test page for JC and Gary at
 https://claude.ai/code/artifact/aca42f5d-9de0-4d97-a620-ba9b525f618d; republish
 that file to the same URL after planner changes.
 
+`npx vite-node scripts/ice-demand-onepager.ts` writes
+`dist/hnib-satellite-ice-demand.html`, the one-page "Satellite Weekend Ice
+Demand" sheet for partner rinks (players per team, team counts, ice hours by
+format), generated from the planner engine. Print it to Letter for the PDF.
+
 ---
 
 ## Architecture (layers are kept separate on purpose)
