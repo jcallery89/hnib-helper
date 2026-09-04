@@ -38,7 +38,7 @@ const SATELLITE_STRUCTURE: EventStructure = {
   firstIce: "07:00",
   lastIce: "22:00",
   sheets: 1,
-  blockMinutes: 80,
+  blockMinutes: 90, // warmup, two 23-minute stop-time periods, ice cut at the half
   bufferMinutes: 0,
   restBlocks: 1,
   gameMinutes: 46,

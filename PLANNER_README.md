@@ -29,7 +29,7 @@ It ships two ways, from the same code:
 
 | Profile | Defaults |
 | --- | --- |
-| Satellite | 4 teams, 9 F / 6 D / 2 G, 4 games, Saturday and Sunday 7:00 AM to 10:00 PM, one sheet, 80-minute blocks, $299, ice $350/hour, 2 refs at $60, scorekeeper $40, coach $300, travel $800, lodging $600, marketing $200, misc $250 |
+| Satellite | 4 teams, 9 F / 6 D / 2 G, 4 games, Saturday and Sunday 7:00 AM to 10:00 PM, one sheet, 90-minute blocks, $299, ice $350/hour, 2 refs at $60, scorekeeper $40, coach $300, travel $800, lodging $600, marketing $200, misc $250 |
 | MA Festival | 8 teams, 4 games plus an eight-team bracket, Friday to Sunday 8:00 AM to 8:00 PM, two sheets, 105-minute blocks, $379, no travel or lodging |
 | MA Showcase | Same structure as the festival at $479 |
 
@@ -50,8 +50,8 @@ rest blocks, and stop-time minutes per game.
   no back-to-back games (the default). On one sheet with four teams that
   forces open blocks in the grid; set it to 0 to allow back-to-back and
   compress the ice.
-- *Game block* should match the increment the rink sells ice in (80 minutes
-  covers warmup, two 23-minute stop-time periods, and the resurface).
+- *Game block* should match the increment the rink sells ice in (90 minutes
+  covers warmup, two 23-minute stop-time periods, and an ice cut at the half).
 
 **Costs**: ice per hour (billed for the booked span including open gaps, or
 for active blocks only), an optional flat weekend package or rink minimum,
@@ -118,7 +118,7 @@ fill rate.
   with the no-back-to-back rule, one open block appears between games.
 - **4 teams**: 3 games (single round robin) and 4 games (round robin plus a
   placement round) both fit two days on one sheet; the 4-game case books
-  14.66 hours, of which 4 are open blocks forced by the rest rule.
+  16.5 hours, of which 4.5 are open blocks forced by the rest rule.
 - **6 teams**: 3 games (two pools of 3 plus one crossover, or a partial round
   robin), 4 games (pools plus two crossovers), and 5 games (full round robin)
   all build conflict-free grids.

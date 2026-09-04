@@ -571,7 +571,7 @@ function StructureInputs({ s, edit }: { s: EventStructure; edit: (f: (st: EventS
         max={240}
         step={5}
         onChange={(v) => edit((st) => (st.blockMinutes = v))}
-        note="Warmup, two 23-minute stop-time periods, and the resurface. Match this to the increment the rink sells ice in."
+        note="Warmup, two 23-minute stop-time periods, and an ice cut at the half (90 minutes). Match this to the increment the rink sells ice in."
       />
       <Num label="Buffer between blocks (minutes)" value={s.bufferMinutes} min={0} max={120} step={5} onChange={(v) => edit((st) => (st.bufferMinutes = v))} />
       <Num

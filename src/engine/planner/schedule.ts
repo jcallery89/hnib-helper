@@ -175,6 +175,28 @@ export function buildSchedule(
   playoffs: PlayoffFormat,
   teamNames?: string[],
 ): ScheduleResult {
+  // First pass: round robin balanced across days with the last day reserving
+  // its playoff blocks. If the seeded rounds still spill past last ice (the
+  // rest rule can leave open blocks the reservation did not foresee), give
+  // the playoffs the whole last day and move the round robin earlier.
+  const first = buildOnce(structure, plan, playoffs, teamNames, false);
+  if (first.seededShort && Math.round(structure.days) > 1) {
+    const second = buildOnce(structure, plan, playoffs, teamNames, true);
+    if (second.fits || second.hoursShort < first.hoursShort) {
+      second.warnings.push("Playoffs take the whole last day; the round robin finishes the day before.");
+      return second;
+    }
+  }
+  return first;
+}
+
+function buildOnce(
+  structure: EventStructure,
+  plan: FormatPlan,
+  playoffs: PlayoffFormat,
+  teamNames: string[] | undefined,
+  reserveLastDay: boolean,
+): ScheduleResult & { seededShort: boolean } {
   const warnings: string[] = [];
   const nameOf = (i: number) => teamNames?.[i] || teamName(i);
   const days = Math.max(1, Math.round(structure.days));
@@ -213,7 +235,9 @@ export function buildSchedule(
   const reservedRows =
     seeded.rounds.reduce((sum, r) => sum + Math.ceil(r.games.length / sheets) + Math.max(0, Math.round(structure.restBlocks)), 0) +
     (structure.allStarGame ? 1 : 0);
-  const capacity = Array.from({ length: days }, (_, d) => (d === days - 1 ? Math.max(0, rowsPerDay - reservedRows) : rowsPerDay) * sheets);
+  const capacity = Array.from({ length: days }, (_, d) =>
+    d === days - 1 ? (reserveLastDay && days > 1 ? 0 : Math.max(0, rowsPerDay - reservedRows)) * sheets : rowsPerDay * sheets,
+  );
   const budget = distribute(remaining.length, days);
   // Push anything over a day's capacity onto the earliest days with room.
   for (let d = days - 1; d >= 0; d--) {
@@ -325,6 +349,7 @@ export function buildSchedule(
   }
 
   // ---- 3. Placement round and playoffs, on the last day ---------------------
+  const seededMissBefore = unscheduled.length;
   const { rounds, notes } = seeded;
   warnings.push(...notes);
   const lastDay = days - 1;
@@ -397,6 +422,7 @@ export function buildSchedule(
   }
 
   const roundRobinGames = sessions.filter((s) => s.kind === "game").length;
+  const seededShort = unscheduled.length > seededMissBefore;
   const shortMinutes = unscheduled.reduce((s, u) => s + u.minutes, 0);
   if (shortMinutes > 0) {
     warnings.push(
@@ -422,6 +448,7 @@ export function buildSchedule(
     teamGamesByDay,
     teamNames: Array.from({ length: teams }, (_, i) => nameOf(i)),
     warnings,
+    seededShort,
   };
 }
 
