@@ -82,13 +82,13 @@ const today = new Date().toLocaleDateString("en-US", { year: "numeric", month: "
 
 const cellHtml = (c: Cell) =>
   c.available
-    ? `<td class="num">${c.totalGames}${c.practices ? `<span class="sub">+ ${c.practices} practices</span>` : ""}</td><td class="num ice">${h1(c.booked)}${c.mark ? `<sup>${c.mark}</sup>` : ""}${c.booked > c.ice + 0.05 ? `<span class="sub">${h1(c.ice)} h of play</span>` : ""}</td><td class="num days">${c.perDay}</td>`
+    ? `<td>${c.totalGames}${c.practices ? `<span class="sub">+ ${c.practices} practices</span>` : ""}</td><td class="ice">${h1(c.booked)}${c.mark ? `<sup>${c.mark}</sup>` : ""}${c.booked > c.ice + 0.05 ? `<span class="sub">${h1(c.ice)} h of play</span>` : ""}</td><td class="days">${c.perDay}</td>`
     : `<td class="na" colspan="3">Not an even split, use 4 games<sup>${c.mark}</sup></td>`;
 
 const tableRows = rows
   .map(
     (r) =>
-      `<tr class="${r.teams === 4 ? "target" : ""}"><td class="t">${r.teams}${r.teams === 3 ? `<span class="tag">minimum</span>` : r.teams === 4 ? `<span class="tag">target</span>` : ""}</td><td class="num players">${r.players}</td>${cellHtml(r.a)}${cellHtml(r.b)}</tr>`,
+      `<tr class="${r.teams === 4 ? "target" : ""}"><td class="t">${r.teams}${r.teams === 3 ? `<span class="tag">minimum</span>` : r.teams === 4 ? `<span class="tag">target</span>` : ""}</td><td class="players">${r.players}</td>${cellHtml(r.a)}<td class="gap"></td>${cellHtml(r.b)}</tr>`,
   )
   .join("\n");
 
@@ -116,28 +116,26 @@ const html = `<!doctype html>
   .tile .s { font-size: 8.8pt; color: var(--dim); }
   h2 { font-size: 10.5pt; text-transform: uppercase; letter-spacing: 0.1em; margin: 0 0 5pt; color: var(--navy); }
 
-  table.matrix { width: 100%; border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums; }
-  .matrix th { font-size: 7.6pt; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700; padding: 4pt 6pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .matrix th.group { background: var(--navy); color: #fff; font-size: 9pt; letter-spacing: 0.06em; text-align: center; padding: 5pt 6pt; border-left: 3pt solid #fff; }
-  .matrix th.group.first { border-left: none; border-top-left-radius: 3pt; }
-  .matrix th.group.last { border-top-right-radius: 3pt; }
-  .matrix th.blank { background: transparent; }
-  .matrix th.col { background: var(--ice-2); color: var(--navy); border-bottom: 1.5pt solid var(--navy); }
-  .matrix th.col.num { text-align: right; }
-  .matrix th.col.divide, .matrix td.divide { border-left: 3pt solid #fff; }
-  .matrix td { padding: 7pt 6pt; border-bottom: 0.75pt solid var(--line); vertical-align: middle; font-size: 10pt; }
-  .matrix td.num { text-align: right; white-space: nowrap; }
-  .matrix td.t { font-size: 15pt; font-weight: 700; width: 0.85in; white-space: nowrap; }
+  table.matrix { width: 100%; table-layout: fixed; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  .matrix col.c-teams { width: 13%; }
+  .matrix col.c-players { width: 10%; }
+  .matrix col.c-gap { width: 2%; }
+  .matrix col.c-num { width: 12.5%; }
+  .matrix th { font-weight: 700; padding: 5pt 4pt; text-align: center; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .matrix th.group { background: var(--navy); color: #fff; font-size: 9pt; letter-spacing: 0.06em; text-transform: uppercase; }
+  .matrix th.blank, .matrix td.gap { background: transparent; border: none; padding: 0; }
+  .matrix th.col { background: var(--ice-2); color: var(--navy); font-size: 7.6pt; letter-spacing: 0.08em; text-transform: uppercase; }
+  .matrix th.col.left { text-align: left; padding-left: 8pt; }
+  .matrix td { padding: 0 4pt; height: 34pt; border-bottom: 0.75pt solid var(--line); vertical-align: middle; text-align: center; font-size: 10.5pt; }
+  .matrix td.t { text-align: left; padding-left: 8pt; font-size: 15pt; font-weight: 700; white-space: nowrap; }
   .matrix td.players { color: var(--dim); }
   .matrix td.ice { font-weight: 700; font-size: 12pt; }
   .matrix td.days { color: var(--dim); }
-  .matrix td.na { color: var(--dim); font-style: italic; text-align: center; font-size: 9pt; }
-  .matrix tr.target td { background: var(--ice-2); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .matrix td .sub { display: block; font-size: 7.6pt; color: var(--dim); font-weight: 400; white-space: nowrap; }
-  .matrix .tag { display: inline-block; font-size: 6.8pt; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--navy); background: var(--gold); padding: 1pt 4pt; border-radius: 2pt; margin-left: 5pt; vertical-align: middle; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .matrix td.ice sup { font-size: 7pt; color: var(--dim); }
-  .matrix td.na sup { font-size: 7pt; }
-  .matrix td.divide.num, .matrix td.divide.na { border-left: 3pt solid #fff; }
+  .matrix td.na { color: var(--dim); font-style: italic; font-size: 9pt; }
+  .matrix tr.target td:not(.gap) { background: var(--ice-2); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .matrix td .sub { display: block; font-size: 7.4pt; color: var(--dim); font-weight: 400; line-height: 1.1; margin-top: 1pt; }
+  .matrix .tag { display: inline-block; font-size: 6.6pt; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--navy); background: var(--gold); padding: 1pt 4pt; border-radius: 2pt; margin-left: 5pt; vertical-align: middle; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .matrix sup { font-size: 7pt; color: var(--dim); font-weight: 400; }
   .legend { font-size: 8pt; color: var(--dim); margin: 5pt 0 0; }
   .legend b { color: var(--navy); }
 
@@ -167,16 +165,24 @@ const html = `<!doctype html>
 
 <h2>Ice demand by team count</h2>
 <table class="matrix">
+  <colgroup>
+    <col class="c-teams" /><col class="c-players" />
+    <col class="c-num" /><col class="c-num" /><col class="c-num" />
+    <col class="c-gap" />
+    <col class="c-num" /><col class="c-num" /><col class="c-num" />
+  </colgroup>
   <thead>
     <tr>
       <th class="blank" colspan="2"></th>
-      <th class="group first" colspan="3">Option A: 3 games + 1 practice per team</th>
-      <th class="group last" colspan="3">Option B: 4 games per team, no practice</th>
+      <th class="group" colspan="3">Option A: 3 games + 1 practice</th>
+      <th class="blank"></th>
+      <th class="group" colspan="3">Option B: 4 games, no practice</th>
     </tr>
     <tr>
-      <th class="col">Teams</th><th class="col num">Players</th>
-      <th class="col num divide">Games</th><th class="col num">Ice hours</th><th class="col num">Sat / Sun</th>
-      <th class="col num divide">Games</th><th class="col num">Ice hours</th><th class="col num">Sat / Sun</th>
+      <th class="col left">Teams</th><th class="col">Players</th>
+      <th class="col">Games</th><th class="col">Ice hours</th><th class="col">Sat / Sun</th>
+      <th class="blank"></th>
+      <th class="col">Games</th><th class="col">Ice hours</th><th class="col">Sat / Sun</th>
     </tr>
   </thead>
   <tbody>
